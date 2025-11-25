@@ -1,8 +1,4 @@
-# Deepdots SDK – Tareas para Copilot / ChatGPT 5
-Guía completa de instrucciones para construir el SDK multiplataforma (Android + iOS) con Kotlin Multiplatform + Compose Multiplatform.
-
-> Cada tarea está escrita para que el agente pueda ejecutarla directamente en el proyecto.  
-> Puedes decir: “Ejecuta la Tarea 4”, o “Completa todas las tareas del 1 al 6”.
+# Deepdots SDK – Tareas
 
 ---
 
@@ -220,7 +216,4 @@ Integrar:
 - revisión automática antes de commit
 Optimizar build gradle (configuración del proyecto).
 
----
-
-# FIN DEL DOCUMENTO
 
