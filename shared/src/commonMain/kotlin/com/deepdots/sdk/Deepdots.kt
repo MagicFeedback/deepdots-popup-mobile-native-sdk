@@ -6,6 +6,7 @@ import com.deepdots.sdk.platform.PlatformContext
 import com.deepdots.sdk.platform.dismissPopup
 import com.deepdots.sdk.util.parsePopupHtml
 import com.deepdots.sdk.models.*
+import com.deepdots.sdk.ui.platformSurveyHtml
 
 typealias DeepdotsPopupsSdk = DeepdotsPopups
 
@@ -29,6 +30,12 @@ object Deepdots {
     fun dismiss(context: PlatformContext) = dismissPopup(context)
 
     /**
+     * Devuelve el HTML completo para renderizar la encuesta MagicFeedback (incluye loader y fallback CDN).
+     * Útil para que la app iOS/Android lo cargue directamente en su WebView/WKWebView.
+     */
+    fun getSurveyHtml(surveyId: String, productId: String): String = platformSurveyHtml(surveyId, productId)
+
+    /**
      * Simple helper for Swift/ObjC interop: create and init SDK with a single popup without referencing Kotlin data classes from Swift.
      */
     fun createInitializedSimple(
@@ -38,12 +45,12 @@ object Deepdots {
         surveyId: String,
         productId: String,
         triggerSeconds: Int = 3,
-        acceptLabel: String = "Sí",
-        declineLabel: String = "No",
+        acceptLabel: String = "Send",
+        declineLabel: String = "Cancel",
         declineCooldownDays: Int = 1,
         debug: Boolean = true,
         autoLaunch: Boolean = true,
-        lang: String? = "es",
+        lang: String? = "en",
         path: String? = "/home"
     ): DeepdotsPopupsSdk {
         val def = PopupDefinition(
@@ -62,12 +69,11 @@ object Deepdots {
         )
         val opts = InitOptions(
             debug = debug,
-            popups = listOf(def),
+            popupOptions = PopupOptions(popups = listOf(def)),
             autoLaunch = autoLaunch,
-            provideLang = { lang },
-            providePath = { path }
+            provideLang = { lang }
         )
-        return DeepdotsPopupsSdk().apply { init(opts) }
+        return DeepdotsPopupsSdk().apply { init(opts); setPath(path) }
     }
 }
 

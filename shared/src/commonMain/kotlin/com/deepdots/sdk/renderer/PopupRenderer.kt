@@ -8,6 +8,7 @@ expect object PopupRenderer {
     fun show(
         popup: PopupDefinition,
         context: PlatformContext,
-        onAction: (Action) -> Unit
+        onAction: (Action) -> Unit,
+        onDismiss: () -> Unit
     )
 }

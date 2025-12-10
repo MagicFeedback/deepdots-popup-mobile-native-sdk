@@ -7,7 +7,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -16,7 +19,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.deepdots.sdk.models.*
@@ -51,38 +53,96 @@ fun PopupView(
             tonalElevation = 6.dp,
             shadowElevation = 8.dp
         ) {
+            // Outer padding 16dp as requested
             Column(
                 modifier = Modifier
-                    .padding(20.dp)
+                    .padding(16.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                popup.style.imageUrl?.let { _ ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp)
-                            .background(Color.Gray.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
+                var surveyController: SurveyController? = null
+                var completed by remember { mutableStateOf(false) }
+
+                // Row 1: Header (title + 32x32 close button)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = popup.title,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor
+                    )
+                    IconButton(
+                        onClick = { popup.actions.decline?.let { onAction(it) } },
+                        modifier = Modifier.size(32.dp)
                     ) {
-                        Text("Image", color = textColor.copy(alpha = 0.6f))
+                        Text("✕", color = textColor, fontSize = 18.sp)
                     }
                 }
-                Text(
-                    text = popup.title,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor
-                )
-                paragraphs.forEach { p ->
-                    HtmlParagraphView(p, textColor)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = { onAction(popup.actions.accept) }) {
-                        Text(popup.actions.accept.label)
+
+                // Row 2: Image (optional)
+                popup.style.imageUrl?.let { _ ->
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp)
+                                .background(Color.Gray.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Image", color = textColor.copy(alpha = 0.6f))
+                        }
                     }
-                    OutlinedButton(onClick = { onAction(popup.actions.decline) }) {
-                        Text(popup.actions.decline.label)
+                }
+
+                // Row 3: Message (HTML paragraphs)
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        paragraphs.forEach { p ->
+                            HtmlParagraphView(p, textColor)
+                        }
+                    }
+                }
+
+                // Row 4: Survey render
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    SurveyView(
+                        popup.surveyId,
+                        popup.productId,
+                        onEvent = { event ->
+                            when (event) {
+                                "popup_clicked" -> { /* loaded */ }
+                                "survey_completed" -> {
+                                    completed = true
+                                    popup.actions.accept?.let { onAction(it) }
+                                }
+                                "popup_close" -> {
+                                    popup.actions.decline?.let { onAction(it) }
+                                }
+                                else -> { }
+                            }
+                        },
+                        onController = { controller -> surveyController = controller }
+                    )
+                }
+
+                // Row 5: Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (!completed) {
+                        Button(onClick = { surveyController?.send() }) {
+                            Text(popup.actions.accept?.label ?: "Send")
+                        }
+                        OutlinedButton(onClick = { popup.actions.decline?.let { onAction(it) } }) {
+                            Text(popup.actions.decline?.label ?: "Cancel")
+                        }
+                    } else {
+                        Button(onClick = { popup.actions.decline?.let { onAction(it) } }) { Text("complet") }
                     }
                 }
             }

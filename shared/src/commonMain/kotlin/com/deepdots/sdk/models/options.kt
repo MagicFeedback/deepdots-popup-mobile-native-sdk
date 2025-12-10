@@ -6,13 +6,13 @@ import com.deepdots.sdk.storage.KeyValueStorage
 enum class Mode { Client, Server }
 
 data class InitOptions(
-    val debug: Boolean = false,
-    val mode: Mode = Mode.Client,
-    val popups: List<PopupDefinition> = emptyList(),
+    val debug: Boolean? = false,
+    val mode: Mode? = Mode.Client,
+    val popupOptions: PopupOptions = PopupOptions(),
     val provideLang: () -> String? = { null }, // lambda para resolver idioma actual
-    val providePath: () -> String? = { null }, // lambda para resolver ruta/pantalla actual
-    val autoLaunch: Boolean = false, // si true inicia triggers automáticos tras init
-    val storage: KeyValueStorage = InMemoryStorage() // nuevo para cooldowns
+    val autoLaunch: Boolean? = false, // si true inicia triggers automáticos tras init
+    val storage: KeyValueStorage? = InMemoryStorage(), // nuevo para cooldowns
+    val metadata: Map<String, Any>? = null // datos adicionales para el SDK
 )
 
 data class ShowOptions(

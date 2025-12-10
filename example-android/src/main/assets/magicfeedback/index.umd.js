@@ -1,0 +1,1 @@
+// MagicFeedback bundle missing; runtime will attempt CDN fallback

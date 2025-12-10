@@ -52,6 +52,10 @@ android {
     buildTypes { getByName("release") { isMinifyEnabled = false }; getByName("debug") { } }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     publishing { singleVariant("release") { withSourcesJar() } }
+
+    sourceSets.getByName("main") {
+        assets.srcDirs("src/androidMain/assets")
+    }
 }
 
 // Configuración de toolchain Java para asegurar JDK 17
@@ -83,3 +87,5 @@ tasks.register("buildSdkDist") {
     description = "Builds Android AAR and iOS frameworks and copies them to dist/"
     dependsOn(copyAarToDist, copyIosFrameworksToDist)
 }
+
+// Eliminar tareas automáticas de descarga; usaremos vendorización manual mediante scripts

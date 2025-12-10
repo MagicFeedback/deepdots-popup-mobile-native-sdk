@@ -20,7 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Deferred
 import com.deepdots.sdk.util.currentTimeMillis
-import com.deepdots.sdk.storage.KeyValueStorage
+import kotlinx.coroutines.withContext
 
 class DeepdotsPopups {
 
@@ -29,6 +29,8 @@ class DeepdotsPopups {
     private val activePopups = mutableMapOf<String, PopupDefinition>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val answeredSurveys = mutableSetOf<String>()
+    // Track current app path internally (set by host when navigation changes)
+    private var currentPath: String? = null
 
     // Caché de último contexto usado en show para permitir dismiss desde acciones
     private var initOptionsContextCache: PlatformContext? = null
@@ -56,14 +58,21 @@ class DeepdotsPopups {
         }
         initOptions = options
 
-        options.popups.forEach { popup ->
+        // Prefer new popupOptions.popups, fallback to legacy options.popups for backward compatibility
+        val defs: List<PopupDefinition> = options.popupOptions.popups ?: emptyList()
+        defs.forEach { popup ->
             activePopups[popup.surveyId] = popup
         }
 
         log("Initialized", activePopups.keys)
-        if (options.autoLaunch) {
+        if (options.autoLaunch == true) {
             startAutoLaunch()
         }
+    }
+
+    /** Public initializer alias to avoid Swift bridging conflict with `init` constructor */
+    fun initialize(options: InitOptions) {
+        init(options)
     }
 
     private fun startAutoLaunch() {
@@ -95,8 +104,8 @@ class DeepdotsPopups {
             current != null && seg.contains(current)
         } ?: true
         val pathOk = def.segments?.path?.let { seg ->
-            val current = initOptions?.providePath?.invoke()
-            current != null && seg.contains(current)
+            val path = currentPath
+            path != null && seg.contains(path)
         } ?: true
         if (!langOk || !pathOk) return false
         // Condiciones trigger
@@ -106,17 +115,28 @@ class DeepdotsPopups {
     private fun evaluateConditions(def: PopupDefinition, conditions: List<Condition>): Boolean {
         if (conditions.isEmpty()) return true
         return conditions.all { c ->
-            if (!c.answered && answeredSurveys.contains(def.surveyId)) return@all false
-            if (c.cooldownDays > 0) {
-                val key = storagePrefix + def.id
-                val last = initOptions?.storage?.getLong(key)
-                if (last != null) {
-                    val elapsed = currentTimeMillis() - last
-                    val required = c.cooldownDays * 24L * 60L * 60L * 1000L
-                    if (elapsed < required) return@all false
+            val isAnsweredFlag = (c.answered == true)
+            if (isAnsweredFlag && answeredSurveys.contains(def.surveyId)) {
+                false
+            } else {
+                if (c.cooldownDays > 0) {
+                    val key = storagePrefix + def.id
+                    val last = initOptions?.storage?.getLong(key)
+                    if (last != null) {
+                        val elapsed = currentTimeMillis() - last
+                        val required = c.cooldownDays * 24L * 60L * 60L * 1000L
+                        if (elapsed < required) {
+                            false
+                        } else {
+                            true
+                        }
+                    } else {
+                        true
+                    }
+                } else {
+                    true
                 }
             }
-            true
         }
     }
 
@@ -224,6 +244,23 @@ class DeepdotsPopups {
     /**
      * Manejar acciones (accept / decline)
      */
+    private fun completeSurvey(popup: PopupDefinition) {
+        scope.launch {
+            eventBus.emit(
+                Event.SurveyCompleted,
+                EventData(
+                    popupId = popup.id,
+                    surveyId = popup.surveyId,
+                    productId = popup.productId,
+                    extra = mapOf("action" to "accept")
+                )
+            )
+            markSurveyAnswered(popup.surveyId)
+            initOptions?.storage?.putLong(storagePrefix + popup.id, currentTimeMillis())
+            initOptionsContextCache?.let { dismissPopup(it) }
+        }
+    }
+
     private fun handleAction(popup: PopupDefinition, action: Action) {
         val baseExtra = mutableMapOf<String, Any?>("popupId" to popup.id)
         val ctx = initOptionsContextCache
@@ -231,7 +268,7 @@ class DeepdotsPopups {
             is Action.Accept -> {
                 scope.launch {
                     eventBus.emit(
-                        Event.SurveyCompleted,
+                        Event.PopupClicked,
                         EventData(
                             popupId = popup.id,
                             surveyId = popup.surveyId,
@@ -239,8 +276,7 @@ class DeepdotsPopups {
                             extra = baseExtra.apply { this["action"] = "accept"; this["surveyId"] = action.surveyId }
                         )
                     )
-                    initOptions?.storage?.putLong(storagePrefix + popup.id, currentTimeMillis())
-                    ctx?.let { dismissPopup(it) }
+                    // Do not dismiss or mark answered yet (wait for JS survey_completed)
                 }
             }
             is Action.Decline -> {
@@ -255,9 +291,58 @@ class DeepdotsPopups {
                         )
                     )
                     initOptions?.storage?.putLong(storagePrefix + popup.id, currentTimeMillis())
-                    ctx?.let { dismissPopup(it) }
+                    val ctxLocal = ctx
+                    if (ctxLocal != null) {
+                        withContext(Dispatchers.Main) { dismissPopup(ctxLocal) }
+                    }
                 }
             }
+            is Action.Start -> {
+                scope.launch {
+                    eventBus.emit(
+                        Event.PopupClicked,
+                        EventData(
+                            popupId = popup.id,
+                            surveyId = popup.surveyId,
+                            productId = popup.productId,
+                            extra = baseExtra.apply { this["action"] = "start" }
+                        )
+                    )
+                }
+            }
+            is Action.Complete -> {
+                scope.launch {
+                    eventBus.emit(
+                        Event.PopupClicked,
+                        EventData(
+                            popupId = popup.id,
+                            surveyId = popup.surveyId,
+                            productId = popup.productId,
+                            extra = baseExtra.apply { this["action"] = "complete" }
+                        )
+                    )
+                    // Mark as completed locally for cooldown purposes
+                    initOptions?.storage?.putLong(storagePrefix + popup.id, currentTimeMillis())
+                    val ctxLocal = ctx
+                    if (ctxLocal != null) {
+                        withContext(Dispatchers.Main) { dismissPopup(ctxLocal) }
+                    }
+                }
+            }
+            is Action.Back -> {
+                scope.launch {
+                    eventBus.emit(
+                        Event.PopupClicked,
+                        EventData(
+                            popupId = popup.id,
+                            surveyId = popup.surveyId,
+                            productId = popup.productId,
+                            extra = baseExtra.apply { this["action"] = "back" }
+                        )
+                    )
+                }
+            }
+            else -> { /* no-op for future actions */ }
         }
     }
 
@@ -269,9 +354,11 @@ class DeepdotsPopups {
         context: PlatformContext
     ) {
         scope.launch(Dispatchers.Main) {
-            PopupRenderer.show(popup, context) { action ->
+            PopupRenderer.show(popup, context, onAction = { action ->
                 handleAction(popup, action)
-            }
+            }, onDismiss = {
+                // no-op; dismissal already handled per action
+            })
         }
     }
 
@@ -287,5 +374,18 @@ class DeepdotsPopups {
         log("Context attached")
         // If there are queued popups and we lacked context earlier, kick processing again
         processQueue()
+    }
+
+    // Allow host app to update current path/page on navigation changes
+    fun setPath(path: String?) {
+        currentPath = path
+        log("Path updated", path ?: "null")
+        // Re-evaluate queued popups if any
+        processQueue()
+    }
+
+    fun surveyCompletedFromJs(surveyId: String) {
+        val popup = activePopups[surveyId] ?: return
+        completeSurvey(popup)
     }
 }
