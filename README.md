@@ -18,9 +18,10 @@ Multiplatform SDK (Android + iOS) to show popups and launch surveys using trigge
 8. Public API
 9. Full Examples (Android / iOS)
 10. Building Artifacts (AAR / iOS Frameworks)
-11. Roadmap (summary)
-12. Troubleshooting
-13. MagicFeedback Integration (@magicfeedback/native)
+11. Runtime Style Overrides
+12. Error Handling (Validation & Submit)
+13. Troubleshooting
+14. MagicFeedback Integration (@magicfeedback/native)
 
 ---
 ## 1. Introduction
@@ -38,6 +39,7 @@ Deepdots Popup SDK helps you:
 - Coroutines for triggers and popup queue.
 - Configurable persistence (in-memory or your own) for cooldowns.
 - Basic HTML support (`<p>`, `<b>`, `<i>`).
+- Inline survey renderer with platform bridges and runtime customization.
 
 ## 3. Installation / Integration
 
@@ -111,6 +113,10 @@ sdk.on(Event.PopupShown) { println("Popup shown: ${it.popupId}") }
 sdk.on(Event.PopupClicked) { println("Popup clicked: ${it.popupId} action=${it.extra["action"]}") }
 sdk.on(Event.SurveyCompleted) { println("Survey completed: ${it.surveyId}") }
 ```
+
+Behavioral notes:
+- The popup initially shows a Loading spinner and switches to Start/InProgress when the survey emits `loaded`/`popup_clicked`.
+- When submitting, the UI briefly shows Loading on `before_submit`.
 
 ### Swift (iOS)
 ```swift
@@ -192,123 +198,51 @@ Preliminary XCFramework packaging:
 # Combine arm64 + simulator later with a script
 ```
 
-## 11. Roadmap (quick summary)
+## 11. Runtime Style Overrides
+Events `loaded`/`popup_clicked` may include style overrides in the payload:
+- Colors: `buttonPrimaryColor`, `boxBackgroundColor`.
+- Start message: `startMessage` (shows a Start button initially if present).
+- Image/Logo: `image` or `logo` URL; `imageSize`/`logoSize` (small|medium|large); `imagePosition`/`logoPosition` (left|right|center).
+- Popup sizing: `popupMaxWidth` (dp), `popupMaxHeightFraction` (0.5–0.98).
 
-## 12. Troubleshooting
+## 12. Error Handling (Validation & Submit)
+- Validation errors:
+  - Events: `validation_error_required` or any `validation_error*` with optional `payload.message`.
+  - UI: shows an inline banner under the survey; keeps Back/Send visible.
+- Submit errors:
+  - Event: `submit_error` with optional `payload.message` (e.g., "No response").
+  - UI: also inline banner under the survey for correction/retry; Back/Send remain visible.
+- Platform specifics:
+  - Android: we synthesize these from WebView console logs if the bridge doesn’t emit them.
+  - iOS: a WKUserScript forwards console `log/error` to the bridge as structured events.
+
+## 13. Troubleshooting
 | Issue | Common Cause | Solution |
 |-------|--------------|----------|
-| "unused" warnings | Examples/Tests not referencing everything | Ignore or add `@Suppress` |
-| Popup not appearing (iOS) | Wrong `PlatformContext` | Ensure valid `rootViewController` |
-| Cooldown not respected | Non-persistent storage | Provide custom `KeyValueStorage` |
-| Missing ComposeApp module (iOS) | Framework not built | Run build and re-import |
-| HTML lacks styles | Limited parser | Only `<p>`, `<b>`, `<i>` supported now |
+| Spinner not showing | Initial state not Loading | Initial state is Loading; verify `loaded`/`popup_clicked` arrive to hide it |
+| No validation banner | Bridge not emitting or logs not forwarded | Android: check WebView logs; iOS: ensure WKUserScript is injected before load |
+| Footer hidden on Android | Survey area too tall | WebView uses fixed height; popup keeps footer visible; adjust height if needed |
+| iOS no image/logo | Asset not in bundle | Place `magicfeedback-sdk.browser.js` and ensure copy resources |
+| Progress state wrong | Events missing progress/total | We update global progress/total from payload when present and derive state |
 
-## 13. MagicFeedback Integration (@magicfeedback/native)
-The SDK ships shared logic to generate HTML that loads the MagicFeedback bundle from a local asset (if available) and then falls back to CDN sources (jsDelivr / unpkg / fetch+eval / ESM module).
+## 14. MagicFeedback Integration (@magicfeedback/native)
+The SDK builds HTML to load the MagicFeedback bundle from a local asset (if available) and then falls back to CDN sources.
 
 ### Shared Builder
-Internally we use `buildMagicFeedbackHtml` and expose a simple helper:
-
 ```kotlin
 val html = Deepdots.getSurveyHtml(surveyId = "survey-123", productId = "product-xyz")
 ```
-
-This returns a full HTML document with:
-- Initial message "Initializing survey...".
-- Local asset load attempt `magicfeedback-sdk.browser.js` if packaged.
-- CDN fallback (jsDelivr, then unpkg).
-- Additional `fetch+eval` fallback and finally ESM module fallback.
-- Polling until `timeoutMs=4000` to check availability of `window.magicfeedback`.
-- Emitted lifecycle events: `popup_clicked`, `survey_completed`, `error:init`, `error:timeout`, `error:module`, etc.
-
-### Android Direct Usage
-The `SurveyView` already uses this builder and emits events through `DeepdotsBridge.emit(event)` via `addJavascriptInterface`.
-
-### iOS Direct Usage
-Swift example:
-```swift
-import ComposeApp
-
-let html = Deepdots.shared.getSurveyHtml(surveyId: "survey-ios", productId: "product-ios")
-let webView = WKWebView(frame: .zero)
-webView.configuration.userContentController.add(self, name: "DeepdotsBridge")
-webView.loadHTMLString(html, baseURL: URL(string: "https://magicfeedback.app/"))
-```
-Bridge handler:
-```swift
-extension ViewController: WKScriptMessageHandler {
-    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard let event = message.body as? String else { return }
-        print("[DeepdotsBridge] event=\(event)")
-        switch event {
-        case "popup_clicked": // survey view is shown and ready
-            break
-        case "survey_completed": // user finished survey
-            break
-        case let e where e.hasPrefix("error:"):
-            // handle error
-            break
-        default: break
-        }
-    }
-}
-```
+Emitted lifecycle events include:
+- `popup_clicked`, `survey_completed`
+- `error:init`, `error:timeout`, `error:module`, `error:module-load`
+- Validation/submit errors synthesized via platform logging when not bridged directly.
 
 ### Packaging Local Asset
-To speed up offline load and avoid network failures include `magicfeedback-sdk.browser.js` as a local asset:
-
 Android:
-- Copy the file to `shared/src/androidMain/assets/magicfeedback/magicfeedback-sdk.browser.js`.
-- The builder attempts `file:///android_asset/magicfeedback/magicfeedback-sdk.browser.js`.
+- Copy to `shared/src/androidMain/assets/magicfeedback/magicfeedback-sdk.browser.js`.
 
 iOS:
-- Add the file to your Xcode target (Copy Bundle Resources) under folder `magicfeedback/`.
-- The builder attempts `file://<bundlePath>/magicfeedback/magicfeedback-sdk.browser.js`.
+- Add to Xcode target under `magicfeedback/`.
 
 ### Asset Update Script
-Example script `scripts/update_magicfeedback_asset.sh`:
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-VERSION="$1" # e.g. 2.1.2-beta.2
-BASE="https://cdn.jsdelivr.net/npm/@magicfeedback/native@${VERSION}/dist"
-OUT_ANDROID="shared/src/androidMain/assets/magicfeedback"
-OUT_IOS="iosApp/iosApp/magicfeedback" # adjust if your structure differs
-mkdir -p "$OUT_ANDROID" "$OUT_IOS"
-
-fetch() { curl -fsSL "$1" -o "$2"; }
-
-echo "Downloading magicfeedback-sdk.browser.js ($VERSION)"
-fetch "$BASE/magicfeedback-sdk.browser.js" "$OUT_ANDROID/magicfeedback-sdk.browser.js"
-fetch "$BASE/magicfeedback-sdk.browser.js" "$OUT_IOS/magicfeedback-sdk.browser.js"
-
-SIZE=$(wc -c < "$OUT_ANDROID/magicfeedback-sdk.browser.js")
-if [ "$SIZE" -lt 10000 ]; then
-  echo "Warning: asset seems too small (size=$SIZE). Check version or CDN." >&2
-fi
-
-echo "Update complete."
-```
-Usage:
-```bash
-bash scripts/update_magicfeedback_asset.sh 2.1.2
-```
-
-### Emitted Events
-| Event             | Meaning                                        |
-|-------------------|------------------------------------------------|
-| popup_clicked     | Survey loaded and visible                      |
-| survey_completed  | User completed and submitted the survey        |
-| error:init        | Error during form.generate initialization      |
-| error:timeout     | `window.magicfeedback` not available in time   |
-| error:module      | ESM module fallback did not provide object     |
-| error:module-load | Error loading ESM script                       |
-
-### MagicFeedback Troubleshooting
-| Symptom                               | Likely Cause                           | Resolution |
-|---------------------------------------|----------------------------------------|------------|
-| `not available (timeout)` in logs     | Network/CDN slow or asset missing      | Verify local asset & network; increase timeout |
-| Asset too small warning               | Placeholder or failed download         | Re-run script; verify size (>100KB) |
-| `eval error Invalid or unexpected token` | Truncated UMD bundle                  | Re-download, clear CDN cache, use ESM fallback |
-| No events on iOS                      | Bridge not registered                  | Add message handler before loading HTML |
-| No survey after `popup_clicked`       | MagicFeedback form failed to init      | Check surveyId/productId and network access |
+See `scripts/update_magicfeedback_asset.sh`.
