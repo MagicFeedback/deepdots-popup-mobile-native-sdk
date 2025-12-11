@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Deferred
 import com.deepdots.sdk.util.currentTimeMillis
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.cancel
 
 class DeepdotsPopups {
 
@@ -76,6 +77,9 @@ class DeepdotsPopups {
     }
 
     private fun startAutoLaunch() {
+        // Cancel any previous jobs to avoid duplicate scheduling
+        triggerJobs.forEach { it.cancel() }
+        triggerJobs.clear()
         // Configurar triggers derivados de definiciones
         activePopups.values.forEach { def ->
             val trigger = def.trigger
@@ -382,6 +386,10 @@ class DeepdotsPopups {
         log("Path updated", path ?: "null")
         // Re-evaluate queued popups if any
         processQueue()
+        // Reschedule auto-launch triggers so segmentation by path can take effect on the new page
+        if (initOptions?.autoLaunch == true) {
+            startAutoLaunch()
+        }
     }
 
     fun surveyCompletedFromJs(surveyId: String) {

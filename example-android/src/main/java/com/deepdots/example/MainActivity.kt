@@ -1,6 +1,8 @@
 package com.deepdots.example
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,9 +27,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.LocalActivity
 import com.deepdots.sdk.DeepdotsPopupsSdk
 import androidx.compose.runtime.LaunchedEffect
+
+// Helper to safely resolve an Activity from a Context without casting
+private fun Context.findActivity(): Activity? {
+    var ctx: Context? = this
+    while (ctx is ContextWrapper) {
+        if (ctx is Activity) return ctx
+        ctx = ctx.baseContext
+    }
+    return null
+}
 
 class MainActivity : ComponentActivity() {
     private val sdk = Deepdots.create()
@@ -61,7 +73,7 @@ class MainActivity : ComponentActivity() {
             id = "popup-demo-1",
             title = "",
             message = "",
-            trigger = TimeOnPage(value = 1, condition = listOf(Condition(answered = false, cooldownDays = 1))),
+            trigger = TimeOnPage(value = 1, condition = listOf(Condition(answered = false, cooldownDays = 0))),
             actions = Actions(
                 accept = Action.Accept(label = "Næste", surveyId = "eeb4e590-d0eb-11f0-b3ab-f13d725acff5"),
                 decline = Action.Decline(label = "Tæt", cooldownDays = 1),
@@ -156,7 +168,8 @@ private fun HomeScreen(onNavigate: () -> Unit) {
 
 @Composable
 private fun FakePageScreen(sdk: DeepdotsPopupsSdk, onBack: () -> Unit) {
-    val activity = LocalContext.current as Activity
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val activity = remember(context) { context.findActivity() }
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -164,14 +177,16 @@ private fun FakePageScreen(sdk: DeepdotsPopupsSdk, onBack: () -> Unit) {
         Text("Test page", style = MaterialTheme.typography.headlineSmall)
         Text("Fake content with elements to try popups." )
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { sdk.show(ShowOptions(surveyId = "a9c8c170-bb1c-11f0-9d29-d5fe3dd521d0", productId = "02b809f20e024bce47c57f123cff8735"), PlatformContext(activity)) }) {
-                Text("Show popup manually")
-            }
+            Button(onClick = {
+                activity?.let { sdk.show(ShowOptions(surveyId = "a9c8c170-bb1c-11f0-9d29-d5fe3dd521d0", productId = "02b809f20e024bce47c57f123cff8735"), PlatformContext(it)) }
+            }) { Text("Show popup manually") }
             OutlinedButton(onClick = onBack) { Text("Back") }
         }
         Spacer(modifier = Modifier.height(12.dp))
         // More fake controls
-        Button(onClick = { sdk.show(ShowOptions(surveyId = "eeb4e590-d0eb-11f0-b3ab-f13d725acff5", productId = "e5c8241506ac83ddcf061a01f5b0f567"), PlatformContext(activity)) }) { Text("Action 1") }
+        Button(onClick = {
+            activity?.let { sdk.show(ShowOptions(surveyId = "eeb4e590-d0eb-11f0-b3ab-f13d725acff5", productId = "e5c8241506ac83ddcf061a01f5b0f567"), PlatformContext(it)) }
+        }) { Text("Action 1") }
         Button(onClick = { /* Simulate action */ }) { Text("Action 2") }
         OutlinedButton(onClick = { /* Simulate action */ }) { Text("Open fake dialog") }
     }

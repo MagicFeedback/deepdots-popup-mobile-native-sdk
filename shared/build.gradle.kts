@@ -16,18 +16,22 @@ kotlin {
 
     sourceSets {
         androidMain.dependencies {
-            // Keep only activity-compose; rely on commonMain's compose.* modules
             implementation(libs.androidx.activity.compose)
+            // Use explicit dependency to avoid catalog parse issues
+            implementation("io.coil-kt:coil-compose:2.7.0")
         }
-        commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
+        val commonMain by getting {
+            dependencies {
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material3)
+                implementation(compose.ui)
+                implementation(compose.components.resources)
+                implementation(compose.components.uiToolingPreview)
+                implementation(libs.androidx.lifecycle.viewmodelCompose)
+                implementation(libs.androidx.lifecycle.runtimeCompose)
+                // No image loader in commonMain; platform-specific actuals will handle it
+            }
         }
         commonTest.dependencies { implementation(libs.kotlin.test) }
     }

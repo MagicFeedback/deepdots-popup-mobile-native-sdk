@@ -20,30 +20,18 @@ internal fun buildMagicFeedbackHtml(
 ): String {
     val localSrcLiteral = localAssetUrl?.let { "'${it}'" } ?: "null"
     val assetSizeLiteral = assetSize?.toString() ?: "-1"
-    // Different base style between platforms if desired
     val fontFamily = if (isIOS) "-apple-system" else "system-ui"
-    // Bridge wrapper function to unify usage in script
-    // For iOS we cannot safely use optional chaining inside a string for older WKWebView JS engine, so keep simple call
     val emitWrapper = if (bridgeEmitCall.contains("(")) {
-        // developer provided full call style e.g. window.webkit.messageHandlers.DeepdotsBridge.postMessage(event)
-        "function emit(e){ try { ${
-            bridgeEmitCall.replace(
-                "(event)",
-                "(e)"
-            )
-        } } catch(err){ console.error('[MagicFeedback] emit error', err); } }"
+        "function emit(e){ try { ${bridgeEmitCall.replace("(event)", "(e)")} } catch(err){ console.error('[MagicFeedback] emit error', err); } }"
     } else {
-        // call style like DeepdotsBridge.emit
         "function emit(e){ try { ${bridgeEmitCall}(e); } catch(err){ console.error('[MagicFeedback] emit error', err); } }"
     }
-    // Build CDN URLs using the centralized version
     val cdnBase = "https://cdn.jsdelivr.net/npm/@magicfeedback/native@${MAGICFEEDBACK_VERSION}/dist"
     val unpkgBase = "https://unpkg.com/@magicfeedback/native@${MAGICFEEDBACK_VERSION}/dist"
     val urlBrowserJsDelivr = "$cdnBase/magicfeedback-sdk.browser.js"
     val urlBrowserUnpkg = "$unpkgBase/magicfeedback-sdk.browser.js"
-    val urlUmdJsDelivr = "$cdnBase/index.umd.js" // kept for fetch+eval fallback if ever needed
     val urlEsmModule = "$cdnBase/index.js"
-    val urlStyleDefault = "$cdnBase/styles/magicfeedback-default.css"
+    val urlStyleDefault = "https://cdn.jsdelivr.net/npm/@magicfeedback/popup-sdk/dist/assets/assets/style.css"
 
     return """
         <html><head>
@@ -53,7 +41,6 @@ internal fun buildMagicFeedbackHtml(
         </head>
         <body>
           <div id='mf-form'></div>
-          <div id='mf-status'>Initializing survey...</div>
           <script>
             (function(){
               var LOCAL_SRC = $localSrcLiteral;
@@ -61,29 +48,55 @@ internal fun buildMagicFeedbackHtml(
               $emitWrapper
               var initialized = false;
               var mfReady = false; // becomes true when form onLoadedEvent fires
+              function emitJSON(name, payload){
+                try { emit(JSON.stringify({ name: name, payload: payload || {} })); } catch(err){ console.error('[MagicFeedback] emitJSON error', err); }
+              }
               function initMF(){
                 try {
                   if (window.magicfeedback && !initialized) {
                     initialized = true;
                     window.magicfeedback.init({debug:true, env:'prod'});
                     var form = window.magicfeedback.form('$surveyId', '$productId');
-                    // Expose form and actions for host popup buttons
                     window.DeepdotsForm = form;
                     window.DeepdotsActions = {
                       send: function(){ try { form.send(); } catch(e){ console.error('[DeepdotsActions] send error', e); } },
                       back: function(){ try { form.back(); } catch(e){ console.error('[DeepdotsActions] back error', e); } },
-                      close: function(){ try { emit('popup_close'); } catch(e){ console.error('[DeepdotsActions] close emit error', e); } }
+                      close: function(){ try { emit('popup_close'); } catch(e){ console.error('[DeepdotsActions] close emit error', e); } },
+                      startForm: function(){ try { if (typeof form.startForm === 'function') { form.startForm(); } else { console.warn('[DeepdotsActions] startForm not available'); } } catch(e){ console.error('[DeepdotsActions] startForm error', e); } }
                     };
                     form.generate('mf-form', {
                       addButton:false,
                       getMetaData:true,
-                      onLoadedEvent: function(){ console.log('[MagicFeedback] loaded'); mfReady = true; var s=document.getElementById('mf-status'); if(s) s.textContent=''; emit('popup_clicked'); },
-                      afterSubmitEvent: function(payload){
-                        // payload: { loading:boolean, progress:number, total:number, response:string, error:string }
+                      onLoadedEvent: function(args){
+                        mfReady = true; var s=document.getElementById('mf-status'); if(s) s.textContent='';
                         try {
-                          if (payload.completed) { emit('survey_completed'); }
-                          else if (payload.error) { console.warn('[MagicFeedback] afterSubmit error', payload.error); }
+                          var style = (args && args.formData && args.formData.style) ? args.formData.style : null;
+                          emitJSON('popup_clicked', { style: style });
+                          emit('loaded'); // explicit loaded for Kotlin UI state
+                        } catch(e){ console.error('[MagicFeedback] onLoadedEvent emit error', e); }
+                      },
+                      beforeSubmitEvent: function(){ try { emitJSON('before_submit'); } catch(e){ console.error('[MagicFeedback] before_submit emit error', e); } },
+                      afterSubmitEvent: function(payload){
+                        try {
+                          var err = payload && payload.error ? String(payload.error) : '';
+                          var completed = !!(payload && payload.completed);
+                          var progress = (payload && payload.progress) || 0;
+                          var total = (payload && payload.total) || 0;
+                          if (err) {
+                             var lower = err.toLowerCase();
+                             if (lower.indexOf('no response') !== -1) { emitJSON('validation_error_required'); }
+                             else { emitJSON('submit_error', { error: err }); }
+                          }
+                          if (completed) { emitJSON('survey_completed'); }
+                          else { emitJSON('after_submit', { error: err, completed: completed, progress: progress, total: total }); }
                         } catch(e){ console.error('[MagicFeedback] afterSubmit exception', e); }
+                      },
+                      onBackEvent: function(args){
+                        try {
+                          var progress = (args && args.progress) || 0;
+                          var total = (args && args.total) || 0;
+                          emitJSON('back', { progress: progress, total: total });
+                        } catch(e){ console.error('[MagicFeedback] onBackEvent emit error', e); }
                       }
                     }).catch(function(e){ console.error(e); emit('error:init'); });
                     return true;
@@ -96,49 +109,23 @@ internal fun buildMagicFeedbackHtml(
               }
               function addModuleFallback(){
                 if (initialized) return;
-                console.warn('[MagicFeedback] trying ESM module fallback');
-                addScript('$urlEsmModule','module',function(){
-                  console.log('[MagicFeedback] module loaded');
-                  setTimeout(function(){ if(!initMF()){ console.warn('[MagicFeedback] ESM module fallback did not provide magicfeedback'); emit('error:module'); } },100);
-                },function(){ console.error('[MagicFeedback] module fallback error'); emit('error:module-load'); });
+                addScript('$urlEsmModule','module',function(){ setTimeout(function(){ if(!initMF()){ emit('error:module'); } },100); },function(){ emit('error:module-load'); });
               }
               function fetchAndEval(src){
-                console.log('[MagicFeedback] fetch+eval', src);
-                fetch(src).then(r=>r.text()).then(code=>{ try { eval(code); console.log('[MagicFeedback] eval done'); if(!initMF()){ console.warn('[MagicFeedback] not available after eval'); addModuleFallback(); } } catch(e){ console.error('[MagicFeedback] eval error', e); addModuleFallback(); } });
+                fetch(src).then(r=>r.text()).then(code=>{ try { eval(code); if(!initMF()){ addModuleFallback(); } } catch(e){ addModuleFallback(); } });
               }
               var triedUnpkg = false;
               function tryCdn(){
-                console.log('[MagicFeedback] trying jsDelivr browser');
-                addScript('$urlBrowserJsDelivr', null, function(){
-                  console.log('[MagicFeedback] jsDelivr loaded');
-                  if(!initMF() && !triedUnpkg){ triedUnpkg = true; console.log('[MagicFeedback] trying unpkg browser'); addScript('$urlBrowserUnpkg', null, function(){
-                    console.log('[MagicFeedback] unpkg loaded');
-                    if(!initMF()){ console.warn('[MagicFeedback] still not available after unpkg'); fetchAndEval('$urlBrowserUnpkg'); }
-                  }, function(){ console.error('[MagicFeedback] unpkg load error'); fetchAndEval('$urlBrowserUnpkg'); }); }
-                }, function(){
-                  console.error('[MagicFeedback] jsDelivr load error');
-                  if(!triedUnpkg){ triedUnpkg = true; addScript('$urlBrowserUnpkg', null, function(){
-                    console.log('[MagicFeedback] unpkg loaded');
-                    if(!initMF()){ console.warn('[MagicFeedback] still not available after unpkg'); fetchAndEval('$urlBrowserUnpkg'); }
-                  }, function(){ console.error('[MagicFeedback] unpkg load error'); fetchAndEval('$urlBrowserJsDelivr'); }); }
-                  else { fetchAndEval('$urlBrowserJsDelivr'); }
-                });
+                addScript('$urlBrowserJsDelivr', null, function(){ if(!initMF() && !triedUnpkg){ triedUnpkg = true; addScript('$urlBrowserUnpkg', null, function(){ if(!initMF()){ fetchAndEval('$urlBrowserUnpkg'); } }, function(){ fetchAndEval('$urlBrowserUnpkg'); }); } }, function(){ if(!triedUnpkg){ triedUnpkg = true; addScript('$urlBrowserUnpkg', null, function(){ if(!initMF()){ fetchAndEval('$urlBrowserUnpkg'); } }, function(){ fetchAndEval('$urlBrowserJsDelivr'); }); } else { fetchAndEval('$urlBrowserJsDelivr'); } });
               }
               function tryLocalThenCdn(){
-                if(LOCAL_SRC){
-                  console.log('[MagicFeedback] trying local asset');
-                  if(ASSET_SIZE > 0 && ASSET_SIZE < 10000){ console.warn('[MagicFeedback] asset seems too small, likely a placeholder'); }
-                  addScript(LOCAL_SRC, null, function(){
-                    console.log('[MagicFeedback] local asset loaded');
-                    if(!initMF()){ console.warn('[MagicFeedback] not available after local (typeof='+typeof window.magicfeedback+')'); tryCdn(); }
-                  }, function(){ console.warn('[MagicFeedback] local asset not found'); tryCdn(); });
-                } else { tryCdn(); }
+                if(LOCAL_SRC){ addScript(LOCAL_SRC, null, function(){ if(!initMF()){ tryCdn(); } }, function(){ tryCdn(); }); } else { tryCdn(); }
               }
               tryLocalThenCdn();
               var t0 = Date.now();
               var poll = setInterval(function(){
                 if(mfReady || initMF()){ clearInterval(poll); }
-                else if(Date.now() - t0 > $timeoutMs){ clearInterval(poll); console.warn('[MagicFeedback] not available (timeout)'); var s=document.getElementById('mf-status'); if(s) s.textContent='Could not load the survey'; emit('error:timeout'); }
+                else if(Date.now() - t0 > $timeoutMs){ clearInterval(poll); var s=document.getElementById('mf-status'); if(s) s.textContent='Could not load the survey'; emit('error:timeout'); }
               }, 250);
             })();
           </script>

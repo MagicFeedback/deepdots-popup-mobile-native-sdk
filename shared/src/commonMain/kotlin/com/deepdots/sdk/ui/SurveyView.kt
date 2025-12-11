@@ -6,6 +6,7 @@ interface SurveyController {
     fun send()
     fun back()
     fun close()
+    fun startForm()
 }
 
 /**

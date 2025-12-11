@@ -55,6 +55,6 @@ xcrun simctl launch booted "$BUNDLE_ID" || true
 
 # 5) Mostrar logs recientes relevantes
 info "Recent iOS logs containing [iOS] events (last 2m):"
-log show --predicate 'eventMessage CONTAINS "[iOS]"' --style syslog --last 2m | tail -n 100 || true
+/usr/bin/log show --predicate 'eventMessage CONTAINS "[iOS]"' --style syslog --last 2m | tail -n 100 || true
 
 info "Done. To change device, run: DEST_NAME='iPhone 16e' ./run_ios_example.sh"
