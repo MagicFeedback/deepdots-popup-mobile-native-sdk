@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = 'DeepdotsSDK'
-  s.version      = '0.1.0'
+  s.version      = '0.1.2'
   s.summary      = 'Deepdots Popup SDK - iOS framework (Kotlin Multiplatform).'
   s.homepage     = 'https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk'
   s.license      = { :type => 'Apache 2.0', :file => 'LICENSE' }
