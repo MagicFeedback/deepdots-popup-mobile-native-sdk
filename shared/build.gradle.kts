@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -13,6 +14,7 @@ group = providers.gradleProperty("PUBLISHING_GROUP").orNull ?: "com.deepdots"
 version = providers.gradleProperty("PUBLISHING_VERSION").orNull ?: "0.1.0"
 
 kotlin {
+    val xcf = XCFramework()
     androidTarget { // proper android target registration
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
         publishLibraryVariants("release") // publish the Android release variant
@@ -50,6 +52,7 @@ kotlin {
         (t as org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget).binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
+            xcf.add(this)
         }
     }
 }
@@ -157,8 +160,7 @@ signing {
 // CocoaPods: generate a Podspec from the built XCFramework
 val generatePodspec by tasks.registering {
     group = "distribution"
-    description = "Generates DeepdotsSDK.podspec pointing to the XCFramework in dist/ios"
-    dependsOn(tasks.named("copyIosFrameworksToDist"))
+    description = "Generates DeepdotsSDK.podspec pointing to built iOS frameworks"
     doLast {
         val podspec = rootProject.layout.projectDirectory.file("DeepdotsSDK.podspec").asFile
         val version = project.version.toString()
@@ -173,8 +175,9 @@ val generatePodspec by tasks.registering {
           s.source       = { :git => 'https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk.git', :tag => s.version }
           s.platform     = :ios, '13.0'
           s.swift_version = '5.7'
-          s.prepare_command = 'cd shared && ./gradlew buildSdkDist'
-          s.vendored_frameworks = ['dist/ios/iosArm64/releaseFramework/*.framework', 'dist/ios/iosSimulatorArm64/releaseFramework/*.framework']
+          # Build only iOS frameworks (XCFramework) to avoid requiring Android SDK
+          s.prepare_command = './gradlew :shared:assembleSharedReleaseXCFramework'
+          s.vendored_frameworks = 'shared/build/XCFrameworks/release/shared.xcframework'
         end
         """.trimIndent()
         podspec.writeText(spec)
