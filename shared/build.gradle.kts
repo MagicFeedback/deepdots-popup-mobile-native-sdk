@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
+import org.gradle.api.publish.maven.MavenPublication
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -21,6 +22,22 @@ kotlin {
     }
     iosArm64()
     iosSimulatorArm64()
+    // removed iosX64 due to missing actuals; rely on arm64 simulator
+
+    // Apply ObjC generics and minimum iOS deployment target to all iOS native binaries
+    targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().configureEach {
+        if (name.startsWith("ios")) {
+            binaries.all {
+                freeCompilerArgs += listOf("-Xobjc-generics")
+                linkerOpts("-mios-version-min=13.0")
+            }
+            binaries.framework {
+                baseName = "ComposeApp"
+                isStatic = true
+                xcf.add(this)
+            }
+        }
+    }
 
     sourceSets {
         androidMain.dependencies {
@@ -45,16 +62,7 @@ kotlin {
     }
 
     // Configure iOS frameworks
-    listOf(
-        targets.getByName("iosArm64"),
-        targets.getByName("iosSimulatorArm64")
-    ).forEach { t ->
-        (t as org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget).binaries.framework {
-            baseName = "ComposeApp"
-            isStatic = true
-            xcf.add(this)
-        }
-    }
+    // (Removed duplicate configuration to avoid creating the same framework twice)
 }
 
 android {
@@ -102,15 +110,17 @@ tasks.register("buildSdkDist") {
 
 // Eliminar tareas automáticas de descarga; usaremos vendorización manual mediante scripts
 
-// Configure publications for Maven Central
 publishing {
     publications {
-        // Configure POM metadata for all Maven publications (including 'kotlinMultiplatform' and Android variant)
-        withType<MavenPublication> {
+        withType<MavenPublication>().configureEach {
+            groupId = project.group.toString()
+            artifactId = "shared-${name.replace("Publication", "").lowercase()}"
+            version = project.version.toString()
+
             pom {
                 name.set("Deepdots SDK")
                 description.set("Deepdots Popup SDK - Kotlin Multiplatform library for Android and iOS")
-                url.set("https://github.com/deepdots/DeepdotsPopupSDK")
+                url.set("https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk")
                 licenses {
                     license {
                         name.set("The Apache License, Version 2.0")
@@ -118,9 +128,9 @@ publishing {
                     }
                 }
                 scm {
-                    connection.set("scm:git:https://github.com/deepdots/DeepdotsPopupSDK.git")
-                    developerConnection.set("scm:git:ssh://git@github.com:deepdots/DeepdotsPopupSDK.git")
-                    url.set("https://github.com/deepdots/DeepdotsPopupSDK")
+                    connection.set("scm:git:https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk.git")
+                    developerConnection.set("scm:git:ssh://git@github.com:MagicFeedback/deepdots-popup-mobile-native-sdk.git")
+                    url.set("https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk")
                 }
                 developers {
                     developer {
@@ -132,58 +142,33 @@ publishing {
             }
         }
     }
+
     repositories {
         maven {
             name = "OSSRH"
-            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            url = uri("https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/")
+
             credentials {
-                username = providers.gradleProperty("ossrhUsername").orNull ?: System.getenv("OSSRH_USERNAME")
-                password = providers.gradleProperty("ossrhPassword").orNull ?: System.getenv("OSSRH_PASSWORD")
+                username = providers.gradleProperty("ossrhUsername").get()
+                password = providers.gradleProperty("ossrhPassword").get()
             }
         }
     }
 }
 
+// Signing con GPG (macOS friendly, funciona en CI)
 signing {
-    // Only require signing when publishing to OSSRH (Maven Central)
-    setRequired({
-        gradle.taskGraph.allTasks.any { it.name.contains("publish") && it.name.contains("ToOSSRH") }
-    })
-    useInMemoryPgpKeys(
-        providers.gradleProperty("signing.keyId").orNull,
-        providers.gradleProperty("signing.secretKeyRingFile").orNull?.let { file(it).readText() },
-        providers.gradleProperty("signing.password").orNull
-    )
-    sign(publishing.publications)
-}
-
-// CocoaPods: generate a Podspec from the built XCFramework
-val generatePodspec by tasks.registering {
-    group = "distribution"
-    description = "Generates DeepdotsSDK.podspec pointing to built iOS frameworks"
-    doLast {
-        val podspec = rootProject.layout.projectDirectory.file("DeepdotsSDK.podspec").asFile
-        val version = project.version.toString()
-        val spec = """
-        Pod::Spec.new do |s|
-          s.name         = 'DeepdotsSDK'
-          s.version      = '${version}'
-          s.summary      = 'Deepdots Popup SDK - iOS framework (Kotlin Multiplatform).'
-          s.homepage     = 'https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk'
-          s.license      = { :type => 'Apache 2.0', :file => 'LICENSE' }
-          s.author       = { 'Deepdots' => 'sdk@deepdots.com' }
-          s.source       = { :git => 'https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk.git', :tag => s.version }
-          s.platform     = :ios, '13.0'
-          s.swift_version = '5.7'
-          # Build only iOS frameworks (XCFramework) to avoid requiring Android SDK
-          s.prepare_command = './gradlew :shared:assembleSharedReleaseXCFramework'
-          s.vendored_frameworks = 'shared/build/XCFrameworks/release/shared.xcframework'
-        end
-        """.trimIndent()
-        podspec.writeText(spec)
-        println("Written podspec to: ${podspec}")
+    val keyPath = providers.gradleProperty("signing.secretKeyRingFile").orNull
+    val keyPassword = providers.gradleProperty("signing.password").orNull
+    if (keyPath != null && keyPassword != null) {
+        useInMemoryPgpKeys(file(keyPath).readText(), keyPassword)
+        sign(publishing.publications)
+    } else {
+        logger.lifecycle("PGP signing not configured (set signing.secretKeyRingFile and signing.password in ~/.gradle/gradle.properties). Skipping signing until publish.")
     }
 }
+
+// Removed CocoaPods podspec generation: using SPM binary distribution for iOS
 
 tasks.register("publishToMavenCentral") {
     group = "publishing"

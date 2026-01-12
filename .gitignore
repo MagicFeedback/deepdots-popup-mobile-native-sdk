@@ -1,19 +1,20 @@
-*.iml
-.kotlin
-.gradle
+# Ignore local secrets and build outputs
+
+# GPG private key (do not commit)
+private-key.asc
+*.asc
+
+# Gradle local user config (outside repo is recommended)
+.gradle/
+
+# Build directories
+build/
 **/build/
-xcuserdata
-!src/**/build/
+
+# Android/IntelliJ/IDE caches
+*.iml
+.idea/
+.gradle/
 local.properties
-.idea
 .DS_Store
-captures
-.externalNativeBuild
-.cxx
-*.xcodeproj/*
-!*.xcodeproj/project.pbxproj
-!*.xcodeproj/xcshareddata/
-!*.xcodeproj/project.xcworkspace/
-!*.xcworkspace/contents.xcworkspacedata
-**/xcshareddata/WorkspaceSettings.xcsettings
-node_modules/
+

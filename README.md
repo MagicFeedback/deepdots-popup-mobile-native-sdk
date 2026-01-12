@@ -1,13 +1,16 @@
 # Deepdots Popup SDK (Kotlin Multiplatform)
 
+[![Maven Central](https://img.shields.io/maven-central/v/com.deepdots.sdk/shared-android)](https://central.sonatype.com/artifact/com.deepdots.sdk/shared-android)
+
 Multiplatform SDK (Android + iOS) to show popups and launch surveys using triggers, conditions, segmentation and simple HTML content.
 
 ## Table of Contents
 1. Introduction
 2. Features
 3. Installation / Integration
-   - Android (Gradle)
-   - iOS (KMP Framework)
+   - Android (Gradle - Maven Central)
+   - iOS (Swift Package Manager - Binary) [Official]
+   - iOS (XCFramework manual)
 4. Quick Start
    - Initialization
    - Manual popup display
@@ -22,6 +25,7 @@ Multiplatform SDK (Android + iOS) to show popups and launch surveys using trigge
 12. Error Handling (Validation & Submit)
 13. Troubleshooting
 14. MagicFeedback Integration (@magicfeedback/native)
+15. Publishing (Maintainers)
 
 ---
 ## 1. Introduction
@@ -43,26 +47,63 @@ Deepdots Popup SDK helps you:
 
 ## 3. Installation / Integration
 
-### Android
-1. Include the `:shared` module (already present if you cloned the repository).
-2. In your app module add:
+### Android (Maven Central)
+- Coordinates (latest):
+  - Group: `com.deepdots.sdk`
+  - Artifact: `shared-android`
+  - Version: `0.1.2`
+
+1) Ensure you have Maven Central enabled
+- settings.gradle(.kts)
 ```kotlin
-dependencies {
-    implementation(project(":shared"))
+pluginManagement {
+    repositories { gradlePluginPortal(); google(); mavenCentral() }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories { google(); mavenCentral() }
 }
 ```
-3. Ensure minSdk >= 24 and Compose enabled.
-4. Use `PlatformContext(activity)` when calling `show()`.
 
-### iOS
-1. Build the KMP framework:
+2) Add the dependency in your app module
+```kotlin
+dependencies {
+    implementation("com.deepdots.sdk:shared-android:0.1.2")
+}
+```
+
+3) Requirements
+- minSdk 24+
+- Kotlin + Compose UI enabled in your app
+
+> ProGuard/R8: the SDK ships with consumer rules; no additional rules required in most cases.
+
+### iOS (Swift Package Manager - Binary) [Official]
+Usa el paquete SPM binario (XCFramework) publicado en GitHub Releases.
+
+Consumers (integración en tu app iOS):
+- Xcode > File > Add Packages… y usa la URL del repo SPM: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`
+- Selecciona la versión (ej: 0.1.2).
+- Añade el producto "ComposeApp" a tu target.
+- Importa en Swift: `import ComposeApp`.
+
+Maintainers (para preparar el release):
+```bash
+# Desde la raíz del repo del SDK
+./scripts/prepare_spm_release.sh 0.1.2 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.2
+# Publica el zip en esa URL (GitHub Release) y commitea spm/Package.swift en el repo SPM
+```
+
+Notas:
+- Requiere iOS 13+.
+- Binario XCFramework estático (arm64 device + arm64 simulator).
+
+### iOS (XCFramework manual)
+- Alternativa sin SPM: compila el XCFramework e intégralo manualmente.
 ```bash
 ./gradlew :shared:assemble
+# Combina frameworks con xcodebuild -create-xcframework o usa dist/spm/ComposeApp.xcframework del script SPM
 ```
-This produces the framework (baseName `ComposeApp`) for iOS targets (Arm64 + Simulator Arm64).
-2. In Xcode add the produced framework (or later an XCFramework when automated in Task 16).
-3. Import the module in Swift, e.g. `import ComposeApp`.
-4. Call SDK methods passing `PlatformContext(viewController)` when you show a popup.
 
 ## 4. Quick Start
 
@@ -120,25 +161,8 @@ Behavioral notes:
 
 ### Swift (iOS)
 ```swift
-let popupDef = PopupDefinition(
-    id: "popup-ios",
-    title: "Hello iOS",
-    message: "<p><b>iOS Demo</b></p>",
-    trigger: TriggerTimeOnPage(value: 4, condition: [Condition(answered: false, cooldownDays: 1)]),
-    actions: Actions(accept: ActionAccept(label: "Yes", surveyId: "survey-ios"), decline: ActionDecline(label: "No", cooldownDays: 1)),
-    surveyId: "survey-ios",
-    productId: "product-ios",
-    style: Style(theme: Theme.light, position: Position.center, imageUrl: nil),
-    segments: nil
-)
-let sdk = Deepdots.create()
-// Set initial path (update on navigation changes)
-sdk.setPath("/home")
-sdk.init(options: InitOptions(debug: true, mode: Mode.client, popupOptions: PopupOptions(popups: [popupDef]), provideLang: { "en" }, autoLaunch: true, storage: InMemoryStorage()))
-// Manual show
-if let root = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first?.rootViewController {
-    sdk.show(options: ShowOptions(surveyId: "survey-ios", productId: "product-ios", data: ["source": "manual_button"]), context: PlatformContext(viewController: root))
-}
+// Import the module provided by the KMP iOS framework (ComposeApp)
+import ComposeApp
 ```
 
 ## 5. Triggers & Conditions
@@ -178,7 +202,7 @@ See `iosApp/DeepdotsDemo.swift`.
 - AutoLaunch + manual button.
 - Logs events in Xcode console.
 
-## 10. Building Artifacts
+## 10. Building Artifacts (for contributors)
 ### Android (AAR)
 ```bash
 ./gradlew :shared:assembleRelease
@@ -190,13 +214,6 @@ Output in `shared/build/outputs/aar/`.
 ./gradlew :shared:assemble
 ```
 Frameworks for each iOS target are placed in `shared/build/bin/`.
-
-Preliminary XCFramework packaging:
-```bash
-# (Will be automated in Task 16)
-./gradlew :shared:assemble
-# Combine arm64 + simulator later with a script
-```
 
 ## 11. Runtime Style Overrides
 Events `loaded`/`popup_clicked` may include style overrides in the payload:
@@ -246,3 +263,39 @@ iOS:
 
 ### Asset Update Script
 See `scripts/update_magicfeedback_asset.sh`.
+
+## 15. Publishing (Maintainers)
+
+### Android → Maven Central (OSSRH)
+Use the helper script `scripts/deploy_android_maven.sh` (no secrets in git).
+
+1) Prepare environment variables
+- Linux:
+```bash
+export OSSRH_USERNAME=your_sonatype_username
+export OSSRH_PASSWORD=your_sonatype_token
+export SIGNING_PASSWORD=your_pgp_passphrase
+export SIGNING_KEY_BASE64=$(base64 -w0 private-key.asc)
+```
+- macOS:
+```bash
+export OSSRH_USERNAME=your_sonatype_username
+export OSSRH_PASSWORD=your_sonatype_token
+export SIGNING_PASSWORD=your_pgp_passphrase
+export SIGNING_KEY_BASE64=$(base64 -i private-key.asc | tr -d '\n')
+```
+
+2) Run deploy (optionally override version)
+```bash
+VERSION=0.1.3 ./scripts/deploy_android_maven.sh
+# or
+./scripts/deploy_android_maven.sh
+```
+
+3) Finalize release
+- Go to https://central.sonatype.com/publishing and Close/Release the staging repository.
+- Sync to Maven Central search usually takes 10–30 minutes.
+
+Security notes:
+- Do NOT commit credentials or keys to git. Prefer exporting env vars locally or using CI secret storage.
+- `.gitignore` excludes `private-key.asc` already.

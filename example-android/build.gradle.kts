@@ -26,7 +26,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":shared"))
+    implementation("com.deepdots.sdk:shared-android:0.1.2")
     implementation(libs.androidx.activity.compose)
     implementation("androidx.compose.ui:ui:1.7.0")
     implementation("androidx.compose.material3:material3:1.2.0")

@@ -1,10 +1,9 @@
 #!/usr/bin/env zsh
-# Automatiza vendorización del SDK de MagicFeedback y build+run de la app iOS de ejemplo en simulador.
+# Build+run de la app iOS de ejemplo usando SPM (sin CocoaPods)
 # Uso:
 #   scripts/build_and_run_ios.sh [version] [simulator]
 # Ejemplo:
 #   scripts/build_and_run_ios.sh 2.1.2-beta.2 'iPhone 15'
-# Si no se indica simulator, usa 'iPhone 15'.
 
 set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "$0")"/.. && pwd)
@@ -32,16 +31,16 @@ if [[ -z "$SIM_UDID" ]]; then
   echo "[ERROR] No se encontró simulador '$SIM_NAME'" && exit 1
 fi
 
-# 4) Build iOS app con xcodebuild (Debug, simulador)
+# 4) Build iOS app con xcodebuild (Debug, simulador) usando el proyecto (SPM)
 IOS_PROJ="$ROOT_DIR/iosApp/iosApp.xcodeproj"
-SCHEME="iOSApp"
+SCHEME="iosApp"
 DEST="platform=iOS Simulator,id=$SIM_UDID"
 info "Compilando Xcode scheme=$SCHEME destino=$DEST"
 xcodebuild -project "$IOS_PROJ" -scheme "$SCHEME" -configuration Debug -destination "$DEST" build | xcpretty || true
 
-# 5) Launch app en simulador
+# 5) Boot y launch app en simulador
 APP_BUNDLE_ID="com.deepdots.demo"
-info "Lanzando app $APP_BUNDLE_ID en simulador $SIM_UDID"
+info "Booteando simulador y lanzando $APP_BUNDLE_ID"
 xcrun simctl boot "$SIM_UDID" || true
 xcrun simctl launch "$SIM_UDID" "$APP_BUNDLE_ID" || echo "[iOS] Nota: si el bundle id difiere, abre Xcode y ejecuta en el simulador."
 
