@@ -79,30 +79,30 @@ dependencies {
 > ProGuard/R8: the SDK ships with consumer rules; no additional rules required in most cases.
 
 ### iOS (Swift Package Manager - Binary) [Official]
-Usa el paquete SPM binario (XCFramework) publicado en GitHub Releases.
+Use the SPM binary package (XCFramework) published via GitHub Releases.
 
-Consumers (integración en tu app iOS):
-- Xcode > File > Add Packages… y usa la URL del repo SPM: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`
-- Selecciona la versión (ej: 0.1.2).
-- Añade el producto "ComposeApp" a tu target.
-- Importa en Swift: `import ComposeApp`.
+Consumers (iOS integration):
+- Xcode > File > Add Packages… and use the SPM repo URL: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`
+- Select the version (e.g., 0.1.2).
+- Add the product "ComposeApp" to your target.
+- Import in Swift: `import ComposeApp`.
 
-Maintainers (para preparar el release):
+Maintainers (to prepare a release):
 ```bash
-# Desde la raíz del repo del SDK
+# From the SDK repository root
 ./scripts/prepare_spm_release.sh 0.1.2 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.2
-# Publica el zip en esa URL (GitHub Release) y commitea spm/Package.swift en el repo SPM
+# Publish the zip at that URL (GitHub Release) and commit spm/Package.swift to the SPM repo
 ```
 
-Notas:
-- Requiere iOS 13+.
-- Binario XCFramework estático (arm64 device + arm64 simulator).
+Notes:
+- Requires iOS 13+.
+- Static XCFramework binary (arm64 device + arm64 simulator).
 
 ### iOS (XCFramework manual)
-- Alternativa sin SPM: compila el XCFramework e intégralo manualmente.
+- Alternative without SPM: build the XCFramework and integrate it manually.
 ```bash
 ./gradlew :shared:assemble
-# Combina frameworks con xcodebuild -create-xcframework o usa dist/spm/ComposeApp.xcframework del script SPM
+# Combine frameworks with xcodebuild -create-xcframework or use dist/spm/ComposeApp.xcframework from the SPM script
 ```
 
 ## 4. Quick Start
