@@ -4,10 +4,10 @@
 #  - shared/src/androidMain/assets/magicfeedback/magicfeedback-sdk.browser.js
 #  - shared/src/iosMain/resources/magicfeedback/magicfeedback-sdk.browser.js
 # Uso: scripts/vendor_magicfeedback.sh [version]
-# Ejemplo: scripts/vendor_magicfeedback.sh 2.1.2-beta.2
+# Ejemplo: scripts/vendor_magicfeedback.sh 2.1.7-alpha.9
 
 set -euo pipefail
-VERSION=${1:-2.1.2-beta.7}
+VERSION=${1:-2.1.7-alpha.9}
 MIN_SIZE=70000 # ~70KB mínimo esperado
 ROOT_DIR=$(cd "$(dirname "$0")"/.. && pwd)
 ANDROID_DEST="$ROOT_DIR/shared/src/androidMain/assets/magicfeedback/magicfeedback-sdk.browser.js"
@@ -24,7 +24,7 @@ urls=(
 
 echo "[Vendor] Descargando navegador @magicfeedback/native version=${VERSION}"
 rm -f "$TMP_FILE"
-for u in $urls; do
+for u in "${urls[@]}"; do
   echo "[Vendor] Intentando $u"
   if curl -L --fail --retry 3 --retry-delay 1 -A "DeepdotsPopupSDK/1.0 (vendor)" "$u" -o "$TMP_FILE"; then
     SIZE=$(wc -c < "$TMP_FILE")

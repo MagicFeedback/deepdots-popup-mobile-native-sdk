@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     id("maven-publish")
     id("signing")
+    alias(libs.plugins.kotlinSerialization)
 }
 
 group = providers.gradleProperty("PUBLISHING_GROUP").orNull ?: "com.deepdots"
@@ -29,7 +30,10 @@ kotlin {
         if (name.startsWith("ios")) {
             binaries.all {
                 freeCompilerArgs += listOf("-Xobjc-generics")
-                linkerOpts("-mios-version-min=13.0")
+                // Solo agregar linkerOpts a targets físicos, no simulador
+                if (!name.contains("Simulator", ignoreCase = true)) {
+                    linkerOpts("-mios-version-min=13.0")
+                }
             }
             binaries.framework {
                 baseName = "ComposeApp"
@@ -44,6 +48,7 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             // Use explicit dependency to avoid catalog parse issues
             implementation("io.coil-kt:coil-compose:2.7.0")
+            implementation(libs.ktor.client.okhttp)
         }
         val commonMain by getting {
             dependencies {
@@ -55,7 +60,11 @@ kotlin {
                 implementation(compose.components.uiToolingPreview)
                 implementation(libs.androidx.lifecycle.viewmodelCompose)
                 implementation(libs.androidx.lifecycle.runtimeCompose)
-                // No image loader in commonMain; platform-specific actuals will handle it
+                // Ktor client + serialization
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.content.negotiation)
+                implementation(libs.ktor.serialization.kotlinx.json)
+                implementation(libs.kotlinx.serialization.json)
             }
         }
         commonTest.dependencies { implementation(libs.kotlin.test) }

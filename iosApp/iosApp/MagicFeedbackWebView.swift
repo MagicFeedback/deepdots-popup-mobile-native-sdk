@@ -116,8 +116,8 @@ struct MagicFeedbackWebView: UIViewRepresentable {
             <script>
               function emit(e){ try { window.webkit.messageHandlers.DeepdotsBridge.postMessage(e); } catch(_){} }
             </script>
-            <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@magicfeedback/native@2.1.2-beta.7/dist/styles/magicfeedback-default.css\" />
-            <script src=\"https://cdn.jsdelivr.net/npm/@magicfeedback/native@2.1.2-beta.7/dist/magicfeedback-sdk.browser.js\"></script>
+            <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@magicfeedback/native/dist/styles/magicfeedback-default.css\" />
+            <script src=\"https://cdn.jsdelivr.net/npm/@magicfeedback/native@2.1.7-alpha.9/dist/magicfeedback-sdk.browser.js\"></script>
           </head>
           <body>
             <div id=\"mf-form\"></div>

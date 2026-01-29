@@ -99,7 +99,10 @@ fun PopupView(
                                 color = textColor
                             )
                             IconButton(
-                                onClick = { popup.actions.decline?.let { onAction(it) } },
+                                onClick = {
+                                    val decline = popup.actions.decline
+                                    if (decline != null) onAction(decline) else onAction(Action.Decline(label = "Close", cooldownDays = 0))
+                                },
                                 modifier = Modifier.size(32.dp)
                             ) { Text("✕", color = textColor, fontSize = 18.sp) }
                         }
@@ -239,7 +242,9 @@ fun PopupView(
                                                     errorHint = payloadValue("message") ?: "An error occurred while submitting. Please try again."
                                                     viewState = ViewState.InProgressNext
                                                 } else if (name == "survey_completed") {
+                                                    // Move to completed state and show final message; don't auto-close
                                                     viewState = ViewState.Completed
+                                                    // Previously we called onAction(complete/decline) here, which closed the popup before user could read the message.
                                                 } else if (name == "after_submit") {
                                                     val progress = Regex("\"progress\"\\s*:\\s*(\\d+)").find(payload ?: "")?.groupValues?.get(1)?.toIntOrNull() ?: 0
                                                     val total = Regex("\"total\"\\s*:\\s*(\\d+)").find(payload ?: "")?.groupValues?.get(1)?.toIntOrNull() ?: 0
@@ -317,7 +322,10 @@ fun PopupView(
                                 ViewState.Completed -> {
                                     Button(
                                         modifier = Modifier.fillMaxWidth(),
-                                        onClick = { popup.actions.complete?.let { onAction(it) } ?: popup.actions.decline?.let { onAction(it) } },
+                                        onClick = {
+                                            val complete = popup.actions.complete
+                                            if (complete != null) onAction(complete) else onAction(Action.Complete(label = "" ))
+                                        },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
                                     ) { Text(popup.actions.complete?.label ?: "Complete survey", color = Color.White) }
                                 }

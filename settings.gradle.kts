@@ -31,3 +31,4 @@ dependencyResolutionManagement {
 
 include(":shared")
 include(":example-android")
+include(":example-android-local")

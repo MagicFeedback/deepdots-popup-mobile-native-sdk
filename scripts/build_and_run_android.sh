@@ -7,7 +7,7 @@
 
 set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "$0")"/.. && pwd)
-VERSION=${1:-2.1.2-beta.7}
+VERSION=${1:-2.1.7-alpha.9}
 GRADLEW="$ROOT_DIR/gradlew"
 
 info() { echo "[Android] $1"; }

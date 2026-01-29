@@ -3,11 +3,11 @@
 # Uso:
 #   scripts/build_and_run_ios.sh [version] [simulator]
 # Ejemplo:
-#   scripts/build_and_run_ios.sh 2.1.2-beta.2 'iPhone 15'
+#   scripts/build_and_run_ios.sh 2.1.7-alpha.9 'iPhone 15'
 
 set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "$0")"/.. && pwd)
-VERSION=${1:-2.1.2-beta.2}
+VERSION=${1:-2.1.7-alpha.9}
 SIM_NAME=${2:-'iPhone 15'}
 GRADLEW="$ROOT_DIR/gradlew"
 

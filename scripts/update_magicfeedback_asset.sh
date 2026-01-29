@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Actualiza el asset local de @magicfeedback/native para Android e iOS.
-# Uso: bash scripts/update_magicfeedback_asset.sh 2.1.2-beta.2
+# Uso: bash scripts/update_magicfeedback_asset.sh 2.1.7-alpha.9
 set -euo pipefail
 
 if [ "$#" -lt 1 ]; then
@@ -30,4 +30,3 @@ fi
 echo "Asset actualizado en:"
 echo "  - $OUT_ANDROID/$FILE_BROWSER"
 echo "  - $OUT_IOS/$FILE_BROWSER"
-

@@ -1,7 +1,9 @@
 package com.deepdots.sdk.ui
 
+import com.deepdots.sdk.SdkRuntime
+
 // Centralized MagicFeedback package version used for all CDN URLs
-private const val MAGICFEEDBACK_VERSION: String = "2.1.2-beta.7"
+private const val MAGICFEEDBACK_VERSION: String = "2.1.7-alpha.9"
 
 /**
  * Common HTML builder for MagicFeedback survey popup used by Android/iOS WebViews.
@@ -15,14 +17,19 @@ internal fun buildMagicFeedbackHtml(
     localAssetUrl: String?,
     assetSize: Int?,
     bridgeEmitCall: String, // JS snippet to emit an event string (e.g. DeepdotsBridge.emit or window.webkit?.messageHandlers?.DeepdotsBridge?.postMessage)
-    timeoutMs: Int = 4000,
+    timeoutMs: Int = 6000,
     isIOS: Boolean
 ): String {
     val localSrcLiteral = localAssetUrl?.let { "'${it}'" } ?: "null"
     val assetSizeLiteral = assetSize?.toString() ?: "-1"
     val fontFamily = if (isIOS) "-apple-system" else "system-ui"
     val emitWrapper = if (bridgeEmitCall.contains("(")) {
-        "function emit(e){ try { ${bridgeEmitCall.replace("(event)", "(e)")} } catch(err){ console.error('[MagicFeedback] emit error', err); } }"
+        "function emit(e){ try { ${
+            bridgeEmitCall.replace(
+                "(event)",
+                "(e)"
+            )
+        } } catch(err){ console.error('[MagicFeedback] emit error', err); } }"
     } else {
         "function emit(e){ try { ${bridgeEmitCall}(e); } catch(err){ console.error('[MagicFeedback] emit error', err); } }"
     }
@@ -31,7 +38,71 @@ internal fun buildMagicFeedbackHtml(
     val urlBrowserJsDelivr = "$cdnBase/magicfeedback-sdk.browser.js"
     val urlBrowserUnpkg = "$unpkgBase/magicfeedback-sdk.browser.js"
     val urlEsmModule = "$cdnBase/index.js"
-    val urlStyleDefault = "https://cdn.jsdelivr.net/npm/@magicfeedback/popup-sdk/dist/assets/assets/style.css"
+    val urlStyleDefault =
+        "https://cdn.jsdelivr.net/npm/@magicfeedback/popup-sdk/dist/assets/assets/style.css"
+
+    val pubKeyJs = (SdkRuntime.publicKey ?: "")
+    val envJs = (SdkRuntime.env.ifBlank { "prod" })
+    val hasProduct = productId.isNotBlank()
+
+    // Build custom meta merging device_system, userId, and InitOptions.metadata entries.
+    val meta = mutableMapOf<String, MutableList<String>>()
+    // Always include device_system placeholder (resolved client-side via navigator.platform)
+    meta["device_system"] = mutableListOf("__device_system__")
+    // Include arbitrary metadata entries passed at init
+
+    SdkRuntime.metadata?.forEach { (k, v) ->
+        if (k.isBlank()) return@forEach
+        when (v) {
+            is String -> meta.getOrPut(k) { mutableListOf() }.add(v)
+            is Number, is Boolean -> meta.getOrPut(k) { mutableListOf() }.add(v.toString())
+            is Iterable<*> -> {
+                val list = meta.getOrPut(k) { mutableListOf() }
+                v.forEach { item ->
+                    when (item) {
+                        is String -> list.add(item)
+                        is Number, is Boolean -> list.add(item.toString())
+                    }
+                }
+            }
+
+            is Array<*> -> {
+                val list = meta.getOrPut(k) { mutableListOf() }
+                v.forEach { item ->
+                    when (item) {
+                        is String -> list.add(item)
+                        is Number, is Boolean -> list.add(item.toString())
+                    }
+                }
+            }
+
+            else -> { /* ignore complex values */
+            }
+        }
+    }
+    // Now serialize into JS array of objects { key, value: [...] }
+    val customMetaJsArray = buildString {
+        append("[")
+        var first = true
+        meta.forEach { (key, values) ->
+            if (!first) append(",") else first = false
+            if (key == "device_system") {
+                append("{ key: 'device_system', value: [(navigator.platform || 'unknown')] }")
+            } else {
+                val escapedVals = values.filter { it.isNotBlank() }
+                    .joinToString(separator = ",") { v -> "'" + v.replace("'", "\\'") + "'" }
+                append("{ key: '")
+                append(key.replace("'", "\\'"))
+                append("', value: [")
+                append(escapedVals)
+                append("] }")
+            }
+        }
+        append("]")
+    }
+
+    // Add a log to verify custom meta serialization on the Kotlin side
+    println("[MagicFeedback] CUSTOM_META (Kotlin) $MAGICFEEDBACK_VERSION: $customMetaJsArray")
 
     return """
         <html><head>
@@ -48,6 +119,9 @@ internal fun buildMagicFeedbackHtml(
               $emitWrapper
               var initialized = false;
               var mfReady = false; // becomes true when form onLoadedEvent fires
+              var PUBLIC_KEY = ${if (pubKeyJs.isNotEmpty()) "'${pubKeyJs}'" else "null"};
+              var ENV = ${if (envJs.isNotEmpty()) "'${envJs}'" else "'prod'"};
+            
               function emitJSON(name, payload){
                 try { emit(JSON.stringify({ name: name, payload: payload || {} })); } catch(err){ console.error('[MagicFeedback] emitJSON error', err); }
               }
@@ -55,8 +129,8 @@ internal fun buildMagicFeedbackHtml(
                 try {
                   if (window.magicfeedback && !initialized) {
                     initialized = true;
-                    window.magicfeedback.init({debug:true, env:'prod'});
-                    var form = window.magicfeedback.form('$surveyId', '$productId');
+                    window.magicfeedback.init({debug:true, env: ENV, publicKey: PUBLIC_KEY});
+                    var form = ${if (hasProduct) "window.magicfeedback.form('$surveyId', '$productId')" else "window.magicfeedback.form('$surveyId')"};
                     window.DeepdotsForm = form;
                     window.DeepdotsActions = {
                       send: function(){ try { form.send(); } catch(e){ console.error('[DeepdotsActions] send error', e); } },
@@ -64,9 +138,9 @@ internal fun buildMagicFeedbackHtml(
                       close: function(){ try { emit('popup_close'); } catch(e){ console.error('[DeepdotsActions] close emit error', e); } },
                       startForm: function(){ try { if (typeof form.startForm === 'function') { form.startForm(); } else { console.warn('[DeepdotsActions] startForm not available'); } } catch(e){ console.error('[DeepdotsActions] startForm error', e); } }
                     };
+                 
                     form.generate('mf-form', {
                       addButton:false,
-                      getMetaData:true,
                       onLoadedEvent: function(args){
                         mfReady = true; var s=document.getElementById('mf-status'); if(s) s.textContent='';
                         try {
@@ -97,7 +171,9 @@ internal fun buildMagicFeedbackHtml(
                           var total = (args && args.total) || 0;
                           emitJSON('back', { progress: progress, total: total });
                         } catch(e){ console.error('[MagicFeedback] onBackEvent emit error', e); }
-                      }
+                      },
+                      getMetaData: true,
+                      customMetaData: $customMetaJsArray
                     }).catch(function(e){ console.error(e); emit('error:init'); });
                     return true;
                   }
