@@ -1,8 +1,5 @@
 package com.deepdots.example
 
-// Reuse the same demo Activity; it will link against the local shared module via dependencies.
-// If we need package changes, keep the same package to avoid code duplication.
-
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -21,22 +18,25 @@ import androidx.compose.runtime.Composable
 import com.deepdots.sdk.Deepdots
 import com.deepdots.sdk.platform.PlatformContext
 import com.deepdots.sdk.models.*
-import com.deepdots.sdk.models.Trigger.TimeOnPage
-import com.deepdots.sdk.models.Condition
-import com.deepdots.sdk.models.Action
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.*
-import androidx.activity.compose.LocalActivity
 import com.deepdots.sdk.DeepdotsPopupsSdk
 import androidx.compose.runtime.LaunchedEffect
-import android.provider.Settings
-import android.os.Build
-import java.util.Locale
-import android.content.pm.PackageManager
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Divider
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.Scaffold
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.ExperimentalMaterial3Api
 
 private fun Context.findActivity(): Activity? {
     var ctx: Context? = this
@@ -47,134 +47,225 @@ private fun Context.findActivity(): Activity? {
     return null
 }
 
-private fun Context.appVersionName(): String {
-    return try {
-        val pm = packageManager
-        val pkg = packageName
-        val info = if (Build.VERSION.SDK_INT >= 33) {
-            pm.getPackageInfo(pkg, PackageManager.PackageInfoFlags.of(0))
-        } else {
-            @Suppress("DEPRECATION")
-            pm.getPackageInfo(pkg, 0)
-        }
-        info.versionName ?: ""
-    } catch (_: Exception) { "" }
-}
-
-private fun Context.appVersionCode(): Long {
-    return try {
-        val pm = packageManager
-        val pkg = packageName
-        val info = if (Build.VERSION.SDK_INT >= 33) {
-            pm.getPackageInfo(pkg, PackageManager.PackageInfoFlags.of(0))
-        } else {
-            @Suppress("DEPRECATION")
-            pm.getPackageInfo(pkg, 0)
-        }
-        if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else @Suppress("DEPRECATION") info.versionCode.toLong()
-    } catch (_: Exception) { 0L }
-}
-
 class MainActivity : ComponentActivity() {
     private val sdk = Deepdots.create()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sdk.attachContext(PlatformContext(this))
-        sdk.setPath("/home")
-
-        // Build useful metadata for MagicFeedback
-        val appVersion = applicationContext.appVersionName()
-        val appBuild = applicationContext.appVersionCode().toString()
-        val userId = "d59c2082c6c91cd3" // "d59c2082c6c91cd2"
-        val locale = Locale.getDefault()
-        val lang = locale.language
-        val country = locale.country
-        val deviceModel = listOfNotNull(Build.MANUFACTURER?.takeIf { it.isNotBlank() }, Build.MODEL?.takeIf { it.isNotBlank() }).joinToString(" ").trim()
-        val osVersion = Build.VERSION.RELEASE ?: Build.VERSION.SDK_INT.toString()
-        val metadata = mapOf(
-            "userId" to userId,
-            "appVersion" to appVersion,
-            "appBuild" to appBuild,
-            "lang" to lang,
-            "country" to country,
-            "device_model" to deviceModel,
-            "os_version" to osVersion
-        )
-
-        sdk.init(
-            InitOptions(
-                debug = true,
-                mode = Mode.Server,
-                popupOptions = PopupOptions(
-                    publicKey = "GpG9BAQMDFZXRJ6LrDr48W2foWgMURgy"
-                ),
-                autoLaunch = true,
-                provideLang = { "en" },
-                metadata = metadata
-            )
-        )
-
-        sdk.on(Event.PopupShown) { event -> println("[ExampleLocal] PopupShown: ${'$'}{event.popupId}") }
-        sdk.on(Event.PopupClicked) { event ->
-            val action = event.extra["action"]
-            println("[ExampleLocal] PopupClicked: ${'$'}{event.popupId} action=$action")
-        }
-        sdk.on(Event.SurveyCompleted) { event -> println("[ExampleLocal] SurveyCompleted: ${'$'}{event.surveyId}") }
 
         setContent {
             MaterialTheme {
-                Surface(color = MaterialTheme.colorScheme.background) { AppRoot(sdk) }
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    DemoAppLocal(sdk)
+                }
             }
         }
     }
 }
 
-private enum class Screen { Home, FakePage }
+private enum class ScreenState { Login, Home, Detail }
+private data class EventItem(val title: String, val description: String, val path: String)
 
 @Composable
-private fun AppRoot(sdk: DeepdotsPopupsSdk) {
-    var currentScreen by remember { mutableStateOf(Screen.Home) }
-    LaunchedEffect(currentScreen) {
-        val path = when (currentScreen) {
-            Screen.Home -> "/home"
-            // Match server segments to auto-trigger popup after 2s
-            Screen.FakePage -> "/secondary"
-        }
-        sdk.setPath(path)
+private fun DemoAppLocal(sdk: DeepdotsPopupsSdk) {
+    var screen by remember { mutableStateOf(ScreenState.Login) }
+    var selectedUserId by remember { mutableStateOf("alpha-01") }
+    var customUserId by remember { mutableStateOf("") }
+    val events = remember {
+        listOf(
+            EventItem("Event 1", "Popup on enter", "/detail/1"),
+            EventItem("Event 2", "Popup on scroll", "/detail/2"),
+            EventItem("Event 3", "Popup on exit", "/detail/3")
+        )
     }
-    when (currentScreen) {
-        Screen.Home -> HomeScreen(onNavigate = { currentScreen = Screen.FakePage })
-        Screen.FakePage -> FakePageScreen(sdk = sdk, onBack = { currentScreen = Screen.Home })
-    }
-}
+    var detailTitle by remember { mutableStateOf("") }
 
-@Composable
-private fun HomeScreen(onNavigate: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(24.dp)) {
-            Surface(modifier = Modifier.size(120.dp), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.primaryContainer) {
-                Box(contentAlignment = Alignment.Center) { Text("Deepdots Local", color = MaterialTheme.colorScheme.onPrimaryContainer) }
-            }
-            Button(onClick = onNavigate, modifier = Modifier.fillMaxWidth()) { Text("Go to test page") }
+    LaunchedEffect(screen, detailTitle) {
+        when (screen) {
+            ScreenState.Login -> sdk.setPath("/login")
+            ScreenState.Home -> sdk.setPath("/home")
+            // ScreenState.Detail -> sdk.setPath("/detail")
+            ScreenState.Detail -> {}
         }
     }
-}
 
-@Composable
-private fun FakePageScreen(sdk: DeepdotsPopupsSdk, onBack: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val activity = remember(context) { context.findActivity() }
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Test page", style = MaterialTheme.typography.headlineSmall)
-        Text("Fake content with elements to try popups.")
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { activity?.let { sdk.show(ShowOptions(surveyId = "a9c8c170-bb1c-11f0-9d29-d5fe3dd521d0", productId = "02b809f20e024bce47c57f123cff8735"), PlatformContext(it)) } }) { Text("Show popup manually") }
-            OutlinedButton(onClick = onBack) { Text("Back") }
+
+    LaunchedEffect(Unit) {
+        sdk.on(Event.PopupShown) { event -> println("[AndroidLocal] PopupShown: ${'$'}{event.popupId}") }
+        sdk.on(Event.PopupClicked) { event ->
+            val action = event.extra["action"]
+            println("[AndroidLocal] PopupClicked: ${'$'}{event.popupId} action=${'$'}action")
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Button(onClick = { activity?.let { sdk.show(ShowOptions(surveyId = "eeb4e590-d0eb-11f0-b3ab-f13d725acff5", productId = "e5c8241506ac83ddcf061a01f5b0f567"), PlatformContext(it)) } }) { Text("Action 1") }
-        Button(onClick = { /* Simulate action */ }) { Text("Action 2") }
-        OutlinedButton(onClick = { /* Simulate action */ }) { Text("Open fake dialog") }
+        sdk.on(Event.SurveyCompleted) { event -> println("[AndroidLocal] SurveyCompleted: ${'$'}{event.surveyId}") }
+    }
+
+    when (screen) {
+        ScreenState.Login -> LoginScreen(
+            selectedUserId = selectedUserId,
+            onSelectUser = { selectedUserId = it },
+            customUserId = customUserId,
+            onCustomUserChange = { customUserId = it },
+            onStart = {
+                val uid = if (customUserId.isBlank()) selectedUserId else customUserId
+                initSdkLocalForUser(sdk, uid)
+                screen = ScreenState.Home
+            }
+        )
+        ScreenState.Home -> HomeScreen(
+            events = events,
+            onSelect = { item ->
+                sdk.setPath(item.path)
+                detailTitle = item.title
+                screen = ScreenState.Detail
+            },
+            onLogout = {
+                initSdkLocalForUser(sdk, selectedUserId)
+                screen = ScreenState.Login
+            }
+        )
+        ScreenState.Detail -> DetailScreen(
+            sdk = sdk,
+            title = detailTitle,
+            onBack = {
+                sdk.setPath("/detail")
+                screen = ScreenState.Home
+            },
+            onShowPopup = {
+                activity?.let {
+                    sdk.show(
+                        ShowOptions(
+                            surveyId = "a9c8c170-bb1c-11f0-9d29-d5fe3dd521d0",
+                            productId = "02b809f20e024bce47c57f123cff8735"
+                        ),
+                        PlatformContext(it)
+                    )
+                }
+            }
+        )
+    }
+}
+
+private fun initSdkLocalForUser(sdk: DeepdotsPopupsSdk, userId: String) {
+    val options = InitOptions(
+        debug = true,
+        mode = Mode.Server,
+        popupOptions = PopupOptions(
+            publicKey = "12mGEGK4YXHXHrxZ45bJOsH6fiOl6ew1"
+        ),
+        autoLaunch = true,
+        provideLang = { "en" },
+        metadata = mapOf("userId" to userId)
+    )
+    sdk.init(options)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LoginScreen(
+    selectedUserId: String,
+    onSelectUser: (String) -> Unit,
+    customUserId: String,
+    onCustomUserChange: (String) -> Unit,
+    onStart: () -> Unit
+) {
+    val presets = listOf("alpha-01", "beta-01", "gamma-01")
+    Scaffold(topBar = { TopAppBar(title = { Text("deepdots", fontWeight = FontWeight.Bold) }) }) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Select a User ID or enter a custom one", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                presets.forEach { id ->
+                    val selected = id == selectedUserId
+                    val onClick = { onSelectUser(id) }
+                    if (selected) {
+                        Button(onClick = onClick) { Text(id) }
+                    } else {
+                        OutlinedButton(onClick = onClick) { Text(id) }
+                    }
+                }
+            }
+            Divider()
+            androidx.compose.material3.OutlinedTextField(
+                value = customUserId,
+                onValueChange = onCustomUserChange,
+                label = { Text("Custom User ID") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text("Start") }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeScreen(
+    events: List<EventItem>,
+    onSelect: (EventItem) -> Unit,
+    onLogout: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("deepdots", fontWeight = FontWeight.Bold) },
+                actions = { OutlinedButton(onClick = onLogout) { Text("Sign out") } }
+            )
+        }
+    ) { padding ->
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(events.take(3)) { item ->
+                EventCard(item = item, onTap = { onSelect(item) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun EventCard(item: EventItem, onTap: () -> Unit) {
+    androidx.compose.material3.Card(
+        modifier = Modifier.fillMaxWidth().clickable { onTap() }
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(item.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(item.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
+            }
+            Text(
+                ">",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DetailScreen(sdk: DeepdotsPopupsSdk, title: String, onBack: () -> Unit, onShowPopup: () -> Unit) {
+    val lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. "
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+        val totalItems = 20
+        val idx = listState.firstVisibleItemIndex
+        val approx = ((idx.toFloat() / totalItems.toFloat()) * 100f).toInt().coerceIn(0, 100)
+        sdk.onScroll(approx)
+    }
+    Scaffold(topBar = {
+        TopAppBar(title = { Text(title) }, navigationIcon = {
+            OutlinedButton(onClick = {
+                sdk.onExit()
+                onBack()
+            }) { Text("Back") }
+        }, actions = { Button(onClick = onShowPopup) { Text("Show popup") } })
+    }) { padding ->
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
+            items((0 until 20).toList()) { _ ->
+                Text(lorem)
+            }
+        }
     }
 }

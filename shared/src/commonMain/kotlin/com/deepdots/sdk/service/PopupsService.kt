@@ -13,6 +13,7 @@ import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlin.math.log
 
 /**
  * Service to handle network calls related to popups.
@@ -62,6 +63,8 @@ class DefaultPopupsService(
 
     override suspend fun fetchPopups(publicKey: String, filter: String?): String {
         val endpoint = "${baseUrl()}/sdk/$publicKey/popups"
+        // Add log to know which endpoint is being called, the filter, and the publicKey
+        // println("Fetching popups from $endpoint with filter: $filter and publicKey: $publicKey")
         return httpClient.get(endpoint) {
             if (!filter.isNullOrBlank()) parameter("filter", filter)
         }.bodyAsText()

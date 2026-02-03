@@ -19,7 +19,7 @@ struct DeepdotsDemoView: View {
         EventItem(title: "Event 2", description: "Popup on scroll", path: "/detail/2"),
         EventItem(title: "Event 3", description: "Popup on exit", path: "/detail/3")
     ]
-    @State private var popups: DeepdotsPopups? = nil
+    @State private var popups: ComposeApp.DeepdotsPopups? = nil
 
     // Server config
     private let publicKey: String = "12mGEGK4YXHXHrxZ45bJOsH6fiOl6ew1"
@@ -45,7 +45,10 @@ struct DeepdotsDemoView: View {
                 })
             case .detail(let title):
                 DetailView(title: title, onBack: {
+                    popups?.onExit()
                     setPath("/detail"); screen = .home
+                }, onScrollPercent: { pct in
+                    popups?.onScroll(percentage: pct)
                 })
             }
         }
@@ -70,7 +73,7 @@ struct DeepdotsDemoView: View {
             storage: nil,
             metadata: ["userId": uid]
         )
-        let instance = DeepdotsPopups()
+        let instance = ComposeApp.DeepdotsPopups()
         instance.initialize(options: options)
         wireEvents(instance)
         popups = instance
@@ -79,7 +82,7 @@ struct DeepdotsDemoView: View {
         screen = .home
     }
 
-    private func wireEvents(_ instance: DeepdotsPopups) {
+    private func wireEvents(_ instance: ComposeApp.DeepdotsPopups) {
         instance.on(event: Events.shared.popupShown) { event in
             print("[iOS] popupShown popupId=\(event.popupId)")
         }
@@ -206,8 +209,21 @@ private struct EventCard: View {
 private struct DetailView: View {
     var title: String
     var onBack: () -> Void
+    var onScrollPercent: (Int) -> Void = { _ in }
 
     private let lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. "
+
+    @State private var contentHeight: CGFloat = 1
+    @State private var scrollOffset: CGFloat = 0
+
+    private struct ScrollOffsetKey: PreferenceKey {
+        static var defaultValue: CGFloat = 0
+        static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+    }
+    private struct ContentHeightKey: PreferenceKey {
+        static var defaultValue: CGFloat = 1
+        static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -220,12 +236,31 @@ private struct DetailView: View {
             .padding(16)
 
             ScrollView {
+                GeometryReader { geo in
+                    Color.clear
+                        .preference(key: ScrollOffsetKey.self, value: -geo.frame(in: .named("scrollSpace")).origin.y)
+                }
+                .frame(height: 0)
+
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(0..<20) { _ in
                         Text(lorem)
                     }
                 }
+                .background(GeometryReader { g in
+                    Color.clear.preference(key: ContentHeightKey.self, value: g.size.height)
+                })
                 .padding(16)
+            }
+            .coordinateSpace(name: "scrollSpace")
+            .onPreferenceChange(ScrollOffsetKey.self) { offset in
+                scrollOffset = offset
+                let visible = scrollOffset + UIScreen.main.bounds.height
+                let pct = min(max(Int((visible / max(contentHeight, 1)) * 100), 0), 100)
+                onScrollPercent(pct)
+            }
+            .onPreferenceChange(ContentHeightKey.self) { h in
+                contentHeight = h
             }
         }
     }

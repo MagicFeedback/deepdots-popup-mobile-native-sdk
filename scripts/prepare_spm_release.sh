@@ -3,7 +3,7 @@
 # Uso:
 #   scripts/prepare_spm_release.sh <version> <artifact_base_url>
 # Ejemplo:
-#   scripts/prepare_spm_release.sh 0.1.2 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.2
+#   scripts/prepare_spm_release.sh 0.1.3 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.3
 # Salida:
 #   - dist/spm/ComposeApp.xcframework
 #   - dist/spm/DeepdotsSDK-<version>.xcframework.zip
@@ -12,7 +12,7 @@
 
 set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "$0")"/.. && pwd)
-VERSION=${1:?"Version requerida (ej: 0.1.2)"}
+VERSION=${1:?"Version requerida (ej: 0.1.3)"}
 BASE_URL=${2:?"Base URL requerida (ej: https://github.com/org/repo/releases/download/${VERSION})"}
 ARTIFACT_NAME="DeepdotsSDK-${VERSION}.xcframework.zip"
 DIST_DIR="$ROOT_DIR/dist/spm"
@@ -55,7 +55,7 @@ rm -f "$DIST_DIR/$ARTIFACT_NAME"
 # 5) Calcular checksum
 info "Calculando checksum"
 CHECKSUM=$(swift package compute-checksum "$DIST_DIR/$ARTIFACT_NAME")
-print -r -- "$CHECKSUM" > "$DIST_DIR/$ARTIFACT_NAME.checksum"
+echo "$CHECKSUM" > "$DIST_DIR/$ARTIFACT_NAME.checksum"
 
 # 6) Generar Package.swift con URL + checksum
 mkdir -p "$SPM_DIR"
@@ -86,4 +86,3 @@ EOF
 info "Listo. Publica el zip en: $ARTIFACT_URL"
 info "Checksum: $CHECKSUM"
 info "Archivo generado: $PKG_SWIFT"
-

@@ -50,6 +50,9 @@ class DeepdotsPopups {
     private var processingQueue = false
     private val lastShown = mutableMapOf<String, Long>() // popupId -> timestamp (cache en memoria)
     private val storagePrefix = "popup_last_shown_"
+    // Track per-page trigger hits to avoid repeated enqueue spam
+    private val scrollTriggeredSurveys = mutableSetOf<String>()
+    private val exitTriggeredSurveys = mutableSetOf<String>()
 
     // Service to fetch popups from server
     private var popupsService: PopupsService = DefaultPopupsService()
@@ -127,6 +130,8 @@ class DeepdotsPopups {
     private fun mapTrigger(t: ServerTriggerDto?, mappedConds: List<com.deepdots.sdk.models.Condition>): com.deepdots.sdk.models.Trigger {
         return when (t?.type) {
             "time_on_page" -> com.deepdots.sdk.models.Trigger.TimeOnPage(value = (t.value ?: 0).coerceAtLeast(0), condition = mappedConds)
+            "scroll" -> com.deepdots.sdk.models.Trigger.Scroll(percentage = (t.value ?: 0).coerceIn(0, 100), condition = mappedConds)
+            "exit" -> com.deepdots.sdk.models.Trigger.Exit(condition = mappedConds)
             null -> com.deepdots.sdk.models.Trigger.TimeOnPage(value = 2, condition = mappedConds) // fallback if triggers is {}
             else -> com.deepdots.sdk.models.Trigger.TimeOnPage(value = 2, condition = mappedConds)
         }
@@ -162,10 +167,12 @@ class DeepdotsPopups {
      * Inicializar el SDK
      */
     fun init(options: InitOptions) {
+        /*
         if (initOptions != null) {
             log("SDK already initialized")
             return
         }
+        */
         initOptions = options
 
         if (options.mode === com.deepdots.sdk.models.Mode.Server) {
@@ -261,7 +268,7 @@ class DeepdotsPopups {
             val trigger = def.trigger
             when (trigger) {
                 is Trigger.TimeOnPage -> {
-                    log("Scheduling TimeOnPage", "id=${'$'}{def.id} sec=${'$'}{trigger.value}")
+                    log("Scheduling TimeOnPage", "id=${def.id} sec=${trigger.value}")
                     scheduleTimeOnPage(def, trigger)
                 }
                 is Trigger.Scroll -> { log("Scheduling Scroll trigger", def.id) }
@@ -278,7 +285,7 @@ class DeepdotsPopups {
             val pathCur = currentPath
             val langOk = seg?.lang?.let { langCur != null && it.contains(langCur) } ?: true
             val pathOk = seg?.path?.let { pathCur != null && it.contains(pathCur) } ?: true
-            log("TimeOnPage hit", "id=${'$'}{def.id} pathCur=${'$'}pathCur requires=${'$'}{seg?.path} pathOk=${'$'}pathOk langCur=${'$'}langCur requires=${'$'}{seg?.lang} langOk=${'$'}langOk")
+            log("TimeOnPage hit", "id=${def.id} pathCur=${'$'}pathCur requires=${'$'}{seg?.path} pathOk=${'$'}pathOk langCur=${'$'}langCur requires=${'$'}{seg?.lang} langOk=${'$'}langOk")
             if (shouldEnqueue(def, t.condition)) {
                 enqueue(def)
             } else {
@@ -304,7 +311,7 @@ class DeepdotsPopups {
             path != null && seg.contains(path)
         } ?: true
         if (!langOk || !pathOk) {
-            log("Segmentation blocked", "id=${'$'}{def.id} pathOk=${'$'}pathOk langOk=${'$'}langOk currentPath=${'$'}currentPath")
+            log("Segmentation blocked", "id=${def.id} pathOk=${'$'}pathOk langOk=${'$'}langOk currentPath=${'$'}currentPath")
             return false
         }
         // Condiciones trigger
@@ -351,7 +358,7 @@ class DeepdotsPopups {
         scope.launch {
             while (popupQueue.isNotEmpty()) {
                 val def = popupQueue.removeFirst()
-                log("Process popup", "id=${'$'}{def.id}")
+                log("Process popup", "id=${def.id}")
                 try {
                     initOptionsContextCache?.let { ctx ->
                         show(ShowOptions(def.surveyId, def.productId), ctx)
@@ -630,12 +637,52 @@ class DeepdotsPopups {
     // Allow host app to update current path/page on navigation changes
     fun setPath(path: String?) {
         currentPath = path
+        // Reset per-page trigger flags on navigation change
+        scrollTriggeredSurveys.clear()
+        exitTriggeredSurveys.clear()
         log("Path updated", path ?: "null")
         // Re-evaluate queued popups if any
         processQueue()
         // Reschedule auto-launch triggers so segmentation by path can take effect on the new page
         if (initOptions?.autoLaunch == true) {
             startAutoLaunch()
+        }
+    }
+
+    /** Report scroll progress (0..100) from host page to evaluate scroll triggers */
+    fun onScroll(percentage: Int) {
+        val pct = percentage.coerceIn(0, 100)
+        log("onScroll", pct)
+        activePopups.values.forEach { def ->
+            val trig = def.trigger
+            if (trig is Trigger.Scroll) {
+                // Already triggered for this survey on current page? skip
+                if (scrollTriggeredSurveys.contains(def.surveyId)) return@forEach
+                // Popup already in queue? skip
+                val alreadyQueued = popupQueue.any { it.id == def.id }
+                if (alreadyQueued) return@forEach
+                if (pct >= trig.percentage && shouldEnqueue(def, trig.condition)) {
+                    scrollTriggeredSurveys += def.surveyId
+                    enqueue(def)
+                }
+            }
+        }
+    }
+
+    /** Report exit intent from host page to evaluate exit triggers */
+    fun onExit() {
+        log("onExit")
+        activePopups.values.forEach { def ->
+            val trig = def.trigger
+            if (trig is Trigger.Exit) {
+                if (exitTriggeredSurveys.contains(def.surveyId)) return@forEach
+                val alreadyQueued = popupQueue.any { it.id == def.id }
+                if (alreadyQueued) return@forEach
+                if (shouldEnqueue(def, trig.condition)) {
+                    exitTriggeredSurveys += def.surveyId
+                    enqueue(def)
+                }
+            }
         }
     }
 

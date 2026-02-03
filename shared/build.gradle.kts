@@ -67,6 +67,17 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
             }
         }
+        // Add iOS Ktor engine directly to platform source sets
+        val iosArm64Main by getting {
+            dependencies { implementation(libs.ktor.client.darwin) }
+        }
+        val iosSimulatorArm64Main by getting {
+            dependencies { implementation(libs.ktor.client.darwin) }
+        }
+        // Remove fragile dependsOn wiring
+        // val iosMain by getting { dependencies { implementation(libs.ktor.client.darwin) } }
+        // val iosArm64Main by getting { dependsOn(iosMain) }
+        // val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
         commonTest.dependencies { implementation(libs.kotlin.test) }
     }
 

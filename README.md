@@ -266,36 +266,11 @@ See `scripts/update_magicfeedback_asset.sh`.
 
 ## 15. Publishing (Maintainers)
 
-### Android → Maven Central (OSSRH)
-Use the helper script `scripts/deploy_android_maven.sh` (no secrets in git).
+Update version in `shared/build.gradle.kts` and tag the release.
 
-1) Prepare environment variables
-- Linux:
-```bash
-export OSSRH_USERNAME=your_sonatype_username
-export OSSRH_PASSWORD=your_sonatype_token
-export SIGNING_PASSWORD=your_pgp_passphrase
-export SIGNING_KEY_BASE64=$(base64 -w0 private-key.asc)
-```
-- macOS:
-```bash
-export OSSRH_USERNAME=your_sonatype_username
-export OSSRH_PASSWORD=your_sonatype_token
-export SIGNING_PASSWORD=your_pgp_passphrase
-export SIGNING_KEY_BASE64=$(base64 -i private-key.asc | tr -d '\n')
-```
+Update MagicFeedback asset if needed.
 
-2) Run deploy (optionally override version)
-```bash
-VERSION=0.1.3 ./scripts/deploy_android_maven.sh
-# or
-./scripts/deploy_android_maven.sh
-```
+### Android (Maven Central via zip upload)
 
-3) Finalize release
-- Go to https://central.sonatype.com/publishing and Close/Release the staging repository.
-- Sync to Maven Central search usually takes 10–30 minutes.
 
-Security notes:
-- Do NOT commit credentials or keys to git. Prefer exporting env vars locally or using CI secret storage.
-- `.gitignore` excludes `private-key.asc` already.
+### IOS (SPM Binary via GitHub Releases)
