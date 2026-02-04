@@ -7,18 +7,17 @@ Multiplatform SDK (Android + iOS) to show popups and launch surveys using trigge
 ## Table of Contents
 1. Introduction
 2. Features
-3. Installation / Integration
+3. Installation / Integration (Server mode)
    - Android (Gradle - Maven Central)
    - iOS (Swift Package Manager - Binary) [Official]
-   - iOS (XCFramework manual)
-4. Quick Start
+4. Quick Start (Server mode)
    - Initialization
    - Manual popup display
    - Listen for events
-5. Triggers & Conditions
+5. Triggers & Conditions (remote)
 6. Segmentation (lang / path)
 7. Cooldown Persistence
-8. Public API
+8. Public API (entry points)
 9. Full Examples (Android / iOS)
 10. Building Artifacts (AAR / iOS Frameworks)
 11. Runtime Style Overrides
@@ -45,162 +44,98 @@ Deepdots Popup SDK helps you:
 - Basic HTML support (`<p>`, `<b>`, `<i>`).
 - Inline survey renderer with platform bridges and runtime customization.
 
-## 3. Installation / Integration
+## 3. Installation / Integration (Server mode)
 
-### Android (Maven Central)
-- Coordinates (latest):
-  - Group: `com.deepdots.sdk`
-  - Artifact: `shared-android`
-  - Version: `0.1.6`
-
-1) Ensure you have Maven Central enabled
-- settings.gradle(.kts)
-```kotlin
-pluginManagement {
-    repositories { gradlePluginPortal(); google(); mavenCentral() }
-}
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories { google(); mavenCentral() }
-}
-```
-
-2) Add the dependency in your app module
+### Android (Gradle - Maven Central)
+- Add Maven Central (already in demos) and depend on the published artifact:
 ```kotlin
 dependencies {
     implementation("com.deepdots.sdk:shared-android:0.1.6")
 }
 ```
-
-3) Requirements
-- minSdk 24+
-- Kotlin + Compose UI enabled in your app
-
-> ProGuard/R8: the SDK ships with consumer rules; no additional rules required in most cases.
+- Server mode uses your `publicKey` and remote popups. In the demo (`example-android/MainActivity.kt`), update `publicKey` and `metadata` (e.g., userId). Paths are set via `setPath("/home")`, `setPath("/detail/1")`, etc.
+- Build/run demo:
+```bash
+./gradlew :example-android:assembleDebug
+./gradlew :example-android:installDebug
+```
 
 ### iOS (Swift Package Manager - Binary) [Official]
-Use the SPM binary package (XCFramework) published via GitHub Releases.
-
-Consumers (iOS integration):
-- Xcode > File > Add Packages… and use the SPM repo URL: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`
-- Select the version (e.g., 0.1.6).
-- Add the product "ComposeApp" to your target.
-- Import in Swift: `import ComposeApp`.
-
-Maintainers (to prepare a release):
+- Add package: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`, version `0.1.6` (requires the release with `DeepdotsSDK-0.1.6.xcframework.zip` uploaded).
+- In the demo (`iosApp/DeepdotsDemo.swift`), set your `publicKey` and optional metadata (userId). Paths are updated when navigating (`/home`, `/detail/1`, `/detail/2`).
+- Resolve/build demo:
 ```bash
-# From the SDK repository root
-./scripts/prepare_spm_release.sh 0.1.6 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.6
-# Publish the zip at that URL (GitHub Release) and commit spm/Package.swift to the SPM repo
+cd iosApp
+xcodebuild -resolvePackageDependencies -project iosApp.xcodeproj -scheme iosApp -destination 'generic/platform=iOS Simulator'
+xcodebuild -scheme iosApp -project iosApp.xcodeproj -destination 'platform=iOS Simulator,name=iPhone 16e' build
 ```
 
-Notes:
-- Requires iOS 13+.
-- Static XCFramework binary (arm64 device + arm64 simulator).
+## 4. Quick Start (Server mode)
 
-### iOS (XCFramework manual)
-- Alternative without SPM: build the XCFramework and integrate it manually.
-```bash
-./gradlew :shared:assemble
-# Combine frameworks with xcodebuild -create-xcframework or use dist/spm/ComposeApp.xcframework from the SPM script
-```
-
-## 4. Quick Start
-
-### Initialization (Kotlin)
+### Initialization
+- Android demo snippet (`MainActivity.kt`):
 ```kotlin
-val popupDef = PopupDefinition(
-    id = "popup-1",
-    title = "Hello",
-    message = "<p><b>Can you help us?</b></p>",
-    trigger = Trigger.TimeOnPage(value = 5, condition = listOf(Condition(answered = false, cooldownDays = 2))),
-    actions = Actions(
-        accept = Action.Accept("Go", surveyId = "survey-123"),
-        decline = Action.Decline("No", cooldownDays = 1)
-    ),
-    surveyId = "survey-123",
-    productId = "product-xyz",
-    style = Style(theme = Theme.Light, position = Position.BottomRight),
-    segments = null
+val options = InitOptions(
+    debug = true,
+    mode = Mode.server,
+    popupOptions = PopupOptions(publicKey = "<your-key>", popups = null, companyId = null),
+    provideLang = { "en" },
+    autoLaunch = true,
+    metadata = mapOf("userId" to "demo-user")
 )
-val sdk = Deepdots.create()
-// Set initial path (update on navigation changes)
-sdk.setPath("/home")
-sdk.init(
-    InitOptions(
-        debug = true,
-        popupOptions = PopupOptions(popups = listOf(popupDef)),
-        autoLaunch = true,
-        provideLang = { "en" }
-    )
+val sdk = DeepdotsPopups().apply { initialize(options); setPath("/home") }
+```
+- iOS demo snippet (`DeepdotsDemo.swift`):
+```swift
+let options = InitOptions(
+    debug: true,
+    mode: .server,
+    popupOptions: PopupOptions(id: nil, publicKey: "<your-key>", popups: nil, companyId: nil),
+    provideLang: { Locale.current.language.languageCode?.identifier ?? "en" },
+    autoLaunch: true,
+    storage: nil,
+    metadata: ["userId": uid]
 )
+let instance = ComposeApp.DeepdotsPopups()
+instance.initialize(options: options)
+instance.setPath(path: "/home")
 ```
 
 ### Manual popup display
 ```kotlin
-sdk.show(
-    ShowOptions(
-        surveyId = "survey-123",
-        productId = "product-xyz",
-        data = mapOf("source" to "manual_button")
-    ),
-    PlatformContext(activity)
-)
+sdk.show(ShowOptions(surveyId = "survey-123", productId = "product-xyz"), PlatformContext(activity))
+```
+```swift
+// iOS: similar call via ComposeApp.DeepdotsPopups().show(...) if needed
 ```
 
 ### Listen for events
-```kotlin
-sdk.on(Event.PopupShown) { println("Popup shown: ${it.popupId}") }
-sdk.on(Event.PopupClicked) { println("Popup clicked: ${it.popupId} action=${it.extra["action"]}") }
-sdk.on(Event.SurveyCompleted) { println("Survey completed: ${it.surveyId}") }
-```
+- Android/iOS demos wire:
+  - `popupShown`, `popupClicked`, `surveyCompleted` to log outputs.
 
-Behavioral notes:
-- The popup initially shows a Loading spinner and switches to Start/InProgress when the survey emits `loaded`/`popup_clicked`.
-- When submitting, the UI briefly shows Loading on `before_submit`.
+## 5. Triggers & Conditions (remote)
+- Server mode fetches triggers/conditions from backend. Demos mainly exercise:
+  - `TimeOnPage`: auto after N seconds on current path.
+  - `Scroll`: demo calls `onScroll(percentage)` as the user scrolls.
+  - `Exit`: demo calls `onExit()` when leaving a screen.
+- Conditions (cooldown, answered, user caps) are evaluated on the fetched popup; no extra client config needed.
 
-### Swift (iOS)
-```swift
-// Import the module provided by the KMP iOS framework (ComposeApp)
-import ComposeApp
-```
-
-## 5. Triggers & Conditions
-- `Trigger.TimeOnPage(value: seconds)` launches after delay.
-- `Trigger.Scroll` (placeholder).
-- `Trigger.Exit` (placeholder).
-- `Condition(answered = false)` only shows if survey not marked answered via `markSurveyAnswered`.
-- `Condition(cooldownDays = n)` blocks display if shown within last `n` days.
-
-## 6. Segmentation
-Each `PopupDefinition` may include:
-- `segments.lang`: allowed languages.
-- `segments.path`: allowed app paths/screens.
-Compared against `provideLang()` and `providePath()` lambdas in `InitOptions`.
+## 6. Segmentation (lang / path)
+- Provide `lang` and `path` so server-side segments can match.
+  - Android: `provideLang` lambda + `setPath(path)` on navigation.
+  - iOS: same via `provideLang` and `setPath(path:)` in `DeepdotsDemo.swift`.
+- Ensure paths you navigate (`/home`, `/detail/1`, `/detail/2`, etc.) match the segments defined in your backend.
 
 ## 7. Cooldown Persistence
-- Uses `KeyValueStorage` (default `InMemoryStorage`).
-- Provide a custom implementation for persistent storage.
-- Keys: `popup_last_shown_<popupId>`.
+- Uses in-memory by default. You can plug a custom `KeyValueStorage` (Android/iOS) if you need persistence across sessions. Demos use defaults.
 
-## 8. Public API (Entry Point)
-`Deepdots.kt` re-exports:
-- `Deepdots.create()` / `Deepdots.createInitialized(options)`
-- Typealiases: `Trigger`, `Condition`, `PopupDefinition`, `Actions`, `Action`, `Style`, `Theme`, `Position`, `Segments`, `ShowOptions`, `InitOptions`.
-- Helpers: `Deepdots.now()`, `Deepdots.parseHtml(html)`, `Deepdots.dismiss(context)`.
+## 8. Public API (entry points)
+- `DeepdotsPopups` with `initialize(options)`, `setPath`, `onScroll(percentage)`, `onExit()`, `show(...)`, `on(event, handler)`, `attachContext` (platform-specific).
+- Types: `InitOptions`, `PopupOptions`, `ShowOptions`, `Trigger`, `Condition`, `Segments`, `Events`.
 
-## 9. Full Examples
-### Android
-See `example-android/MainActivity.kt`.
-- Initializes SDK.
-- AutoLaunch + manual button.
-- Event logs.
-
-### iOS
-See `iosApp/DeepdotsDemo.swift`.
-- Initializes SDK.
-- AutoLaunch + manual button.
-- Logs events in Xcode console.
+## 9. Full Examples (Android / iOS)
+- Android: `example-android/MainActivity.kt` shows Server mode init, path updates, event logging, and a manual trigger button.
+- iOS: `iosApp/DeepdotsDemo.swift` shows Server mode init, navigation-driven `setPath`, scroll reporting, exit, and event logging in Xcode console.
 
 ## 10. Building Artifacts (for contributors)
 ### Android (AAR)
@@ -266,11 +201,21 @@ See `scripts/update_magicfeedback_asset.sh`.
 
 ## 15. Publishing (Maintainers)
 
-Update version in `shared/build.gradle.kts` and tag the release.
-
-Update MagicFeedback asset if needed.
-
 ### Android (Maven Central via zip upload)
+- Bump `PUBLISHING_VERSION` in `gradle.properties` and update any version strings in README/examples.
+- Build and stage artifacts to Maven local, then package upload zip:
+```bash
+./gradlew :shared:publishToMavenLocal
+./scripts/prepare_maven_upload_zip.sh
+```
+- Upload the generated zip from `maven_upload_temp` to Sonatype Central (or your portal) along with GPG signatures/checksums created by the script.
 
+### iOS (SPM Binary via GitHub Releases)
+- Build XCFramework, zip, and checksum:
+```bash
+./scripts/prepare_spm_release.sh <version> https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/<version>
+```
+- Upload the zip (`dist/spm/DeepdotsSDK-<version>.xcframework.zip`) to the GitHub release/tag `<version>` in `MagicFeedback/DeepdotsSDK-SPM`.
+- Update `spm/Package.swift` with the new URL/checksum and push that commit/tag to the SPM repo.
+- In `iosApp.xcodeproj`, ensure the Swift Package dependency points to the new version (exact tag).
 
-### IOS (SPM Binary via GitHub Releases)
