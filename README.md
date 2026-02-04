@@ -51,7 +51,7 @@ Deepdots Popup SDK helps you:
 - Coordinates (latest):
   - Group: `com.deepdots.sdk`
   - Artifact: `shared-android`
-  - Version: `0.1.2`
+  - Version: `0.1.6`
 
 1) Ensure you have Maven Central enabled
 - settings.gradle(.kts)
@@ -68,7 +68,7 @@ dependencyResolutionManagement {
 2) Add the dependency in your app module
 ```kotlin
 dependencies {
-    implementation("com.deepdots.sdk:shared-android:0.1.2")
+    implementation("com.deepdots.sdk:shared-android:0.1.6")
 }
 ```
 
@@ -83,14 +83,14 @@ Use the SPM binary package (XCFramework) published via GitHub Releases.
 
 Consumers (iOS integration):
 - Xcode > File > Add Packages… and use the SPM repo URL: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`
-- Select the version (e.g., 0.1.2).
+- Select the version (e.g., 0.1.6).
 - Add the product "ComposeApp" to your target.
 - Import in Swift: `import ComposeApp`.
 
 Maintainers (to prepare a release):
 ```bash
 # From the SDK repository root
-./scripts/prepare_spm_release.sh 0.1.2 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.2
+./scripts/prepare_spm_release.sh 0.1.6 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.6
 # Publish the zip at that URL (GitHub Release) and commit spm/Package.swift to the SPM repo
 ```
 

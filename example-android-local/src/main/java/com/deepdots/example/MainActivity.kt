@@ -37,6 +37,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.lazy.rememberLazyListState
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import androidx.compose.runtime.snapshotFlow
+import kotlin.math.roundToInt
 
 private fun Context.findActivity(): Activity? {
     var ctx: Context? = this
@@ -130,7 +135,7 @@ private fun DemoAppLocal(sdk: DeepdotsPopupsSdk) {
             sdk = sdk,
             title = detailTitle,
             onBack = {
-                sdk.setPath("/detail")
+                // sdk.setPath("/detail")
                 screen = ScreenState.Home
             },
             onShowPopup = {
@@ -247,13 +252,9 @@ private fun EventCard(item: EventItem, onTap: () -> Unit) {
 @Composable
 private fun DetailScreen(sdk: DeepdotsPopupsSdk, title: String, onBack: () -> Unit, onShowPopup: () -> Unit) {
     val lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. "
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        val totalItems = 20
-        val idx = listState.firstVisibleItemIndex
-        val approx = ((idx.toFloat() / totalItems.toFloat()) * 100f).toInt().coerceIn(0, 100)
-        sdk.onScroll(approx)
-    }
+    val listState = rememberLazyListState()
+    BindLazyListScroll(sdk, listState)
+
     Scaffold(topBar = {
         TopAppBar(title = { Text(title) }, navigationIcon = {
             OutlinedButton(onClick = {
@@ -267,5 +268,20 @@ private fun DetailScreen(sdk: DeepdotsPopupsSdk, title: String, onBack: () -> Un
                 Text(lorem)
             }
         }
+    }
+}
+
+@Composable
+private fun BindLazyListScroll(sdk: DeepdotsPopupsSdk, listState: androidx.compose.foundation.lazy.LazyListState) {
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val layout = listState.layoutInfo
+            val total = layout.totalItemsCount.coerceAtLeast(1)
+            val lastIndex = layout.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val progress = ((lastIndex + 1).toFloat() / total.toFloat()).coerceIn(0f, 1f)
+            (progress * 100f).roundToInt()
+        }
+            .distinctUntilChanged()
+            .collectLatest { pct -> sdk.onScroll(pct) }
     }
 }

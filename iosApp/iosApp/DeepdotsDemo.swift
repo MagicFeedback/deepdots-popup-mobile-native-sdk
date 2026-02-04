@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposeApp
+import UIKit
 
 private enum IOSScreen { case login, home, detail(String) }
 
@@ -45,10 +46,9 @@ struct DeepdotsDemoView: View {
                 })
             case .detail(let title):
                 DetailView(title: title, onBack: {
-                    popups?.onExit()
                     setPath("/detail"); screen = .home
                 }, onScrollPercent: { pct in
-                    popups?.onScroll(percentage: pct)
+                    popups?.onScroll(percentage: Int32(pct))
                 })
             }
         }
@@ -215,14 +215,27 @@ private struct DetailView: View {
 
     @State private var contentHeight: CGFloat = 1
     @State private var scrollOffset: CGFloat = 0
+    @State private var lastScrollPct: Int = -1
+    @State private var viewportHeight: CGFloat = 1
 
-    private struct ScrollOffsetKey: PreferenceKey {
-        static var defaultValue: CGFloat = 0
-        static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-    }
-    private struct ContentHeightKey: PreferenceKey {
-        static var defaultValue: CGFloat = 1
-        static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+    private func emitScrollPercent(offset: CGFloat? = nil, height: CGFloat? = nil, viewport: CGFloat? = nil) {
+        if let o = offset { scrollOffset = o }
+        if let h = height { contentHeight = h }
+        if let v = viewport { viewportHeight = v }
+        let visibleHeight = viewportHeight
+        let pct: Int
+        if contentHeight <= visibleHeight {
+            pct = 0
+        } else {
+            let range = max(contentHeight - visibleHeight, 1)
+            let raw = (scrollOffset / range) * 100
+            pct = Int(min(max(raw, 0), 100))
+        }
+        // print("[iOS Demo] scroll debug offset=\(scrollOffset) contentHeight=\(contentHeight) viewport=\(visibleHeight) pct=\(pct)")
+        if pct != lastScrollPct {
+            lastScrollPct = pct
+            onScrollPercent(pct)
+        }
     }
 
     var body: some View {
@@ -235,33 +248,90 @@ private struct DetailView: View {
             }
             .padding(16)
 
-            ScrollView {
-                GeometryReader { geo in
-                    Color.clear
-                        .preference(key: ScrollOffsetKey.self, value: -geo.frame(in: .named("scrollSpace")).origin.y)
-                }
-                .frame(height: 0)
-
+            OffsettableScrollView(
+                contentHeight: $contentHeight,
+                viewportHeight: $viewportHeight,
+                onScroll: { offset in emitScrollPercent(offset: offset) }
+            ) {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(0..<20) { _ in
                         Text(lorem)
                     }
                 }
-                .background(GeometryReader { g in
-                    Color.clear.preference(key: ContentHeightKey.self, value: g.size.height)
-                })
                 .padding(16)
             }
-            .coordinateSpace(name: "scrollSpace")
-            .onPreferenceChange(ScrollOffsetKey.self) { offset in
-                scrollOffset = offset
-                let visible = scrollOffset + UIScreen.main.bounds.height
-                let pct = min(max(Int((visible / max(contentHeight, 1)) * 100), 0), 100)
-                onScrollPercent(pct)
-            }
-            .onPreferenceChange(ContentHeightKey.self) { h in
-                contentHeight = h
-            }
+        }
+    }
+}
+
+// MARK: - OffsettableScrollView (UIKit bridge to get reliable scroll offset)
+private struct OffsettableScrollView<Content: View>: UIViewRepresentable {
+    @Binding var contentHeight: CGFloat
+    @Binding var viewportHeight: CGFloat
+    var onScroll: (CGFloat) -> Void
+    let content: Content
+
+    init(contentHeight: Binding<CGFloat>, viewportHeight: Binding<CGFloat>, onScroll: @escaping (CGFloat) -> Void, @ViewBuilder content: () -> Content) {
+        self._contentHeight = contentHeight
+        self._viewportHeight = viewportHeight
+        self.onScroll = onScroll
+        self.content = content()
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    func makeUIView(context: Context) -> UIScrollView {
+        let scrollView = UIScrollView()
+        scrollView.alwaysBounceVertical = true
+        scrollView.delegate = context.coordinator
+        scrollView.showsVerticalScrollIndicator = true
+
+        let host = context.coordinator.hostingController
+        host.view.translatesAutoresizingMaskIntoConstraints = false
+        host.view.backgroundColor = .clear
+        host.rootView = content
+        scrollView.addSubview(host.view)
+
+        NSLayoutConstraint.activate([
+            host.view.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            host.view.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            host.view.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            host.view.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            host.view.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor)
+        ])
+
+        return scrollView
+    }
+
+    func updateUIView(_ scrollView: UIScrollView, context: Context) {
+        context.coordinator.parent = self
+        context.coordinator.hostingController.rootView = content
+        scrollView.layoutIfNeeded()
+        context.coordinator.updateMetrics(scrollView)
+    }
+
+    class Coordinator: NSObject, UIScrollViewDelegate {
+        var parent: OffsettableScrollView
+        let hostingController: UIHostingController<Content>
+
+        init(parent: OffsettableScrollView) {
+            self.parent = parent
+            self.hostingController = UIHostingController(rootView: parent.content)
+            self.hostingController.view.backgroundColor = .clear
+        }
+
+        func updateMetrics(_ scrollView: UIScrollView) {
+            parent.viewportHeight = scrollView.bounds.height
+            parent.contentHeight = scrollView.contentSize.height
+        }
+
+        func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            updateMetrics(scrollView)
+            parent.onScroll(scrollView.contentOffset.y)
+        }
+
+        func scrollViewDidLayoutSubviews(_ scrollView: UIScrollView) {
+            updateMetrics(scrollView)
         }
     }
 }

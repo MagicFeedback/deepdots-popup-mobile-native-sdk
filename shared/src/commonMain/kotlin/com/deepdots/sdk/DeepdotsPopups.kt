@@ -636,6 +636,8 @@ class DeepdotsPopups {
 
     // Allow host app to update current path/page on navigation changes
     fun setPath(path: String?) {
+        if (path == currentPath) return
+        onExit() // trigger exit on previous page before changing
         currentPath = path
         // Reset per-page trigger flags on navigation change
         scrollTriggeredSurveys.clear()

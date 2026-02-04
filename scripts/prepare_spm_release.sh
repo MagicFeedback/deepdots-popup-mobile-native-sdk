@@ -3,7 +3,7 @@
 # Uso:
 #   scripts/prepare_spm_release.sh <version> <artifact_base_url>
 # Ejemplo:
-#   scripts/prepare_spm_release.sh 0.1.3 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.3
+#   scripts/prepare_spm_release.sh 0.1.4 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.4
 # Salida:
 #   - dist/spm/ComposeApp.xcframework
 #   - dist/spm/DeepdotsSDK-<version>.xcframework.zip

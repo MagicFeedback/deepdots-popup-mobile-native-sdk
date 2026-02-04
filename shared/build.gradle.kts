@@ -44,11 +44,14 @@ kotlin {
     }
 
     sourceSets {
-        androidMain.dependencies {
-            implementation(libs.androidx.activity.compose)
-            // Use explicit dependency to avoid catalog parse issues
-            implementation("io.coil-kt:coil-compose:2.7.0")
-            implementation(libs.ktor.client.okhttp)
+        val androidMain by getting {
+            dependencies {
+                implementation(libs.androidx.activity.compose)
+                // Use explicit dependency to avoid catalog parse issues
+                implementation("io.coil-kt:coil-compose:2.7.0")
+                implementation(libs.ktor.client.okhttp)
+                implementation(libs.androidx.recyclerview)
+            }
         }
         val commonMain by getting {
             dependencies {

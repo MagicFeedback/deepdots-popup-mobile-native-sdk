@@ -12,8 +12,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "ComposeApp",
-            url: "https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.3/DeepdotsSDK-0.1.3.xcframework.zip",
-            checksum: "24a0e6faf81a496667d98d46f7b94444fabd3b9f711bbd8d2dbbccb9d07ad985"
+            url: "https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.6/DeepdotsSDK-0.1.6.xcframework.zip",
+            checksum: "0043321011895be50563b781226d0092a1ff483a0592d5622001abb4b0c16896"
         )
     ]
 )

@@ -1,16 +1,23 @@
 #!/bin/bash
 set -e
 
-VERSION="0.1.3"
+VERSION="0.1.4"
 GROUP="com.deepdots.sdk"
 ARTIFACT="shared-android"
 
 GROUP_PATH=${GROUP//./\/}
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+GRADLEW="$PROJECT_ROOT/gradlew"
 
 TMP_DIR="$PROJECT_ROOT/maven_upload_temp"
 ZIP_NAME="${ARTIFACT}-${VERSION}-maven-ready.zip"
 M2_DIR="$HOME/.m2/repository/$GROUP_PATH/$ARTIFACT/$VERSION"
+
+# Build and publish to local Maven if artifacts are missing
+if [ ! -d "$M2_DIR" ] || [ -z "$(ls -A "$M2_DIR" 2>/dev/null)" ]; then
+  echo "🚀 Publicando en Maven Local (version $VERSION)..."
+  (cd "$PROJECT_ROOT" && "$GRADLEW" :shared:publishToMavenLocal)
+fi
 
 echo "🧹 Limpiando carpeta temporal..."
 rm -rf "$TMP_DIR"
