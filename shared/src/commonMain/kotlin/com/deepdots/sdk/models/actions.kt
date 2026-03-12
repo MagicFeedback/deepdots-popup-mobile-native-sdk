@@ -11,12 +11,15 @@ data class PopupDefinition(
     val id: String,
     val title: String = "",
     val message: String = "",
-    val trigger: Trigger,
-    val conditions: List<Condition>? = emptyList(),
-    val actions: Actions,
+    val trigger: Trigger? = null,
+    val triggers: List<Trigger> = emptyList(),
+    val conditions: List<LegacyCondition> = emptyList(),
+    val cooldown: List<CooldownCondition> = emptyList(),
+    val legacyConditions: List<LegacyCondition> = emptyList(),
+    val actions: Actions = Actions(),
     val surveyId: String,
     val productId: String,
-    val style: Style,
+    val style: Style = Style(),
     val segments: Segments? = null // ahora opcional
 )
 

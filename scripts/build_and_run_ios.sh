@@ -10,6 +10,9 @@ ROOT_DIR=$(cd "$(dirname "$0")"/.. && pwd)
 VERSION=${1:-2.1.7-alpha.9}
 SIM_NAME=${2:-'iPhone 15'}
 GRADLEW="$ROOT_DIR/gradlew"
+LOCAL_XCFRAMEWORK_DIR="$ROOT_DIR/dist/spm-local"
+LOCAL_XCFRAMEWORK_PATH="$LOCAL_XCFRAMEWORK_DIR/ComposeApp.xcframework"
+LOCAL_SIM_FRAMEWORK="$ROOT_DIR/shared/build/bin/iosSimulatorArm64/debugFramework/ComposeApp.framework"
 
 info() { echo "[iOS] $1"; }
 
@@ -23,6 +26,13 @@ zsh "$ROOT_DIR/scripts/vendor_magicfeedback.sh" "$VERSION"
 # 2) Construir frameworks iOS del módulo shared (KMP)
 info "Construyendo frameworks iOS (shared)"
 "$GRADLEW" :shared:assemble
+
+info "Generando XCFramework local para Simulator"
+rm -rf "$LOCAL_XCFRAMEWORK_PATH"
+mkdir -p "$LOCAL_XCFRAMEWORK_DIR"
+xcodebuild -create-xcframework \
+  -framework "$LOCAL_SIM_FRAMEWORK" \
+  -output "$LOCAL_XCFRAMEWORK_PATH" >/dev/null
 
 # 3) Preparar simulador
 info "Localizando simulador: $SIM_NAME"

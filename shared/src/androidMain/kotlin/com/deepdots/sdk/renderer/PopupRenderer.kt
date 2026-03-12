@@ -16,6 +16,7 @@ actual object PopupRenderer {
         popup: PopupDefinition,
         context: PlatformContext,
         onAction: (Action) -> Unit,
+        onSurveyEvent: (name: String, payload: String?) -> Unit,
         onDismiss: () -> Unit
     ) {
         val activity = context.activity as? ComponentActivity ?: return
@@ -29,33 +30,38 @@ actual object PopupRenderer {
             tag = "DeepdotsPopupContainer"
         }
         val composeView = ComposeView(activity).apply {
-            setContent { PopupView(popup) { action ->
-                if (dismissed.getAndSet(true)) return@PopupView
-                onAction(action)
-                // Defer teardown and removal to avoid detaching AndroidView during pointer event
-                container.post {
-                    try {
-                        (0 until container.childCount)
-                            .asSequence()
-                            .map { container.getChildAt(it) }
-                            .forEach { child ->
-                                if (child is WebView) {
-                                    try {
-                                        child.stopLoading()
-                                    } catch (_: Throwable) {}
-                                    child.onPause()
-                                    child.loadUrl("about:blank")
-                                    child.clearHistory()
-                                    child.removeAllViews()
-                                    child.destroy()
-                                }
-                            }
-                    } catch (_: Throwable) { }
-                    // Remove from root after teardown
-                    try { root.removeView(container) } catch (_: Throwable) { }
-                    onDismiss()
-                }
-            } }
+            setContent {
+                PopupView(
+                    popup = popup,
+                    onAction = actionHandler@{ action ->
+                        if (dismissed.getAndSet(true)) return@actionHandler
+                        onAction(action)
+                        // Defer teardown and removal to avoid detaching AndroidView during pointer event
+                        container.post {
+                            try {
+                                (0 until container.childCount)
+                                    .asSequence()
+                                    .map { container.getChildAt(it) }
+                                    .forEach { child ->
+                                        if (child is WebView) {
+                                            try {
+                                                child.stopLoading()
+                                            } catch (_: Throwable) {}
+                                            child.onPause()
+                                            child.loadUrl("about:blank")
+                                            child.clearHistory()
+                                            child.removeAllViews()
+                                            child.destroy()
+                                        }
+                                    }
+                            } catch (_: Throwable) { }
+                            try { root.removeView(container) } catch (_: Throwable) { }
+                            onDismiss()
+                        }
+                    },
+                    onSurveyEvent = onSurveyEvent,
+                )
+            }
         }
         container.addView(composeView)
         root.addView(container)

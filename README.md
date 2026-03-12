@@ -30,11 +30,9 @@ Multiplatform SDK (Android + iOS) to show popups and launch surveys using trigge
 ## 1. Introduction
 Deepdots Popup SDK helps you:
 - Define popups (id, title, basic HTML message, actions, style).
-- Launch them manually or automatically via triggers (time on page, scroll*, exit intent*).
-- Apply conditions (cooldown, answered) and segmentation (language, path/screen).
+- Launch them manually or automatically via triggers (time on page, scroll, exit, host events, host clicks).
+- Apply segmentation (language, path/screen) and cooldown rules by popup state (`SHOWED`, `PARTIAL`, `COMPLETED`).
 - Listen to events for analytics (popup shown, clicked, survey completed).
-
-> *Scroll and exit intent are defined as structures but logic will arrive in future tasks.
 
 ## 2. Features
 - Kotlin Multiplatform (`:shared` module).
@@ -50,7 +48,7 @@ Deepdots Popup SDK helps you:
 - Add Maven Central (already in demos) and depend on the published artifact:
 ```kotlin
 dependencies {
-    implementation("com.deepdots.sdk:shared-android:0.1.6")
+    implementation("com.deepdots.sdk:shared-android:0.1.7")
 }
 ```
 - Server mode uses your `publicKey` and remote popups. In the demo (`example-android/MainActivity.kt`), update `publicKey` and `metadata` (e.g., userId). Paths are set via `setPath("/home")`, `setPath("/detail/1")`, etc.
@@ -61,8 +59,9 @@ dependencies {
 ```
 
 ### iOS (Swift Package Manager - Binary) [Official]
-- Add package: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`, version `0.1.6` (requires the release with `DeepdotsSDK-0.1.6.xcframework.zip` uploaded).
-- In the demo (`iosApp/DeepdotsDemo.swift`), set your `publicKey` and optional metadata (userId). Paths are updated when navigating (`/home`, `/detail/1`, `/detail/2`).
+- Add package: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`, version `0.1.7` (requires the release with `DeepdotsSDK-0.1.7.xcframework.zip` uploaded).
+- In the demo (`iosApp/DeepdotsDemo.swift`), set your `publicKey` and optional metadata (userId). Paths are updated when navigating (`/home`, `/detail/1`, `/detail/2`, `/detail/3`, `/detail/4`).
+- The checked-in iOS demo project resolves a local package from `spm-local/`. Run `./run_ios_example.sh` to regenerate `dist/spm-local/ComposeApp.xcframework` before opening Xcode if that local binary is missing.
 - Resolve/build demo:
 ```bash
 cd iosApp
@@ -114,11 +113,19 @@ sdk.show(ShowOptions(surveyId = "survey-123", productId = "product-xyz"), Platfo
   - `popupShown`, `popupClicked`, `surveyCompleted` to log outputs.
 
 ## 5. Triggers & Conditions (remote)
-- Server mode fetches triggers/conditions from backend. Demos mainly exercise:
-  - `TimeOnPage`: auto after N seconds on current path.
-  - `Scroll`: demo calls `onScroll(percentage)` as the user scrolls.
-  - `Exit`: demo calls `onExit()` when leaving a screen.
-- Conditions (cooldown, answered, user caps) are evaluated on the fetched popup; no extra client config needed.
+- Server mode fetches popup definitions from backend and normalizes both current and legacy payloads.
+- Trigger support:
+  - `time_on_page`: auto after N seconds.
+  - `scroll`: host app reports progress through `onScroll(percentage)`.
+  - `exit`: queued on the source path and shown on the destination path after the configured delay.
+  - `event`: host app calls `triggerEvent(name)`.
+  - `click`: host app calls `triggerClick(targetId)`.
+- A popup can define multiple triggers; the first eligible trigger may queue/show it.
+- Cooldown rules are evaluated per popup using:
+  - `SHOWED`: last time that popup was shown.
+  - `PARTIAL`: last partial survey progress for the survey.
+  - `COMPLETED`: last completed survey progress for the survey.
+- Legacy `conditions` / `trigger.condition` payloads are still accepted for backward compatibility.
 
 ## 6. Segmentation (lang / path)
 - Provide `lang` and `path` so server-side segments can match.
@@ -130,12 +137,12 @@ sdk.show(ShowOptions(surveyId = "survey-123", productId = "product-xyz"), Platfo
 - Uses in-memory by default. You can plug a custom `KeyValueStorage` (Android/iOS) if you need persistence across sessions. Demos use defaults.
 
 ## 8. Public API (entry points)
-- `DeepdotsPopups` with `initialize(options)`, `setPath`, `onScroll(percentage)`, `onExit()`, `show(...)`, `on(event, handler)`, `attachContext` (platform-specific).
-- Types: `InitOptions`, `PopupOptions`, `ShowOptions`, `Trigger`, `Condition`, `Segments`, `Events`.
+- `DeepdotsPopups` with `initialize(options)`, `autoLaunch()`, `setPath`, `onScroll(percentage)`, `onExit()`, `triggerEvent(name)`, `triggerClick(targetId)`, `show(...)`, `showByPopupId(...)`, `on(...)`, `off(...)`, `attachContext(...)`.
+- Types: `InitOptions`, `PopupOptions`, `ShowOptions`, `PopupDefinition`, `Trigger`, `CooldownCondition`, `LegacyCondition`, `Segments`, `Events`.
 
 ## 9. Full Examples (Android / iOS)
-- Android: `example-android/MainActivity.kt` shows Server mode init, path updates, event logging, and a manual trigger button.
-- iOS: `iosApp/DeepdotsDemo.swift` shows Server mode init, navigation-driven `setPath`, scroll reporting, exit, and event logging in Xcode console.
+- Android: `example-android/MainActivity.kt` shows Server mode init, path updates, event logging, and a fourth demo screen that fires `custom-event`.
+- iOS: `iosApp/DeepdotsDemo.swift` shows Server mode init, navigation-driven `setPath`, scroll reporting, exit, and a fourth demo screen that fires `custom-event`.
 
 ## 10. Building Artifacts (for contributors)
 ### Android (AAR)
@@ -218,4 +225,3 @@ See `scripts/update_magicfeedback_asset.sh`.
 - Upload the zip (`dist/spm/DeepdotsSDK-<version>.xcframework.zip`) to the GitHub release/tag `<version>` in `MagicFeedback/DeepdotsSDK-SPM`.
 - Update `spm/Package.swift` with the new URL/checksum and push that commit/tag to the SPM repo.
 - In `iosApp.xcodeproj`, ensure the Swift Package dependency points to the new version (exact tag).
-

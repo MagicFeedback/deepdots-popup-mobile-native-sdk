@@ -1,15 +1,7 @@
 {
-  "originHash" : "3e97f0692fad6ea34f4a3ad5e4e24138c2b5df09b5c717e5eca6de376b63836e",
+  "originHash" : "0000000000000000000000000000000000000000000000000000000000000000",
   "pins" : [
-    {
-      "identity" : "deepdotssdk-spm",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/MagicFeedback/DeepdotsSDK-SPM",
-      "state" : {
-        "revision" : "4014fd6809a1d5b470f73baaadd86458870d64ae",
-        "version" : "0.1.6"
-      }
-    }
+
   ],
   "version" : 3
 }

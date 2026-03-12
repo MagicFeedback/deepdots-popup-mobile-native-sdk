@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VERSION="0.1.4"
+VERSION="0.1.7"
 GROUP="com.deepdots.sdk"
 ARTIFACT="shared-android"
 

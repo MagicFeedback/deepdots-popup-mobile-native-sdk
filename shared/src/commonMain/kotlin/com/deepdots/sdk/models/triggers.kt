@@ -1,24 +1,72 @@
 package com.deepdots.sdk.models
 
-// Modelos de triggers del SDK
-sealed class Trigger {
-    data class TimeOnPage(
-        val value: Int, // segundos
-        val condition: List<Condition> = emptyList()
-    ) : Trigger()
-    data class Scroll(
-        val percentage: Int,
-        val condition: List<Condition> = emptyList()
-    ) : Trigger()
-    data class Exit(
-        val condition: List<Condition> = emptyList()
-    ) : Trigger()
+enum class TriggerType {
+    TimeOnPage,
+    Scroll,
+    Exit,
+    Event,
+    Click,
 }
 
-// Condición asociada a un trigger
-// answered: si el usuario ya contestó la encuesta
-// cooldownDays: tiempo en días antes de volver a mostrar
-data class Condition(
-    val answered: Boolean = false,
-    val cooldownDays: Int = 0
+enum class TriggerConditionStatus {
+    SHOWED,
+    PARTIAL,
+    COMPLETED,
+}
+
+data class CooldownCondition(
+    val answered: TriggerConditionStatus,
+    val cooldownDays: Int = 0,
 )
+
+data class LegacyCondition(
+    val answered: Boolean? = null,
+    val cooldownDays: Int = 0,
+)
+
+sealed class Trigger {
+    abstract val type: TriggerType
+    abstract val rawValue: String?
+
+    data class TimeOnPage(
+        val seconds: Double,
+    ) : Trigger() {
+        override val type: TriggerType = TriggerType.TimeOnPage
+        override val rawValue: String = seconds.toString()
+    }
+
+    data class Scroll(
+        val percentage: Int,
+    ) : Trigger() {
+        override val type: TriggerType = TriggerType.Scroll
+        override val rawValue: String = percentage.toString()
+    }
+
+    data class Exit(
+        val delaySeconds: Double = 0.0,
+    ) : Trigger() {
+        override val type: TriggerType = TriggerType.Exit
+        override val rawValue: String = delaySeconds.toString()
+    }
+
+    data class Event(
+        val name: String,
+    ) : Trigger() {
+        override val type: TriggerType = TriggerType.Event
+        override val rawValue: String = name
+    }
+
+    data class Click(
+        val targetId: String,
+    ) : Trigger() {
+        override val type: TriggerType = TriggerType.Click
+        override val rawValue: String = targetId
+    }
+}
+
+data class SurveyProgressState(
+    val status: TriggerConditionStatus,
+    val timestamp: Long,
+)
+
+typealias Condition = LegacyCondition

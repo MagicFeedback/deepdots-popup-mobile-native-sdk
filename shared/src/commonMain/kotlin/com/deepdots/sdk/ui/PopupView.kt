@@ -32,7 +32,8 @@ private enum class ViewState { Loading, Start, InProgressFirst, InProgressNext, 
 @Composable
 fun PopupView(
     popup: PopupDefinition,
-    onAction: (Action) -> Unit
+    onAction: (Action) -> Unit,
+    onSurveyEvent: (name: String, payload: String?) -> Unit = { _, _ -> }
 ) {
     val primaryColorDefault = Color(0xFF1E293B)
     var primaryColor by remember { mutableStateOf(primaryColorDefault) }
@@ -259,6 +260,8 @@ fun PopupView(
                                                 }
                                             }
                                         }
+
+                                        onSurveyEvent(name, payload)
                                     },
                                     onController = { controller -> surveyController = controller }
                                 )

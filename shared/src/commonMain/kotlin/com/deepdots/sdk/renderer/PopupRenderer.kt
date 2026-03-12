@@ -9,6 +9,7 @@ expect object PopupRenderer {
         popup: PopupDefinition,
         context: PlatformContext,
         onAction: (Action) -> Unit,
+        onSurveyEvent: (name: String, payload: String?) -> Unit,
         onDismiss: () -> Unit
     )
 }

@@ -70,7 +70,12 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class ScreenState { Login, Home, Detail }
-private data class EventItem(val title: String, val description: String, val path: String)
+private data class EventItem(
+    val title: String,
+    val description: String,
+    val path: String,
+    val eventName: String? = null
+)
 
 @Composable
 private fun DemoAppLocal(sdk: DeepdotsPopupsSdk) {
@@ -81,12 +86,13 @@ private fun DemoAppLocal(sdk: DeepdotsPopupsSdk) {
         listOf(
             EventItem("Event 1", "Popup on enter", "/detail/1"),
             EventItem("Event 2", "Popup on scroll", "/detail/2"),
-            EventItem("Event 3", "Popup on exit", "/detail/3")
+            EventItem("Event 3", "Popup on exit", "/detail/3"),
+            EventItem("Event 4", "Popup on custom event", "/detail/4", eventName = "custom-event")
         )
     }
-    var detailTitle by remember { mutableStateOf("") }
+    var selectedEvent by remember { mutableStateOf<EventItem?>(null) }
 
-    LaunchedEffect(screen, detailTitle) {
+    LaunchedEffect(screen, selectedEvent) {
         when (screen) {
             ScreenState.Login -> sdk.setPath("/login")
             ScreenState.Home -> sdk.setPath("/home")
@@ -123,7 +129,7 @@ private fun DemoAppLocal(sdk: DeepdotsPopupsSdk) {
             events = events,
             onSelect = { item ->
                 sdk.setPath(item.path)
-                detailTitle = item.title
+                selectedEvent = item
                 screen = ScreenState.Detail
             },
             onLogout = {
@@ -133,10 +139,13 @@ private fun DemoAppLocal(sdk: DeepdotsPopupsSdk) {
         )
         ScreenState.Detail -> DetailScreen(
             sdk = sdk,
-            title = detailTitle,
+            eventItem = selectedEvent ?: events.first(),
             onBack = {
                 // sdk.setPath("/detail")
                 screen = ScreenState.Home
+            },
+            onTriggerEvent = { eventName ->
+                sdk.triggerEvent(eventName)
             },
             onShowPopup = {
                 activity?.let {
@@ -222,7 +231,7 @@ private fun HomeScreen(
         }
     ) { padding ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(events.take(3)) { item ->
+            items(events) { item ->
                 EventCard(item = item, onTap = { onSelect(item) })
             }
         }
@@ -250,13 +259,19 @@ private fun EventCard(item: EventItem, onTap: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DetailScreen(sdk: DeepdotsPopupsSdk, title: String, onBack: () -> Unit, onShowPopup: () -> Unit) {
+private fun DetailScreen(
+    sdk: DeepdotsPopupsSdk,
+    eventItem: EventItem,
+    onBack: () -> Unit,
+    onTriggerEvent: (String) -> Unit,
+    onShowPopup: () -> Unit
+) {
     val lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. "
     val listState = rememberLazyListState()
     BindLazyListScroll(sdk, listState)
 
     Scaffold(topBar = {
-        TopAppBar(title = { Text(title) }, navigationIcon = {
+        TopAppBar(title = { Text(eventItem.title) }, navigationIcon = {
             OutlinedButton(onClick = {
                 sdk.onExit()
                 onBack()
@@ -264,6 +279,26 @@ private fun DetailScreen(sdk: DeepdotsPopupsSdk, title: String, onBack: () -> Un
         }, actions = { Button(onClick = onShowPopup) { Text("Show popup") } })
     }) { padding ->
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
+            eventItem.eventName?.let { eventName ->
+                item {
+                    androidx.compose.material3.Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text("Trigger demo event", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Tap the button below to fire $eventName from the host app and test event-based popups.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                            )
+                            Button(onClick = { onTriggerEvent(eventName) }) {
+                                Text("Launch $eventName")
+                            }
+                        }
+                    }
+                }
+            }
             items((0 until 20).toList()) { _ ->
                 Text(lorem)
             }

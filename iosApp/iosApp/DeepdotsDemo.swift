@@ -2,13 +2,14 @@ import SwiftUI
 import ComposeApp
 import UIKit
 
-private enum IOSScreen { case login, home, detail(String) }
+private enum IOSScreen { case login, home, detail(EventItem) }
 
 private struct EventItem: Identifiable {
     let id = UUID()
     let title: String
     let description: String
     let path: String
+    let eventName: String?
 }
 
 struct DeepdotsDemoView: View {
@@ -16,9 +17,10 @@ struct DeepdotsDemoView: View {
     @State private var selectedUserId: String = "alpha-01"
     @State private var customUserId: String = ""
     @State private var events: [EventItem] = [
-        EventItem(title: "Event 1", description: "Popup on enter", path: "/detail/1"),
-        EventItem(title: "Event 2", description: "Popup on scroll", path: "/detail/2"),
-        EventItem(title: "Event 3", description: "Popup on exit", path: "/detail/3")
+        EventItem(title: "Event 1", description: "Popup on enter", path: "/detail/1", eventName: nil),
+        EventItem(title: "Event 2", description: "Popup on scroll", path: "/detail/2", eventName: nil),
+        EventItem(title: "Event 3", description: "Popup on exit", path: "/detail/3", eventName: nil),
+        EventItem(title: "Event 4", description: "Popup on custom event", path: "/detail/4", eventName: "custom-event")
     ]
     @State private var popups: ComposeApp.DeepdotsPopups? = nil
 
@@ -38,17 +40,19 @@ struct DeepdotsDemoView: View {
             case .home:
                 HomeView(events: events, onSelect: { item in
                     setPath(item.path)
-                    screen = .detail(item.title)
+                    screen = .detail(item)
                 }, onLogout: {
                     // Cerrar sesión: limpiar instancia y volver a selector
                     popups = nil
                     screen = .login
                 })
-            case .detail(let title):
-                DetailView(title: title, onBack: {
+            case .detail(let item):
+                DetailView(item: item, onBack: {
                     setPath("/detail"); screen = .home
                 }, onScrollPercent: { pct in
                     popups?.onScroll(percentage: Int32(pct))
+                }, onTriggerEvent: { eventName in
+                    popups?.triggerEvent(eventName: eventName)
                 })
             }
         }
@@ -171,10 +175,10 @@ private struct HomeView: View {
             }
             .padding(16)
 
-            // Cards (max 3)
+            // Demo entries
             ScrollView {
                 VStack(spacing: 12) {
-                    ForEach(events.prefix(3)) { item in
+                    ForEach(events) { item in
                         EventCard(item: item) { onSelect(item) }
                     }
                 }
@@ -207,9 +211,10 @@ private struct EventCard: View {
 
 // MARK: - Detail
 private struct DetailView: View {
-    var title: String
+    var item: EventItem
     var onBack: () -> Void
     var onScrollPercent: (Int) -> Void = { _ in }
+    var onTriggerEvent: (String) -> Void = { _ in }
 
     private let lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. "
 
@@ -243,7 +248,7 @@ private struct DetailView: View {
             HStack {
                 Button("Back", action: onBack)
                 Spacer()
-                Text(title).font(.headline)
+                Text(item.title).font(.headline)
                 Spacer()
             }
             .padding(16)
@@ -254,6 +259,22 @@ private struct DetailView: View {
                 onScroll: { offset in emitScrollPercent(offset: offset) }
             ) {
                 VStack(alignment: .leading, spacing: 12) {
+                    if let eventName = item.eventName {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Trigger demo event")
+                                .font(.headline)
+                            Text("Tap the button below to fire \(eventName) from the host app and test event-based popups.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Button("Launch \(eventName)") {
+                                onTriggerEvent(eventName)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Color.gray.opacity(0.12)))
+                    }
                     ForEach(0..<20) { _ in
                         Text(lorem)
                     }
@@ -321,13 +342,25 @@ private struct OffsettableScrollView<Content: View>: UIViewRepresentable {
         }
 
         func updateMetrics(_ scrollView: UIScrollView) {
-            parent.viewportHeight = scrollView.bounds.height
-            parent.contentHeight = scrollView.contentSize.height
+            let viewportHeight = scrollView.bounds.height
+            let contentHeight = scrollView.contentSize.height
+
+            DispatchQueue.main.async {
+                if self.parent.viewportHeight != viewportHeight {
+                    self.parent.viewportHeight = viewportHeight
+                }
+                if self.parent.contentHeight != contentHeight {
+                    self.parent.contentHeight = contentHeight
+                }
+            }
         }
 
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
             updateMetrics(scrollView)
-            parent.onScroll(scrollView.contentOffset.y)
+            let offset = scrollView.contentOffset.y
+            DispatchQueue.main.async {
+                self.parent.onScroll(offset)
+            }
         }
 
         func scrollViewDidLayoutSubviews(_ scrollView: UIScrollView) {

@@ -57,7 +57,9 @@ object Deepdots {
             id = id,
             title = title,
             message = messageHtml,
-            trigger = Trigger.TimeOnPage(value = triggerSeconds, condition = listOf(Condition(answered = false, cooldownDays = declineCooldownDays))),
+            trigger = Trigger.TimeOnPage(seconds = triggerSeconds.toDouble()),
+            triggers = listOf(Trigger.TimeOnPage(seconds = triggerSeconds.toDouble())),
+            conditions = listOf(LegacyCondition(answered = false, cooldownDays = declineCooldownDays)),
             actions = Actions(
                 accept = Action.Accept(label = acceptLabel, surveyId = surveyId),
                 decline = Action.Decline(label = declineLabel, cooldownDays = declineCooldownDays)

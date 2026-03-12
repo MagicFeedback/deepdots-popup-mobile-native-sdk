@@ -12,14 +12,21 @@ actual object PopupRenderer {
         popup: PopupDefinition,
         context: PlatformContext,
         onAction: (Action) -> Unit,
+        onSurveyEvent: (name: String, payload: String?) -> Unit,
         onDismiss: () -> Unit
     ) {
         var controllerRef: UIViewController? = null
-        val vc = ComposeUIViewController { PopupView(popup) { action ->
-            onAction(action)
-            controllerRef?.dismissViewControllerAnimated(true, null)
-            onDismiss()
-        } }
+        val vc = ComposeUIViewController {
+            PopupView(
+                popup = popup,
+                onAction = { action ->
+                    onAction(action)
+                    controllerRef?.dismissViewControllerAnimated(true, null)
+                    onDismiss()
+                },
+                onSurveyEvent = onSurveyEvent,
+            )
+        }
         controllerRef = vc
         context.viewController.presentViewController(vc, true, null)
     }

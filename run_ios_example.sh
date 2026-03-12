@@ -8,6 +8,9 @@ PROJECT="iosApp/iosApp.xcodeproj"
 DEST_NAME=${DEST_NAME:-""}
 DEST_ID=${DEST_ID:-""}
 CONFIG=${CONFIG:-"Debug"}
+LOCAL_XCFRAMEWORK_DIR="dist/spm-local"
+LOCAL_XCFRAMEWORK_PATH="$LOCAL_XCFRAMEWORK_DIR/ComposeApp.xcframework"
+LOCAL_SIM_FRAMEWORK="shared/build/bin/iosSimulatorArm64/debugFramework/ComposeApp.framework"
 
 function info() { echo "[run_ios_example] $1"; }
 
@@ -64,6 +67,15 @@ xcrun simctl bootstatus "$SIM_ID" -b || xcrun simctl boot "$SIM_ID" || true
 xcrun simctl bootstatus "$SIM_ID" -b || true
 
 # 1) Construir la app para el simulador usando SPM
+# Antes de resolver paquetes, regeneramos el XCFramework local del simulador.
+info "Regenerando ComposeApp.xcframework local para Simulator"
+./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 >/dev/null
+rm -rf "$LOCAL_XCFRAMEWORK_PATH"
+mkdir -p "$LOCAL_XCFRAMEWORK_DIR"
+xcodebuild -create-xcframework \
+  -framework "$LOCAL_SIM_FRAMEWORK" \
+  -output "$LOCAL_XCFRAMEWORK_PATH" >/dev/null
+
 BUILD_LOG=$(mktemp)
 PODS_DEBUG_XCCONFIG="iosApp/Pods/Target Support Files/Pods-iosApp/Pods-iosApp.debug.xcconfig"
 USE_WORKSPACE=0

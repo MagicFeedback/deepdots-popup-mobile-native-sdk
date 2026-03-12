@@ -17,4 +17,11 @@ build/
 .gradle/
 local.properties
 .DS_Store
-
+.kotlin/
+build_ios.log
+dist/spm-local/
+dist/spm/*.zip
+dist/spm/*.zip.checksum
+maven_upload_temp/
+shared-android-*-maven-ready.zip
+iosApp/iosApp/magicfeedback/
