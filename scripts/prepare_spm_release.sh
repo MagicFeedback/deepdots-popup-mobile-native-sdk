@@ -1,9 +1,12 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 # Prepara un release SPM binario del SDK iOS (XCFramework zip + checksum + Package.swift)
 # Uso:
-#   scripts/prepare_spm_release.sh <version> <artifact_base_url>
+#   scripts/prepare_spm_release.sh [version] [artifact_base_url]
 # Ejemplo:
 #   scripts/prepare_spm_release.sh 0.1.4 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.4
+# Si no se pasa version, usa PUBLISHING_VERSION desde gradle.properties.
+# Si no se pasa artifact_base_url, usa SPM_RELEASE_BASE_URL o construye
+# https://github.com/<SPM_RELEASE_REPO>/releases/download/<version>.
 # Salida:
 #   - dist/spm/ComposeApp.xcframework
 #   - dist/spm/DeepdotsSDK-<version>.xcframework.zip
@@ -12,8 +15,11 @@
 
 set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "$0")"/.. && pwd)
-VERSION=${1:?"Version requerida (ej: 0.1.3)"}
-BASE_URL=${2:?"Base URL requerida (ej: https://github.com/org/repo/releases/download/${VERSION})"}
+GRADLE_PROPERTIES="$ROOT_DIR/gradle.properties"
+DEFAULT_VERSION=$(grep '^PUBLISHING_VERSION=' "$GRADLE_PROPERTIES" | cut -d'=' -f2-)
+DEFAULT_RELEASE_REPO="${SPM_RELEASE_REPO:-MagicFeedback/DeepdotsSDK-SPM}"
+VERSION="${1:-${PUBLISHING_VERSION:-$DEFAULT_VERSION}}"
+BASE_URL="${2:-${SPM_RELEASE_BASE_URL:-https://github.com/${DEFAULT_RELEASE_REPO}/releases/download/${VERSION}}}"
 ARTIFACT_NAME="DeepdotsSDK-${VERSION}.xcframework.zip"
 DIST_DIR="$ROOT_DIR/dist/spm"
 SPM_DIR="$ROOT_DIR/spm"
@@ -21,8 +27,11 @@ SPM_DIR="$ROOT_DIR/spm"
 info() { echo "[SPM] $1"; }
 
 # 1) Build frameworks iOS (arm64 device + arm64 simulator)
-info "Compilando frameworks iOS (KMP)"
-"$ROOT_DIR/gradlew" :shared:assemble
+info "Compilando frameworks iOS (KMP) para version ${VERSION}"
+"$ROOT_DIR/gradlew" \
+  :shared:linkReleaseFrameworkIosArm64 \
+  :shared:linkReleaseFrameworkIosSimulatorArm64 \
+  "-PPUBLISHING_VERSION=${VERSION}"
 
 # 2) Localizar frameworks
 FW_DEV="$ROOT_DIR/shared/build/bin/iosArm64/releaseFramework/ComposeApp.framework"

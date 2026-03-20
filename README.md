@@ -208,20 +208,43 @@ See `scripts/update_magicfeedback_asset.sh`.
 
 ## 15. Publishing (Maintainers)
 
-### Android (Maven Central via zip upload)
-- Bump `PUBLISHING_VERSION` in `gradle.properties` and update any version strings in README/examples.
-- Build and stage artifacts to Maven local, then package upload zip:
+### Unified release prep
+- Choose the version either by updating `PUBLISHING_VERSION` in `gradle.properties` or by passing it as the first argument.
+- Prepare both release bundles in one shot:
 ```bash
-./gradlew :shared:publishToMavenLocal
-./scripts/prepare_maven_upload_zip.sh
+./scripts/prepare_sdk_release.sh 0.1.8
 ```
-- Upload the generated zip from `maven_upload_temp` to Sonatype Central (or your portal) along with GPG signatures/checksums created by the script.
+- Optional: if the SPM release lives in another repo/base URL, pass it explicitly:
+```bash
+./scripts/prepare_sdk_release.sh 0.1.8 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.8
+```
+- Generated outputs:
+  - Android: `shared-android-<version>-maven-ready.zip`
+  - iOS: `dist/spm/DeepdotsSDK-<version>.xcframework.zip`
+  - iOS checksum: `dist/spm/DeepdotsSDK-<version>.xcframework.zip.checksum`
+  - Updated binary package manifest: `spm/Package.swift`
+
+### Android (Maven Central via zip upload)
+- The Android release bundle is prepared from a local staging Maven repo inside `build/release-staging-repo`, so no manual `publishToMavenLocal` step is required.
+- If you only want the Android bundle:
+```bash
+./scripts/prepare_maven_upload_zip.sh 0.1.8
+```
+- Upload `shared-android-<version>-maven-ready.zip` to Sonatype Central Portal. The script regenerates `.asc`, `.md5`, and `.sha1` files for every published artifact.
+- For direct Gradle publishing instead of zip upload, configure `ossrhUsername` / `ossrhPassword` or `OSSRH_USERNAME` / `OSSRH_PASSWORD`, then run:
+```bash
+./gradlew :shared:publishToMavenCentral -PPUBLISHING_VERSION=0.1.8
+```
 
 ### iOS (SPM Binary via GitHub Releases)
-- Build XCFramework, zip, and checksum:
+- If you only want the iOS bundle:
 ```bash
-./scripts/prepare_spm_release.sh <version> https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/<version>
+./scripts/prepare_spm_release.sh 0.1.8 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.8
 ```
-- Upload the zip (`dist/spm/DeepdotsSDK-<version>.xcframework.zip`) to the GitHub release/tag `<version>` in `MagicFeedback/DeepdotsSDK-SPM`.
-- Update `spm/Package.swift` with the new URL/checksum and push that commit/tag to the SPM repo.
-- In `iosApp.xcodeproj`, ensure the Swift Package dependency points to the new version (exact tag).
+- The script builds the release frameworks, creates the XCFramework zip, computes the checksum, and rewrites `spm/Package.swift`.
+- Upload `dist/spm/DeepdotsSDK-<version>.xcframework.zip` to the GitHub release/tag `<version>` in `MagicFeedback/DeepdotsSDK-SPM`.
+- Commit the generated `spm/Package.swift` into the SPM repo and publish/tag that change.
+
+### Signing configuration
+- Gradle publishing accepts either `signingInMemoryKey` / `SIGNING_KEY` plus `signing.password` / `SIGNING_PASSWORD`, or `signing.secretKeyRingFile` plus `signing.password`.
+- The Maven zip helper also requires local `gpg` and `zip`.

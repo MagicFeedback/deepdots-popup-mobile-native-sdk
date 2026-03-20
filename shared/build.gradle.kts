@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 import org.gradle.api.publish.maven.MavenPublication
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -14,6 +15,38 @@ plugins {
 
 group = providers.gradleProperty("PUBLISHING_GROUP").orNull ?: "com.deepdots"
 version = providers.gradleProperty("PUBLISHING_VERSION").orNull ?: "0.1.0"
+
+val localReleaseProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file(".gradle/gradle.properties")
+    if (localPropertiesFile.isFile) {
+        localPropertiesFile.inputStream().use(::load)
+    }
+}
+
+fun localReleaseProperty(name: String): String? =
+    localReleaseProperties.getProperty(name)?.takeIf { it.isNotBlank() }
+
+val ossrhUsername = providers.gradleProperty("ossrhUsername")
+    .orElse(providers.environmentVariable("OSSRH_USERNAME"))
+    .orNull ?: localReleaseProperty("ossrhUsername")
+val ossrhPassword = providers.gradleProperty("ossrhPassword")
+    .orElse(providers.environmentVariable("OSSRH_PASSWORD"))
+    .orNull ?: localReleaseProperty("ossrhPassword")
+val signingKeyId = providers.gradleProperty("signing.keyId")
+    .orElse(providers.environmentVariable("SIGNING_KEY_ID"))
+    .orNull ?: localReleaseProperty("signing.keyId")
+val signingPassword = providers.gradleProperty("signing.password")
+    .orElse(providers.environmentVariable("SIGNING_PASSWORD"))
+    .orNull ?: localReleaseProperty("signing.password")
+val signingInMemoryKey = providers.gradleProperty("signingInMemoryKey")
+    .orElse(providers.environmentVariable("SIGNING_IN_MEMORY_KEY"))
+    .orElse(providers.environmentVariable("SIGNING_KEY"))
+    .orNull ?: localReleaseProperty("signingInMemoryKey")
+val signingKeyRingFile = providers.gradleProperty("signing.secretKeyRingFile")
+    .orNull ?: localReleaseProperty("signing.secretKeyRingFile")
+val skipGradleSigning = providers.gradleProperty("skipGradleSigning")
+    .map { it.equals("true", ignoreCase = true) }
+    .orElse(false)
 
 kotlin {
     val xcf = XCFramework()
@@ -168,12 +201,17 @@ publishing {
 
     repositories {
         maven {
+            name = "ReleaseStaging"
+            url = uri(rootProject.layout.buildDirectory.dir("release-staging-repo"))
+        }
+
+        maven {
             name = "OSSRH"
             url = uri("https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/")
 
             credentials {
-                username = providers.gradleProperty("ossrhUsername").get()
-                password = providers.gradleProperty("ossrhPassword").get()
+                username = ossrhUsername
+                password = ossrhPassword
             }
         }
     }
@@ -181,13 +219,25 @@ publishing {
 
 // Signing con GPG (macOS friendly, funciona en CI)
 signing {
-    val keyPath = providers.gradleProperty("signing.secretKeyRingFile").orNull
-    val keyPassword = providers.gradleProperty("signing.password").orNull
-    if (keyPath != null && keyPassword != null) {
+    if (skipGradleSigning.get()) {
+        logger.lifecycle("Gradle publication signing disabled via -PskipGradleSigning=true.")
+        return@signing
+    }
+
+    val inMemoryKey = signingInMemoryKey
+    val keyPath = signingKeyRingFile
+    val keyPassword = signingPassword
+
+    if (!inMemoryKey.isNullOrBlank() && !keyPassword.isNullOrBlank()) {
+        useInMemoryPgpKeys(signingKeyId, inMemoryKey, keyPassword)
+        sign(publishing.publications)
+    } else if (!keyPath.isNullOrBlank() && !keyPassword.isNullOrBlank()) {
         useInMemoryPgpKeys(file(keyPath).readText(), keyPassword)
         sign(publishing.publications)
     } else {
-        logger.lifecycle("PGP signing not configured (set signing.secretKeyRingFile and signing.password in ~/.gradle/gradle.properties). Skipping signing until publish.")
+        logger.lifecycle(
+            "PGP signing not configured. Set signingInMemoryKey/SIGNING_KEY or signing.secretKeyRingFile plus signing.password."
+        )
     }
 }
 
@@ -196,5 +246,10 @@ signing {
 tasks.register("publishToMavenCentral") {
     group = "publishing"
     description = "Publishes all publications to OSSRH staging (Maven Central)."
+    doFirst {
+        check(!ossrhUsername.isNullOrBlank() && !ossrhPassword.isNullOrBlank()) {
+            "Missing OSSRH credentials. Set ossrhUsername/ossrhPassword or OSSRH_USERNAME/OSSRH_PASSWORD."
+        }
+    }
     dependsOn("publishAllPublicationsToOSSRHRepository")
 }

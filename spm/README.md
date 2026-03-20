@@ -6,7 +6,10 @@ Usage:
 
 ```bash
 # From repo root
-./scripts/prepare_spm_release.sh 0.1.2 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.2
+./scripts/prepare_spm_release.sh 0.1.8 https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.1.8
+
+# Or prepare Android + iOS release assets together
+./scripts/prepare_sdk_release.sh 0.1.8
 
 # Then commit spm/Package.swift and publish the zip at the URL above.
 ```
@@ -20,4 +23,3 @@ Notes:
 - The binary target is named ComposeApp to match the KMP framework module imported by Swift.
 - Supported: iOS 13+, arm64 devices and arm64 simulators.
 - If you change the module name, also change baseName in shared/build.gradle.kts and the Package.swift binary target name.
-
