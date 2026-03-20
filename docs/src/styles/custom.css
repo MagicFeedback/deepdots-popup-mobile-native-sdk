@@ -1,24 +1,25 @@
 :root,
 :root[data-theme="light"] {
-  --sl-color-accent-low: #dcefe8;
-  --sl-color-accent: #0e7c66;
-  --sl-color-accent-high: #0a5b4b;
-  --sl-color-text-accent: #0a5b4b;
-  --sl-color-white: #fffdf8;
-  --sl-color-gray-1: #f5f1e7;
-  --sl-color-gray-2: #ddd4c0;
-  --sl-color-gray-3: #b5a98f;
-  --sl-color-gray-4: #7d715b;
-  --sl-color-gray-5: #4d4438;
-  --sl-color-gray-6: #2b261f;
-  --sl-color-black: #181511;
+  --sl-color-accent-low: #d9eee8;
+  --sl-color-accent: #0f7a67;
+  --sl-color-accent-high: #0b5a4d;
+  --sl-color-text-accent: #0b5a4d;
+  --sl-color-white: #12201d;
+  --sl-color-gray-1: #243532;
+  --sl-color-gray-2: #41534f;
+  --sl-color-gray-3: #697b77;
+  --sl-color-gray-4: #95a5a1;
+  --sl-color-gray-5: #d3dcda;
+  --sl-color-gray-6: #eaf0ef;
+  --sl-color-gray-7: #f6faf9;
+  --sl-color-black: #ffffff;
   --page-bg:
-    radial-gradient(circle at top right, rgba(14, 124, 102, 0.10), transparent 28%),
-    radial-gradient(circle at left 20%, rgba(212, 167, 86, 0.08), transparent 30%),
-    linear-gradient(180deg, #fffdf8 0%, #f7f2e8 100%);
-  --surface-bg: rgba(255, 253, 248, 0.78);
-  --surface-border: rgba(24, 21, 17, 0.08);
-  --surface-shadow: 0 20px 48px rgba(24, 21, 17, 0.08);
+    radial-gradient(circle at top right, rgba(15, 122, 103, 0.10), transparent 24%),
+    radial-gradient(circle at left 18%, rgba(112, 169, 214, 0.08), transparent 26%),
+    linear-gradient(180deg, #f8fbfa 0%, #eef4f2 100%);
+  --surface-bg: rgba(255, 255, 255, 0.86);
+  --surface-border: rgba(17, 23, 21, 0.07);
+  --surface-shadow: 0 18px 40px rgba(17, 23, 21, 0.06);
 }
 
 :root[data-theme="dark"] {
