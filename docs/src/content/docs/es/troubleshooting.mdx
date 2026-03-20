@@ -1,0 +1,10 @@
+---
+title: Troubleshooting
+description: Problemas comunes visibles en la integracion actual.
+---
+
+# Troubleshooting
+
+- Si no aparece ningun popup, revisa `publicKey`, `attachContext`, `setPath` y `autoLaunch`.
+- Si fallan triggers de scroll o eventos, confirma que la app host llama a `onScroll(...)` o `triggerEvent(...)`.
+- Si falla el render de encuesta, revisa el bundling del asset `magicfeedback-sdk.browser.js`.

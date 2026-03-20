@@ -1,0 +1,58 @@
+---
+title: Troubleshooting
+description: Common causes of setup or runtime issues based on the current codebase and example apps.
+---
+
+# Troubleshooting
+
+## Popups never appear
+
+Check:
+
+- `initialize(...)` or `init(...)` was called only once on a fresh instance
+- a valid `publicKey` is present in Server Mode
+- `attachContext(...)` was called with a valid platform context
+- `setPath(...)` matches the paths expected by popup segmentation
+- `autoLaunch` is enabled, or `autoLaunch()` is called after initialization
+
+## Server Mode loads nothing
+
+Check:
+
+- runtime environment is pointing to the expected backend base URL
+- the backend has popup definitions for the given `publicKey`
+- the app provides the expected language and path values
+
+## Scroll or event triggers do not fire
+
+Check:
+
+- the host app actually forwards scroll percentage through `onScroll(...)`
+- custom events are sent with `triggerEvent(...)`
+- click-based flows use `triggerClick(...)`
+
+## Survey rendering issues
+
+The repository uses MagicFeedback survey HTML rendered inside native web views.
+
+Check:
+
+- Android asset packaging for `magicfeedback-sdk.browser.js`
+- iOS resource bundling for the same asset
+- web view bridge wiring for event propagation
+
+## Validation or submit errors in survey flows
+
+The code handles both validation and submit errors and surfaces them in the UI. If the survey becomes stuck:
+
+- inspect Android WebView logs
+- inspect iOS console output and bridge messages
+- confirm the survey payload contains the expected progress and total values
+
+## iOS binary package build or resolution issues
+
+Check:
+
+- the local or hosted XCFramework exists
+- `spm/Package.swift` points to the correct release ZIP and checksum
+- the iOS demo has resolved package dependencies after regenerating the local binary if needed

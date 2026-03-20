@@ -1,0 +1,23 @@
+---
+title: Server Mode
+description: Modo remoto basado en publicKey y definiciones obtenidas desde backend.
+---
+
+# Server Mode
+
+`Mode.Server` es el flujo principal del repositorio.
+
+## Que hace
+
+- Lee `popupOptions.publicKey`
+- Descarga popups desde backend
+- Evalua triggers, segmentos y cooldowns en cliente
+- Renderiza el popup y la encuesta
+
+## Triggers soportados
+
+- `TimeOnPage`
+- `Scroll`
+- `Exit`
+- `Event`
+- `Click`

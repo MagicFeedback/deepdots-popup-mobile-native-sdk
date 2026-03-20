@@ -1,0 +1,104 @@
+---
+title: Quickstart
+description: Initialize the SDK, set a path, and let Deepdots start evaluating popup triggers.
+---
+
+# Quickstart
+
+The examples in this repository use **Server Mode** first. That is the fastest way to validate the SDK because popup definitions come from the backend and the demo apps already use that flow.
+
+## 1. Initialize the SDK
+
+### Android
+
+```kotlin
+val options = InitOptions(
+    debug = true,
+    mode = Mode.Server,
+    popupOptions = PopupOptions(
+        publicKey = "<your-public-key>"
+    ),
+    autoLaunch = true,
+    provideLang = { "en" },
+    metadata = mapOf("userId" to "demo-user")
+)
+
+val sdk = DeepdotsPopups().apply {
+    initialize(options)
+    setPath("/home")
+}
+```
+
+### iOS
+
+```swift
+let options = InitOptions(
+    debug: true,
+    mode: Mode.server,
+    popupOptions: PopupOptions(
+        id: nil,
+        publicKey: "<your-public-key>",
+        popups: nil,
+        companyId: nil
+    ),
+    provideLang: { Locale.current.language.languageCode?.identifier ?? "en" },
+    autoLaunch: true,
+    storage: nil,
+    metadata: ["userId": "demo-user"]
+)
+
+let instance = ComposeApp.DeepdotsPopups()
+instance.initialize(options: options)
+instance.setPath(path: "/home")
+```
+
+## 2. Attach a platform context
+
+The SDK needs a platform-specific context to render popup UI.
+
+- Android example: `sdk.attachContext(PlatformContext(this))`
+- iOS example: `instance.attachContext(context: PlatformContext(viewController: root))`
+
+## 3. Keep the current path updated
+
+The examples change the current path as the user navigates:
+
+- `/login`
+- `/home`
+- `/detail/1`
+- `/detail/2`
+- `/detail/3`
+- `/detail/4`
+
+Path updates matter because path segmentation and some trigger flows depend on them.
+
+## 4. Listen for lifecycle events
+
+The SDK emits:
+
+- `popup_shown`
+- `popup_clicked`
+- `survey_completed`
+
+These are exposed through the `Event` enum and the `Events` helper.
+
+## 5. Trigger or show popups manually if needed
+
+The SDK can also show or trigger popups from host code:
+
+```kotlin
+sdk.show(
+    ShowOptions(
+        surveyId = "a9c8c170-bb1c-11f0-9d29-d5fe3dd521d0",
+        productId = "02b809f20e024bce47c57f123cff8735"
+    ),
+    PlatformContext(activity)
+)
+```
+
+## What to validate first
+
+- The `publicKey` is valid
+- The host app updates `setPath(...)` as screens change
+- The host app calls `onScroll`, `triggerEvent`, or other trigger helpers when relevant
+- Event listeners are wired so the team can confirm popup lifecycle behavior

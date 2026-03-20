@@ -1,0 +1,79 @@
+---
+title: Installation
+description: Install the Deepdots Popup SDK on Android and iOS using the package coordinates used in this repository.
+---
+
+# Installation
+
+This repository exposes two primary consumer paths:
+
+- Android via Maven Central using `com.deepdots.sdk:shared-android`
+- iOS via Swift Package Manager using the binary package manifest `DeepdotsSDK`
+
+## Requirements
+
+- Android apps compile against Java 17 in this repository
+- Android example apps use `minSdk = 24`
+- iOS distribution targets **iOS 13+**
+- The shared SDK module namespace is `com.deepdots.sdk`
+
+## Android
+
+Add the published dependency:
+
+```kotlin
+dependencies {
+    implementation("com.deepdots.sdk:shared-android:0.1.7")
+}
+```
+
+The Android example app in this repository uses that exact coordinate.
+
+### Android example commands
+
+```bash
+./gradlew :example-android:assembleDebug
+./gradlew :example-android:installDebug
+```
+
+## iOS
+
+The checked-in SPM manifest is binary-based and currently named `DeepdotsSDK`. It exposes the library product `ComposeApp`.
+
+```swift
+// swift-tools-version: 5.7
+import PackageDescription
+
+let package = Package(
+    name: "DeepdotsSDK",
+    platforms: [
+        .iOS(.v13)
+    ],
+    products: [
+        .library(name: "ComposeApp", targets: ["ComposeApp"])
+    ]
+)
+```
+
+### iOS example workflow in this repository
+
+The iOS demo project resolves a local package from `spm-local/`. If the local XCFramework is missing, regenerate it first:
+
+```bash
+./run_ios_example.sh
+```
+
+To resolve and build from Xcode tooling:
+
+```bash
+cd iosApp
+xcodebuild -resolvePackageDependencies -project iosApp.xcodeproj -scheme iosApp -destination 'generic/platform=iOS Simulator'
+xcodebuild -scheme iosApp -project iosApp.xcodeproj -destination 'platform=iOS Simulator,name=iPhone 16e' build
+```
+
+## Public versus internal packaging details
+
+- Public consumer detail: Android dependency coordinate and iOS SPM package/product names
+- Maintainer detail: release scripts in `scripts/prepare_sdk_release.sh`, `scripts/prepare_spm_release.sh`, and `scripts/prepare_maven_upload_zip.sh`
+
+Those maintainer scripts are part of the repository, but they are release-tooling oriented rather than end-user integration steps.

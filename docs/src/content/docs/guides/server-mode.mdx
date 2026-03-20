@@ -1,0 +1,75 @@
+---
+title: Server Mode
+description: Remote popup delivery and trigger evaluation using a Deepdots public key.
+---
+
+# Server Mode
+
+`Mode.Server` is the repository's primary integration path. Both the Android demo and the iOS demo initialize the SDK in Server Mode.
+
+## How it works
+
+When initialized in Server Mode, the SDK:
+
+1. reads `popupOptions.publicKey`
+2. fetches popup definitions from the Deepdots backend
+3. normalizes remote payloads into local popup definitions
+4. evaluates segmentation, cooldowns, and triggers inside the client
+5. renders the selected popup and survey flow natively
+
+## Remote endpoints used by the SDK
+
+The default popup service derives the backend base URL from runtime environment:
+
+- production: `https://api.deepdots.com`
+- debug/dev runtime: `https://api-dev.deepdots.com`
+
+The SDK fetches popups from:
+
+```text
+/sdk/{publicKey}/popups
+```
+
+The SDK posts popup lifecycle events to:
+
+```text
+/sdk/popups
+```
+
+## Trigger types supported in code
+
+- `TimeOnPage(seconds)`
+- `Scroll(percentage)`
+- `Exit(delaySeconds)`
+- `Event(name)`
+- `Click(targetId)`
+
+## Segmentation supported in code
+
+Remote popup definitions can include:
+
+- `lang`
+- `path`
+
+The host app is responsible for supplying both:
+
+- language through `provideLang`
+- current screen or route through `setPath(...)`
+
+## Cooldown handling
+
+The SDK persists cooldown state using `KeyValueStorage`. By default, `InitOptions` uses in-memory storage, but the API allows a custom storage implementation.
+
+Cooldown evaluation supports:
+
+- `SHOWED`
+- `PARTIAL`
+- `COMPLETED`
+
+## Best fit
+
+Server Mode is the right choice when teams want:
+
+- central control over popup definitions
+- reduced app release dependency for content or targeting changes
+- segmentation and trigger logic distributed through backend-managed popup payloads

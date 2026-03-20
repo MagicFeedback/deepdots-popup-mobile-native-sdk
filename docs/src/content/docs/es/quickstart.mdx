@@ -1,0 +1,44 @@
+---
+title: Quickstart
+description: Puesta en marcha rapida del SDK con el flujo real usado por las demos.
+---
+
+# Quickstart
+
+Las demos del repositorio arrancan en **Server Mode**.
+
+## Pasos base
+
+1. Inicializa `DeepdotsPopups` con `Mode.Server`
+2. Pasa `popupOptions.publicKey`
+3. Define `provideLang`
+4. Activa `autoLaunch`
+5. Llama a `setPath(...)`
+6. Adjunta el contexto de plataforma con `attachContext(...)`
+
+## Android
+
+```kotlin
+val options = InitOptions(
+    debug = true,
+    mode = Mode.Server,
+    popupOptions = PopupOptions(publicKey = "<your-public-key>"),
+    autoLaunch = true,
+    provideLang = { "en" },
+    metadata = mapOf("userId" to "demo-user")
+)
+```
+
+## iOS
+
+```swift
+let options = InitOptions(
+    debug: true,
+    mode: Mode.server,
+    popupOptions: PopupOptions(id: nil, publicKey: "<your-public-key>", popups: nil, companyId: nil),
+    provideLang: { Locale.current.language.languageCode?.identifier ?? "en" },
+    autoLaunch: true,
+    storage: nil,
+    metadata: ["userId": "demo-user"]
+)
+```

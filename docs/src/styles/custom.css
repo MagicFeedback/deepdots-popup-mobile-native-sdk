@@ -1,0 +1,37 @@
+:root {
+  --sl-color-accent-low: #d6f4ea;
+  --sl-color-accent: #0f8f6a;
+  --sl-color-accent-high: #075b45;
+  --sl-color-text-accent: #075b45;
+  --sl-color-white: #f9f8f2;
+  --sl-color-gray-1: #ebe8dc;
+  --sl-color-gray-2: #c9c2ae;
+  --sl-color-gray-3: #9c927a;
+  --sl-color-gray-4: #6d6554;
+  --sl-color-gray-5: #403a31;
+  --sl-color-gray-6: #27231d;
+  --sl-color-black: #171511;
+}
+
+body {
+  background:
+    radial-gradient(circle at top right, rgba(15, 143, 106, 0.16), transparent 28%),
+    linear-gradient(180deg, #f6f3ea 0%, #f0ecdf 100%);
+}
+
+[data-has-hero] .hero {
+  background:
+    linear-gradient(135deg, rgba(15, 143, 106, 0.10), rgba(248, 202, 112, 0.16)),
+    rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(15, 143, 106, 0.12);
+  border-radius: 1.5rem;
+  box-shadow: 0 24px 60px rgba(23, 21, 17, 0.08);
+}
+
+.card {
+  border-radius: 1rem;
+}
+
+.sl-markdown-content code:not(pre code) {
+  border-radius: 0.35rem;
+}

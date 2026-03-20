@@ -1,0 +1,69 @@
+---
+title: Client Mode
+description: Local popup definitions packaged directly into the host app.
+---
+
+# Client Mode
+
+`Mode.Client` exists in the public API and is the local-definition alternative to Server Mode.
+
+## How it differs from Server Mode
+
+In Client Mode, the SDK does **not** fetch remote popup definitions. Instead, the host app passes popup definitions directly in `PopupOptions.popups`.
+
+That means:
+
+- popup content and trigger configuration ship with the app build
+- no `publicKey` is required for local popup definition loading
+- trigger logic, cooldowns, and rendering still run in the SDK
+
+## Core shape
+
+```kotlin
+val popup = PopupDefinition(
+    id = "welcome-popup",
+    title = "Welcome",
+    message = "<p>Tell us how your first session went.</p>",
+    trigger = Trigger.TimeOnPage(seconds = 3.0),
+    triggers = listOf(Trigger.TimeOnPage(seconds = 3.0)),
+    actions = Actions(
+        accept = Action.Accept(label = "Start", surveyId = "survey-id"),
+        decline = Action.Decline(label = "Later", cooldownDays = 1)
+    ),
+    surveyId = "survey-id",
+    productId = "product-id"
+)
+
+val options = InitOptions(
+    mode = Mode.Client,
+    popupOptions = PopupOptions(popups = listOf(popup)),
+    autoLaunch = true,
+    provideLang = { "en" }
+)
+```
+
+## Helper available in code
+
+The `Deepdots` convenience object includes `createInitializedSimple(...)`, which creates a client-side popup definition and initializes the SDK in one step.
+
+## When to use it
+
+Client Mode is a better fit when:
+
+- the popup catalog is small and stable
+- a team wants deterministic local content for validation
+- backend-managed popup delivery is not yet available
+
+## Trade-offs
+
+Benefits:
+
+- simplest runtime dependency shape
+- no remote popup fetch required for the definition itself
+- easier local testing of a known popup
+
+Limits:
+
+- content changes require an app release
+- remote targeting flexibility is lower than Server Mode
+- central business control is lower than backend-managed delivery

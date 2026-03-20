@@ -25,3 +25,7 @@ dist/spm/*.zip.checksum
 maven_upload_temp/
 shared-android-*-maven-ready.zip
 iosApp/iosApp/magicfeedback/
+docs/node_modules/
+docs/dist/
+docs/.astro/
+docs/.site/

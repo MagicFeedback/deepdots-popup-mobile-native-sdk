@@ -1,0 +1,63 @@
+---
+const base = import.meta.env.BASE_URL ?? "/";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Page not found | Deepdots Popup SDK</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4efe3;
+        --card: rgba(255, 255, 255, 0.7);
+        --text: #1e1b16;
+        --muted: #5f584c;
+        --accent: #0f8f6a;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 2rem;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top right, rgba(15, 143, 106, 0.16), transparent 28%),
+          linear-gradient(180deg, #f6f3ea 0%, var(--bg) 100%);
+      }
+
+      main {
+        max-width: 42rem;
+        padding: 2rem;
+        border-radius: 1.5rem;
+        background: var(--card);
+        border: 1px solid rgba(15, 143, 106, 0.12);
+        box-shadow: 0 24px 60px rgba(23, 21, 17, 0.08);
+      }
+
+      a {
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      p {
+        color: var(--muted);
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Page not found</h1>
+      <p>The page you requested is not part of the published Deepdots Popup SDK documentation.</p>
+      <p>
+        Go back to the <a href={base}>documentation home page</a> and continue from there.
+      </p>
+    </main>
+  </body>
+</html>

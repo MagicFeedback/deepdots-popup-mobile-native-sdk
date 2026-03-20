@@ -1,0 +1,102 @@
+---
+title: Models and Events
+description: Core option types, trigger shapes, and lifecycle events defined in the shared SDK.
+---
+
+# Models and Events
+
+## Initialization models
+
+### `InitOptions`
+
+- `debug`
+- `mode`
+- `popupOptions`
+- `provideLang`
+- `autoLaunch`
+- `storage`
+- `metadata`
+
+### `PopupOptions`
+
+- `id`
+- `publicKey`
+- `popups`
+- `companyId`
+
+### `ShowOptions`
+
+- `surveyId`
+- `productId`
+- `data`
+
+## Popup definition model
+
+### `PopupDefinition`
+
+- `id`
+- `title`
+- `message`
+- `trigger`
+- `triggers`
+- `conditions`
+- `cooldown`
+- `legacyConditions`
+- `actions`
+- `surveyId`
+- `productId`
+- `style`
+- `segments`
+
+## Trigger models
+
+Supported trigger types in code:
+
+- `Trigger.TimeOnPage(seconds: Double)`
+- `Trigger.Scroll(percentage: Int)`
+- `Trigger.Exit(delaySeconds: Double = 0.0)`
+- `Trigger.Event(name: String)`
+- `Trigger.Click(targetId: String)`
+
+## Style and segmentation models
+
+### `Style`
+
+- `theme`
+- `position`
+- `imageUrl`
+- `imageSize`
+- `imageAlignment`
+
+### `Segments`
+
+- `lang`
+- `path`
+
+## Event model
+
+### `Event`
+
+- `PopupShown`
+- `PopupClicked`
+- `SurveyCompleted`
+
+The shared helper `Event.code()` maps them to:
+
+- `popup_shown`
+- `popup_clicked`
+- `survey_completed`
+
+### `EventData`
+
+- `popupId`
+- `surveyId`
+- `productId`
+- `extra`
+- `timestamp`
+
+## Notes for integration teams
+
+- `metadata` is where the examples pass `userId`
+- cooldown storage defaults to in-memory storage unless a custom `KeyValueStorage` is supplied
+- `LegacyCondition` remains supported for backward compatibility

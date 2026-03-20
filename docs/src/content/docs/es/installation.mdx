@@ -1,0 +1,38 @@
+---
+title: Installation
+description: Instalacion del SDK Deepdots Popup para Android e iOS.
+---
+
+# Installation
+
+La integracion publica visible en este repositorio sigue dos caminos:
+
+- Android con `com.deepdots.sdk:shared-android`
+- iOS con Swift Package Manager usando `DeepdotsSDK` y el producto `ComposeApp`
+
+## Android
+
+```kotlin
+dependencies {
+    implementation("com.deepdots.sdk:shared-android:0.1.7")
+}
+```
+
+Comandos de ejemplo:
+
+```bash
+./gradlew :example-android:assembleDebug
+./gradlew :example-android:installDebug
+```
+
+## iOS
+
+- Nombre del package SPM: `DeepdotsSDK`
+- Producto consumido desde Swift: `ComposeApp`
+- Target minimo visible en el repo: `iOS 13+`
+
+Si falta el binario local del ejemplo iOS:
+
+```bash
+./run_ios_example.sh
+```

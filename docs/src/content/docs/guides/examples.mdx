@@ -1,0 +1,68 @@
+---
+title: Examples
+description: What the included demo apps show and how to use them for internal validation.
+---
+
+# Examples
+
+This repository includes native demo applications. There is no checked-in public web demo in the repository, so this site does not publish a `/demo/` experience today.
+
+## Android example app
+
+Path:
+
+```text
+example-android/
+```
+
+What it demonstrates:
+
+- consuming the published Android package `com.deepdots.sdk:shared-android:0.1.7`
+- Server Mode initialization with a `publicKey`
+- user metadata through `metadata = mapOf("userId" to userId)`
+- path updates for `/login`, `/home`, and detail routes
+- event listeners for popup lifecycle events
+- manual triggering of a popup
+- event-driven and scroll-driven flows in the demo UI
+
+## Android local example app
+
+Path:
+
+```text
+example-android-local/
+```
+
+What it demonstrates:
+
+- consuming the local `:shared` module directly during repository development
+- validating SDK behavior without relying on the published Android artifact
+
+## iOS example app
+
+Path:
+
+```text
+iosApp/
+```
+
+What it demonstrates:
+
+- Server Mode initialization from Swift
+- attaching `PlatformContext` from a root view controller
+- navigation-driven path updates
+- scroll percentage reporting via `onScroll`
+- custom event triggering
+- binary Swift Package consumption through `ComposeApp`
+
+## Recommended validation flow for stakeholders
+
+1. Use the Android or iOS demo app to validate timing, UX placement, and event behavior.
+2. Confirm path naming with the screens used in the production host app.
+3. Verify popup lifecycle events against analytics expectations.
+4. Decide whether the rollout should start with Server Mode or a smaller Client Mode setup.
+
+## Public demo status
+
+- Public web demo currently available in this repository: **none**
+- Native example apps available for internal validation: **yes**

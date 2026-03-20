@@ -1,0 +1,72 @@
+---
+title: API Reference
+description: Public entry points exposed by the shared SDK.
+---
+
+# API Reference
+
+This page summarizes the public entry points visible in the shared Kotlin code.
+
+## Primary SDK class
+
+### `DeepdotsPopups`
+
+Main responsibilities:
+
+- initialize SDK runtime
+- load popup definitions
+- attach a platform context
+- evaluate triggers and queue popups
+- render popup and survey experiences
+- emit popup lifecycle events
+
+## Key methods
+
+### Initialization
+
+- `init(options: InitOptions)`
+- `initialize(options: InitOptions)`
+- `autoLaunch()`
+- `attachContext(context: PlatformContext)`
+
+### Navigation and triggers
+
+- `setPath(path: String?)`
+- `onScroll(percentage: Int)`
+- `onExit()`
+- `triggerEvent(eventName: String)`
+- `triggerClick(targetId: String)`
+
+### Display
+
+- `show(options: ShowOptions, context: PlatformContext)`
+- `showByPopupId(popupId: String, context: PlatformContext)`
+- `triggerSurvey(surveyId: String, context: PlatformContext, popupId: String? = null)`
+
+### Events
+
+- `on(event: Event, listener: (EventData) -> Unit)`
+- `off(event: Event, listener: (EventData) -> Unit)`
+
+## Convenience helpers
+
+### `Deepdots`
+
+The `Deepdots` object provides utility helpers:
+
+- `create()`
+- `createInitialized(options)`
+- `now()`
+- `parseHtml(html)`
+- `dismiss(context)`
+- `getSurveyHtml(surveyId, productId)`
+- `createInitializedSimple(...)`
+
+## Platform-specific helpers
+
+The repository also provides scroll binding helpers on Android:
+
+- `bindRecyclerView(recyclerView: RecyclerView)`
+- `bindScrollView(scrollView: ScrollView)`
+
+These help translate host scrolling into `onScroll(...)` updates for trigger evaluation.
