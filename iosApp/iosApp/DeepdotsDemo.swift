@@ -65,6 +65,7 @@ struct DeepdotsDemoView: View {
         let provideLang: () -> String = { Locale.current.language.languageCode?.identifier ?? "en" }
         let options = InitOptions(
             debug: true,
+            environment: Environment.development,
             mode: Mode.server,
             popupOptions: PopupOptions(
                 id: nil,

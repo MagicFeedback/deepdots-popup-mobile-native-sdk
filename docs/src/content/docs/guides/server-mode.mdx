@@ -19,10 +19,14 @@ When initialized in Server Mode, the SDK:
 
 ## Remote endpoints used by the SDK
 
-The default popup service derives the backend base URL from runtime environment:
+The default popup service derives the backend base URL from `InitOptions.environment`:
 
-- production: `https://api.deepdots.com`
-- debug/dev runtime: `https://api-dev.deepdots.com`
+- `Environment.Production` (default): `https://api.deepdots.com`
+- `Environment.Development`: `https://api-dev.deepdots.com`
+
+`InitOptions.debug` is independent of the environment and only controls SDK log output.
+To talk to production while keeping logs on, set `debug = true` and leave `environment`
+at its default (or set it explicitly to `Environment.Production`).
 
 The SDK fetches popups from:
 

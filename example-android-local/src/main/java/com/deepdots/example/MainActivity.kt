@@ -165,6 +165,7 @@ private fun DemoAppLocal(sdk: DeepdotsPopupsSdk) {
 private fun initSdkLocalForUser(sdk: DeepdotsPopupsSdk, userId: String) {
     val options = InitOptions(
         debug = true,
+        environment = Environment.Development,
         mode = Mode.Server,
         popupOptions = PopupOptions(
             publicKey = "12mGEGK4YXHXHrxZ45bJOsH6fiOl6ew1"

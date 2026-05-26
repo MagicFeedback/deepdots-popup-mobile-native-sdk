@@ -20,7 +20,8 @@ Las demos del repositorio arrancan en **Server Mode**.
 
 ```kotlin
 val options = InitOptions(
-    debug = true,
+    debug = true,                              // solo logs del SDK — NO cambia el backend
+    environment = Environment.Development,     // omite (o usa Environment.Production) para apuntar a prod
     mode = Mode.Server,
     popupOptions = PopupOptions(publicKey = "<your-public-key>"),
     autoLaunch = true,
@@ -29,11 +30,17 @@ val options = InitOptions(
 )
 ```
 
+`environment` controla la URL base del backend (`Environment.Production` →
+`https://api.deepdots.com`, `Environment.Development` → `https://api-dev.deepdots.com`).
+Por defecto es `Production`. `debug` controla solo los logs del SDK y es independiente
+del entorno: puedes tener logs activados en producción.
+
 ## iOS
 
 ```swift
 let options = InitOptions(
-    debug: true,
+    debug: true,                               // solo logs del SDK — NO cambia el backend
+    environment: Environment.development,      // omite (o usa .production) para apuntar a prod
     mode: Mode.server,
     popupOptions: PopupOptions(id: nil, publicKey: "<your-public-key>", popups: nil, companyId: nil),
     provideLang: { Locale.current.language.languageCode?.identifier ?? "en" },

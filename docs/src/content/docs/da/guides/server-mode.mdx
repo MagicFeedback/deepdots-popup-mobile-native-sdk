@@ -12,3 +12,14 @@ Den:
 - henter popup-definitioner fra backend
 - evaluerer triggers og segmenter i klienten
 - viser popup og survey i appen
+
+## Backend-miljoe
+
+Base-URL'en styres af `InitOptions.environment`:
+
+- `Environment.Production` (standard): `https://api.deepdots.com`
+- `Environment.Development`: `https://api-dev.deepdots.com`
+
+`InitOptions.debug` styrer kun SDK-logs og er uafhaengig af miljoeet. Saet
+`debug = true` med `environment` paa standardvaerdien for at have logs aktive
+mod produktion.

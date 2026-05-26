@@ -172,6 +172,7 @@ private fun initSdkForUser(sdk: DeepdotsPopupsSdk, userId: String) {
     // Server-like config mirroring iOS demo
     val options = InitOptions(
         debug = true,
+        environment = Environment.Development,
         mode = Mode.Server,
         popupOptions = PopupOptions(
             publicKey = "12mGEGK4YXHXHrxZ45bJOsH6fiOl6ew1"

@@ -6,6 +6,7 @@ import com.deepdots.sdk.models.Action
 import com.deepdots.sdk.models.Actions
 import com.deepdots.sdk.models.CooldownCondition
 import com.deepdots.sdk.models.Event
+import com.deepdots.sdk.models.Environment
 import com.deepdots.sdk.models.EventData
 import com.deepdots.sdk.models.InitOptions
 import com.deepdots.sdk.models.LegacyCondition
@@ -148,7 +149,10 @@ class DeepdotsPopups {
 
         initialized = true
         initOptions = options
-        SdkRuntime.env = if (options.debug == true) "dev" else "prod"
+        SdkRuntime.env = when (options.environment) {
+            Environment.Development -> "dev"
+            else -> "prod"
+        }
         SdkRuntime.publicKey = options.popupOptions.publicKey
         SdkRuntime.metadata = options.metadata
         SdkRuntime.userId = when (val userIdMeta = options.metadata?.get("userId")) {

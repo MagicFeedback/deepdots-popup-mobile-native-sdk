@@ -13,7 +13,8 @@ The examples in this repository use **Server Mode** first. That is the fastest w
 
 ```kotlin
 val options = InitOptions(
-    debug = true,
+    debug = true,                              // SDK logs only — does NOT change the backend
+    environment = Environment.Development,     // omit (or use Environment.Production) to hit prod
     mode = Mode.Server,
     popupOptions = PopupOptions(
         publicKey = "<your-public-key>"
@@ -29,11 +30,16 @@ val sdk = DeepdotsPopups().apply {
 }
 ```
 
+`environment` controls the backend base URL (`Environment.Production` → `https://api.deepdots.com`,
+`Environment.Development` → `https://api-dev.deepdots.com`). It defaults to `Production` when
+omitted. `debug` controls SDK log output only and is independent of the environment.
+
 ### iOS
 
 ```swift
 let options = InitOptions(
-    debug: true,
+    debug: true,                               // SDK logs only — does NOT change the backend
+    environment: Environment.development,      // omit (or use .production) to hit prod
     mode: Mode.server,
     popupOptions: PopupOptions(
         id: nil,
