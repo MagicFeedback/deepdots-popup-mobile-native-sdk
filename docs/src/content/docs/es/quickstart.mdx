@@ -35,6 +35,19 @@ val options = InitOptions(
 Por defecto es `Production`. `debug` controla solo los logs del SDK y es independiente
 del entorno: puedes tener logs activados en producción.
 
+Tras inicializar, `DeepdotsPopups` expone una propiedad de solo lectura `environment`
+con el entorno activo, útil para que la app host la incluya en sus propios logs o
+checks de diagnóstico.
+
+### Etiquetas de botones localizadas
+
+`provideLang` también se usa para localizar las etiquetas por defecto de los botones
+internos del SDK (Send / Cancel / Start survey / Complete survey / Back). Idiomas
+soportados de fábrica: **en, es, da, no, sv, fi, zh-CN**. Se aceptan variantes con
+región (`es-ES`, `nb-NO`, `zh-Hans`) o con guion bajo (`es_419`). Los idiomas no
+soportados caen a inglés. Las etiquetas definidas en `PopupDefinition.actions`
+(server o cliente) siempre tienen prioridad sobre los valores por defecto.
+
 ## iOS
 
 ```swift

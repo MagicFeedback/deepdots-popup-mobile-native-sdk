@@ -34,6 +34,19 @@ val sdk = DeepdotsPopups().apply {
 `Environment.Development` → `https://api-dev.deepdots.com`). It defaults to `Production` when
 omitted. `debug` controls SDK log output only and is independent of the environment.
 
+After initialization the SDK exposes a read-only `environment` property on `DeepdotsPopups`,
+so host apps can assert which backend they are pointed at and surface it in their own
+diagnostics or logs.
+
+### Localized button labels
+
+`provideLang` is also used to localize the SDK's built-in fallback button labels
+(Send / Cancel / Start survey / Complete survey / Back). Supported locales out of
+the box: **en, es, da, no, sv, fi, zh-CN**. Region tags such as `es-ES`, `nb-NO`,
+`zh-Hans`, or underscore variants like `es_419` are accepted. Unsupported locales
+fall back to English. Server- or host-supplied labels in `PopupDefinition.actions`
+always take precedence over the built-in defaults.
+
 ### iOS
 
 ```swift

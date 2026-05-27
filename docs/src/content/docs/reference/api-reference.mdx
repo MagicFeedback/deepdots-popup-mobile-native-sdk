@@ -48,6 +48,12 @@ Main responsibilities:
 - `on(event: Event, listener: (EventData) -> Unit)`
 - `off(event: Event, listener: (EventData) -> Unit)`
 
+### Diagnostics
+
+- `environment: Environment` — read-only, reflects the backend the SDK is
+  pointed at after `init()` (defaults to `Environment.Production`). Useful for
+  asserting at runtime which backend a given `publicKey` is hitting.
+
 ## Convenience helpers
 
 ### `Deepdots`

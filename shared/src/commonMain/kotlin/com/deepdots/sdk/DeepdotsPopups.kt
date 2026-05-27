@@ -20,6 +20,7 @@ import com.deepdots.sdk.models.SurveyProgressState
 import com.deepdots.sdk.models.Theme
 import com.deepdots.sdk.models.Trigger
 import com.deepdots.sdk.models.TriggerConditionStatus
+import com.deepdots.sdk.i18n.DefaultLabels
 import com.deepdots.sdk.platform.PlatformContext
 import com.deepdots.sdk.platform.dismissPopup
 import com.deepdots.sdk.renderer.PopupRenderer
@@ -119,6 +120,17 @@ class DeepdotsPopups {
     private var initOptions: InitOptions? = null
     private var initialized = false
     private var popupsLoaded = false
+
+    /**
+     * Backend environment the SDK is talking to.
+     *
+     * Reflects the [Environment] passed in [InitOptions.environment]. Defaults to
+     * [Environment.Production] before [init] is called. Useful for host apps that
+     * want to assert at runtime which backend their public key is hitting and
+     * surface it in their own diagnostics or logs.
+     */
+    var environment: Environment = Environment.Production
+        private set
     private var pendingAutoLaunch = false
     private val eventBus = EventBus()
     private val popupDefinitions = linkedMapOf<String, PopupDefinition>()
@@ -149,12 +161,14 @@ class DeepdotsPopups {
 
         initialized = true
         initOptions = options
-        SdkRuntime.env = when (options.environment) {
+        environment = options.environment ?: Environment.Production
+        SdkRuntime.env = when (environment) {
             Environment.Development -> "dev"
             else -> "prod"
         }
         SdkRuntime.publicKey = options.popupOptions.publicKey
         SdkRuntime.metadata = options.metadata
+        SdkRuntime.provideLang = options.provideLang
         SdkRuntime.userId = when (val userIdMeta = options.metadata?.get("userId")) {
             is String -> userIdMeta
             is Number -> userIdMeta.toString()
@@ -957,17 +971,33 @@ class DeepdotsPopups {
     }
 
     private fun mapActions(actions: ServerActionsDto?): Actions {
+        val lang = initOptions?.provideLang?.invoke()
         val accept = actions?.accept?.let {
-            Action.Accept(label = it.label ?: "Send", surveyId = it.surveyId ?: "")
+            Action.Accept(
+                label = it.label.orFallback(DefaultLabels.Slot.ACCEPT, lang),
+                surveyId = it.surveyId ?: "",
+            )
         }
         val decline = actions?.decline?.let {
-            Action.Decline(label = it.label ?: "Cancel", cooldownDays = it.cooldownDays ?: 0)
+            Action.Decline(
+                label = it.label.orFallback(DefaultLabels.Slot.DECLINE, lang),
+                cooldownDays = it.cooldownDays ?: 0,
+            )
         }
-        val start = actions?.start?.let { Action.Start(label = it.label ?: "Start") }
-        val complete = actions?.complete?.let { Action.Complete(label = it.label ?: "Complete") }
-        val back = actions?.back?.let { Action.Back(label = it.label ?: "Back") }
+        val start = actions?.start?.let {
+            Action.Start(label = it.label.orFallback(DefaultLabels.Slot.START, lang))
+        }
+        val complete = actions?.complete?.let {
+            Action.Complete(label = it.label.orFallback(DefaultLabels.Slot.COMPLETE, lang))
+        }
+        val back = actions?.back?.let {
+            Action.Back(label = it.label.orFallback(DefaultLabels.Slot.BACK, lang))
+        }
         return Actions(accept = accept, decline = decline, start = start, complete = complete, back = back)
     }
+
+    private fun String?.orFallback(slot: DefaultLabels.Slot, lang: String?): String =
+        this?.takeIf { it.isNotBlank() } ?: DefaultLabels.resolve(slot, lang)
 
     private fun mapSegments(segments: ServerSegmentsDto?): Segments? {
         if (segments == null) return null

@@ -15,3 +15,18 @@ Demoapps bruger **Server Mode**.
 4. Aktiver `autoLaunch`
 5. Kald `setPath(...)`
 6. Tilfoej platformskontekst via `attachContext(...)`
+
+## Backend-miljø
+
+`environment` styrer hvilken backend SDK'et taler med (`Environment.Production`
+eller `Environment.Development`). Standard er `Production`. Efter initialisering
+kan værtsappen læse den read-only `environment`-property på `DeepdotsPopups` for
+at logge eller tjekke det aktive miljø.
+
+## Lokaliserede knapper
+
+`provideLang` bruges også til at lokalisere SDK'ets standard-knaptekster
+(Send / Cancel / Start survey / Complete survey / Back). Understøttede sprog:
+**en, es, da, no, sv, fi, zh-CN**. Regionsvarianter (`da-DK`, `nb-NO`, `zh-Hans`)
+accepteres. Ukendte sprog falder tilbage til engelsk. Etiketter sat på
+`PopupDefinition.actions` (server eller klient) har altid forrang.

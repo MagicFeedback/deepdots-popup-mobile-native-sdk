@@ -22,9 +22,14 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.deepdots.sdk.SdkRuntime
+import com.deepdots.sdk.i18n.DefaultLabels
 import com.deepdots.sdk.models.*
 import com.deepdots.sdk.util.HtmlParagraph
 import com.deepdots.sdk.util.parsePopupHtml
+
+private fun defaultLabel(slot: DefaultLabels.Slot): String =
+    DefaultLabels.resolve(slot, SdkRuntime.provideLang?.invoke())
 
 // Top-level enum to avoid local enum compile restriction
 private enum class ViewState { Loading, Start, InProgressFirst, InProgressNext, Completed, Error }
@@ -301,26 +306,26 @@ fun PopupView(
                                             errorHint = null
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.start?.label ?: "Start survey", color = Color.White) }
+                                    ) { Text(popup.actions.start?.label ?: defaultLabel(DefaultLabels.Slot.START), color = Color.White) }
                                 }
                                 ViewState.InProgressFirst -> {
                                     Spacer(modifier = Modifier.weight(1f))
                                     Button(
                                         onClick = { surveyController?.send() },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.accept?.label ?: "Send", color = Color.White) }
+                                    ) { Text(popup.actions.accept?.label ?: defaultLabel(DefaultLabels.Slot.ACCEPT), color = Color.White) }
                                 }
                                 ViewState.InProgressNext -> {
                                     OutlinedButton(
                                         onClick = { surveyController?.back() },
                                         colors = ButtonDefaults.outlinedButtonColors(contentColor = primaryColor),
                                         border = BorderStroke(1.dp, primaryColor)
-                                    ) { Text(popup.actions.back?.label ?: "Back") }
+                                    ) { Text(popup.actions.back?.label ?: defaultLabel(DefaultLabels.Slot.BACK)) }
                                     Spacer(modifier = Modifier.weight(1f))
                                     Button(
                                         onClick = { surveyController?.send() },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.accept?.label ?: "Send", color = Color.White) }
+                                    ) { Text(popup.actions.accept?.label ?: defaultLabel(DefaultLabels.Slot.ACCEPT), color = Color.White) }
                                 }
                                 ViewState.Completed -> {
                                     Button(
@@ -330,13 +335,13 @@ fun PopupView(
                                             if (complete != null) onAction(complete) else onAction(Action.Complete(label = "" ))
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.complete?.label ?: "Complete survey", color = Color.White) }
+                                    ) { Text(popup.actions.complete?.label ?: defaultLabel(DefaultLabels.Slot.COMPLETE), color = Color.White) }
                                 }
                                 ViewState.Error -> {
                                     Button(
                                         onClick = { popup.actions.decline?.let { onAction(it) } },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.decline?.label ?: "Close", color = Color.White) }
+                                    ) { Text(popup.actions.decline?.label ?: defaultLabel(DefaultLabels.Slot.DECLINE), color = Color.White) }
                                 }
                             }
                         }
