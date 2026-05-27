@@ -20,7 +20,7 @@ data class PopupDefinition(
     val surveyId: String,
     val productId: String,
     val style: Style = Style(),
-    val segments: Segments? = null // ahora opcional
+    val segments: Segments? = null
 )
 
 data class Actions(

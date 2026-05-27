@@ -19,10 +19,10 @@ data class InitOptions(
     val environment: Environment? = Environment.Production, // controls backend base URL
     val mode: Mode? = Mode.Client,
     val popupOptions: PopupOptions = PopupOptions(),
-    val provideLang: () -> String? = { null }, // lambda para resolver idioma actual
-    val autoLaunch: Boolean? = false, // si true inicia triggers automáticos tras init
-    val storage: KeyValueStorage? = InMemoryStorage(), // nuevo para cooldowns
-    val metadata: Map<String, Any>? = null // datos adicionales para el SDK
+    val provideLang: () -> String? = { null }, // resolver for the current UI language
+    val autoLaunch: Boolean? = false, // when true, triggers start evaluating immediately after init
+    val storage: KeyValueStorage? = InMemoryStorage(), // internal: within-session cooldown cache
+    val metadata: Map<String, Any>? = null // arbitrary host-supplied metadata forwarded to the backend
 )
 
 data class ShowOptions(

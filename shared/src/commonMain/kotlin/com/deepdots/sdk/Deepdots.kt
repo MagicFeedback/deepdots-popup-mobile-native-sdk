@@ -11,27 +11,27 @@ import com.deepdots.sdk.ui.platformSurveyHtml
 typealias DeepdotsPopupsSdk = DeepdotsPopups
 
 /**
- * Objeto de conveniencia para crear y configurar una instancia del SDK.
+ * Convenience entry point for creating and configuring an SDK instance.
  */
 object Deepdots {
-    /** Crea una instancia vacía (requiere llamar a init) */
+    /** Creates an empty instance (you must call `init` separately). */
     fun create(): DeepdotsPopupsSdk = DeepdotsPopupsSdk()
 
-    /** Crea e inicializa una instancia en un paso. */
+    /** Creates and initializes an instance in a single step. */
     fun createInitialized(options: InitOptions): DeepdotsPopupsSdk = DeepdotsPopupsSdk().apply { init(options) }
 
-    /** Timestamp utilitario (reexport). */
+    /** Current epoch millis (re-export). */
     fun now(): Long = currentTimeMillis()
 
-    /** Parseo HTML básico (reexport). */
+    /** Basic popup HTML parser (re-export). */
     fun parseHtml(html: String) = parsePopupHtml(html)
 
-    /** Dismiss manual (reexport). */
+    /** Manually dismisses the active popup (re-export). */
     fun dismiss(context: PlatformContext) = dismissPopup(context)
 
     /**
-     * Devuelve el HTML completo para renderizar la encuesta MagicFeedback (incluye loader y fallback CDN).
-     * Útil para que la app iOS/Android lo cargue directamente en su WebView/WKWebView.
+     * Returns the full HTML used to render a MagicFeedback survey (loader + CDN fallback included).
+     * Useful for hosts that want to load it directly inside an Android WebView or iOS WKWebView.
      */
     fun getSurveyHtml(surveyId: String, productId: String): String = platformSurveyHtml(surveyId, productId)
 

@@ -62,7 +62,7 @@ The host app is responsible for supplying both:
 
 ## Cooldown handling
 
-The SDK persists cooldown state using `KeyValueStorage`. By default, `InitOptions` uses in-memory storage, but the API allows a custom storage implementation.
+Frequency caps and re-display rules are enforced by the backend on every `/sdk/{publicKey}/popups` fetch, so they survive app restarts without any host-side configuration.
 
 Cooldown evaluation supports:
 

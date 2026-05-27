@@ -298,6 +298,14 @@ class DeepdotsPopups {
         enqueuePopup(matched.id)
     }
 
+    /**
+     * Records that a survey has been completed for the current user.
+     *
+     * You normally do **not** need to call this from host code: the SDK invokes it
+     * automatically when the underlying survey emits `survey_completed` or when the
+     * user taps the "Complete" action. It is exposed publicly only for unusual
+     * integrations that bypass the normal completion flow.
+     */
     fun markSurveyAnswered(surveyId: String) {
         answeredSurveys += surveyId
         markSurveyProgress(surveyId, TriggerConditionStatus.COMPLETED)

@@ -1,10 +1,10 @@
 import {DeepdotsEventType, PopupActions, FormData} from '../types';
 import magicfeedback from "@magicfeedback/native";
 
-// Inserta la hoja de estilos de MagicFeedback directamente en el popup para garantizar estilos incluso si el bundler no la inyecta globalmente.
+// Injects the MagicFeedback stylesheet directly into the popup so styles work even when the bundler doesn't inject them globally.
 function ensureMagicFeedbackStyles(popup: HTMLElement) {
     const DATA_ATTR = 'data-magicfeedback-css';
-    // Evitar duplicar si ya existe en el documento (head) o dentro del popup
+    // Skip if it already exists in the document head or inside the popup
     if (document.querySelector(`link[${DATA_ATTR}]`) || popup.querySelector(`link[${DATA_ATTR}]`)) {
         return;
     }
@@ -12,11 +12,11 @@ function ensureMagicFeedbackStyles(popup: HTMLElement) {
     link.rel = 'stylesheet';
     link.href = 'https://cdn.jsdelivr.net/npm/@magicfeedback/popup-sdk/dist/assets/assets/style.css';
     link.setAttribute(DATA_ATTR, 'true');
-    // Colocar al inicio del popup para cargar primero los estilos específicos
+    // Insert at the top of the popup so specific styles load first
     popup.appendChild(link);
 }
 
-// Añade estilos de spinner si no existen
+// Adds spinner styles if they aren't already present
 function ensureSpinnerStyles(popup: HTMLElement) {
     if (document.getElementById('deepdots-spinner-styles')) return;
     const style = document.createElement('style');
@@ -69,7 +69,7 @@ function ensureResponsiveStyles(popup: HTMLElement) {
 }
 
 /**
- * Renderiza el popup dentro del contenedor dado usando MagicFeedback para la encuesta.
+ * Renders the popup inside the given container using MagicFeedback for the survey.
  */
 export async function renderPopup(
     container: HTMLElement,
@@ -81,7 +81,7 @@ export async function renderPopup(
 ): Promise<void> {
     let surveyCompletedEmitted = false;
     let stylesInjected = false;
-    // Crear popup base
+    // Build base popup element
     const popup = document.createElement('div');
     popup.className = 'deepdots-popup';
     popup.style.cssText = `
@@ -98,12 +98,12 @@ export async function renderPopup(
       min-height: 200px;
     `;
 
-    // Sección header (solo botón cerrar)
+    // Header section (close button only)
     const header = document.createElement('div');
     header.className = 'deepdots-popup-header';
     header.style.cssText = 'display:flex; justify-content:flex-end; align-items:center; width:100%;';
 
-    // Botón de cierre (X)
+    // Close button (X)
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.setAttribute('aria-label', 'Close popup');
@@ -153,11 +153,11 @@ export async function renderPopup(
     display:flex; 
     flex-direction:column; 
     padding: 0 20px 12px 20px;
-      max-height: 80vh; /* límite general del popup */
-      overflow: hidden; /* quita scroll del contenedor principal */
+      max-height: 80vh; /* overall popup height limit */
+      overflow: hidden; /* disable scrolling on the main container */
 `
 
-    // Sección principal (main) - Contenedor formulario + spinner
+    // Main section: form + spinner container
     const main = document.createElement('div');
     main.className = 'deepdots-popup-main';
     main.style.cssText = 'display:flex; flex-direction:column; width:100%; max-height:80vh; overflow-y:auto;';
@@ -165,7 +165,7 @@ export async function renderPopup(
     const formWrapper = document.createElement('div');
     formWrapper.style.cssText = 'width:100%; flex: 1 1 auto;';
 
-    // Contenedor de aviso de error de validación
+    // Validation error hint container
     const errorHint = document.createElement('div');
     errorHint.className = 'deepdots-error-hint';
     errorHint.style.cssText = `
@@ -196,16 +196,16 @@ export async function renderPopup(
     formWrapper.appendChild(spinnerEl);
     formWrapper.appendChild(formHost);
     main.appendChild(formWrapper);
-    // Insertar el hint justo antes del footer
+    // Insert the hint right above the footer
     main.appendChild(errorHint);
 
-    // Sección footer (acciones) - botones en extremos
+    // Footer section (actions) — buttons on either edge
     const footer = document.createElement('div');
     footer.className = 'deepdots-popup-footer';
     footer.setAttribute('data-actions-wrapper', 'true');
     footer.style.cssText = 'display:flex; flex-direction: row-reverse ;justify-content:space-between; align-items:center; gap:8px; margin-top:auto; width:100%; padding-top:16px;';
 
-    // Botones
+    // Buttons
     const backButton = document.createElement('button');
     backButton.textContent = actions?.back ? actions.back.label : 'Back';
     backButton.style.cssText = `
@@ -235,8 +235,8 @@ export async function renderPopup(
         (formInstance as any)?.back?.();
     };
 
-    // Boton start survyes, solo aprece cuando la encuesta empieza con mensaje de inicio
-    // Width de 100% para que ocupe todo el espacio disponible
+    // Start-survey button: only shown when the survey begins with a start message.
+    // Rendered at 100% width so it fills the footer.
     const startButton = document.createElement('button');
     startButton.textContent = actions?.start ? actions.start.label : 'Start survey';
     startButton.style.cssText = `
@@ -260,8 +260,8 @@ export async function renderPopup(
         (formInstance as any)?.startForm?.();
     };
 
-    // Botón cerrar popup, solo aparece al terminar la encuesta
-    // Width de 100% para que ocupe todo el espacio disponible
+    // Close-popup button: only shown once the survey is completed.
+    // Rendered at 100% width so it fills the footer.
     const closeButton = document.createElement('button');
     closeButton.textContent = actions?.complete ? actions.complete.label : 'Complete survey';
     closeButton.style.cssText = `
@@ -290,7 +290,7 @@ export async function renderPopup(
         onClose();
     };
 
-    // Botón send, si es primera pagina ocupara el espacio completo pero si no estara al lado derecho
+    // Send button: full width on the first page, otherwise pinned to the right side.
     const submitButton = document.createElement('button');
     submitButton.textContent = actions?.accept ? actions.accept.label : 'Send';
     submitButton.style.cssText = `
@@ -311,7 +311,7 @@ export async function renderPopup(
     submitButton.onclick = () => {
         if (!surveyCompletedEmitted) {
             emit('popup_clicked', surveyId, {action: 'manual_send'});
-            // Dispara envío nativo si existe
+            // Trigger the native submit if available
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (formInstance as any)?.send?.();
         }
@@ -322,26 +322,26 @@ export async function renderPopup(
     submitButton.style.display = 'none';
     closeButton.style.display = 'none';
 
-    // Insertar botones dentro del footer en orden visual (row-reverse deja primario a la derecha)
+    // Insert buttons into the footer in visual order (row-reverse keeps the primary on the right)
     footer.appendChild(submitButton);
     footer.appendChild(backButton);
     footer.appendChild(closeButton);
     footer.appendChild(startButton);
 
-    // Añadir footer al main y main al containerContent
+    // Attach footer to main and main to containerContent
     main.appendChild(footer);
     containerContent.appendChild(main);
 
-    // Helper para controlar visibilidad de botones según estado
+    // Helper that toggles button visibility based on the current view state
     type ViewState = 'loading' | 'start' | 'in_progress_first' | 'in_progress_next' | 'completed' | 'error';
 
     function updateButtons(state: ViewState) {
-        // Por defecto, ocultar todos
+        // Hide everything by default
         backButton.style.display = 'none';
         startButton.style.display = 'none';
         submitButton.style.display = 'none';
         closeButton.style.display = 'none';
-        // Reset widths por estado
+        // Reset widths between states
         backButton.style.width = '';
         startButton.style.width = '';
         submitButton.style.width = '';
@@ -349,40 +349,40 @@ export async function renderPopup(
 
         switch (state) {
             case 'loading':
-                // Footer se ocultará desde setLoading
+                // Footer is hidden from setLoading
                 break;
             case 'start':
-                // Solo botón Start a ancho completo
+                // Only the Start button, full width
                 startButton.style.display = 'inline-flex';
                 startButton.style.width = '100%';
                 break;
             case 'in_progress_first':
-                // Solo botón Send (lado derecho), ancho auto
+                // Only the Send button (right side), auto width
                 submitButton.style.display = 'inline-flex';
                 submitButton.style.width = '';
                 setLoading(false);
                 break;
             case 'in_progress_next':
-                // Mostrar Back (izquierda) + Send (derecha)
+                // Show Back (left) + Send (right)
                 backButton.style.display = 'inline-flex';
                 submitButton.style.display = 'inline-flex';
                 setLoading(false);
                 break;
             case 'completed':
-                // Mostrar Close/Complete a ancho completo como acción principal
+                // Show Close/Complete full width as the primary action
                 closeButton.style.display = 'inline-flex';
                 closeButton.style.width = '100%';
                 setLoading(false);
                 break;
             case 'error':
-                // En error, permitir cerrar (ancho auto)
+                // On error, allow closing (auto width)
                 // closeButton.style.display = 'inline-flex';
                 setLoading(false);
                 break;
         }
     }
 
-    // Ensamblar popup
+    // Assemble popup
     popup.appendChild(header);
     popup.appendChild(containerContent);
 
@@ -390,42 +390,42 @@ export async function renderPopup(
     container.appendChild(popup);
     container.style.display = 'flex';
 
-    // Gestión dinámica de loading
+    // Dynamic loading state management
     function setLoading(isLoading: boolean) {
         spinnerEl.style.display = isLoading ? 'flex' : 'none';
         if (!isLoading) {
             formHost.style.visibility = 'visible';
         }
-        // Ocultar totalmente los botones cuando está cargando
+        // Fully hide the footer buttons while loading
         footer.style.display = isLoading ? 'none' : 'flex';
-        // Ajustar estados de los botones por si se muestran
+        // Disable buttons in case they are visible
         backButton.disabled = isLoading;
         startButton.disabled = isLoading;
         closeButton.disabled = isLoading;
         submitButton.disabled = isLoading;
         submitButton.style.opacity = isLoading ? '0.6' : '1';
         submitButton.style.cursor = isLoading ? 'not-allowed' : 'pointer';
-        // No sobrescribir el estado de botones al finalizar la carga.
+        // Don't overwrite the button state when loading finishes.
         if (isLoading) {
             updateButtons('loading');
         }
     }
 
-    // Estado inicial
+    // Initial state
     setLoading(true);
 
-    // Entorno navegador
+    // Browser environment guard
     if (typeof window === 'undefined' || typeof document === 'undefined') {
         return;
     }
 
-    // Referencia instancia formulario
+    // Reference to the form instance
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let formInstance: any = null;
 
     try {
         if (!magicfeedback || typeof magicfeedback.form !== 'function') {
-            console.warn('[MagicFeedback] form() no disponible. Fallback manual.');
+            console.warn('[MagicFeedback] form() not available. Falling back to manual rendering.');
             setLoading(false);
             return;
         }
@@ -449,34 +449,34 @@ export async function renderPopup(
             getMetaData: true,
         };
         generateOptions.onLoadedEvent = ({formData}) => {
-            // Calcular altura disponible y aplicarla al main (restando header + footer + paddings)
+            // Compute available height and apply it to main (subtract header + footer + paddings)
             try {
                 /*
                 const headerHeight = header.getBoundingClientRect().height;
                 const footerHeight = footer.getBoundingClientRect().height;
                 const paddingY = 48; // 24px top + 24px bottom
-                const viewportLimit = window.innerHeight * 0.8; // coincide con max-height del popup
+                const viewportLimit = window.innerHeight * 0.8; // matches the popup max-height
                 const available = viewportLimit - headerHeight - footerHeight - paddingY;
-                if (available > 120) { // asegurar un mínimo razonable
+                if (available > 120) { // keep a sensible minimum
                     main.style.maxHeight = available + 'px';
                 } */
             } catch (e) {
-                // silencioso
+                // swallowed
             }
-            // Personalización del popup basada en formData.style
+            // Apply popup customization driven by formData.style
             const s = formData?.style;
             if (s && !stylesInjected) {
                 stylesInjected = true;
-                // Fondo del contenedor popup
+                // Popup container background
                 if (s.boxBackgroundColor) {
                     popup.style.background = s.boxBackgroundColor;
                 }
-                // Alineación del contenido principal
+                // Main content alignment
                 if (s.contentAlign) {
                     // 'top' => start, 'center' => center
                     main.style.justifyContent = s.contentAlign === 'center' ? 'center' : 'flex-start';
                 }
-                // Botón primario (submit, start)
+                // Primary button (submit, start)
                 if (s.buttonPrimaryColor) {
                     submitButton.style.background = s.buttonPrimaryColor;
                     submitButton.style.border = 'none';
@@ -490,7 +490,7 @@ export async function renderPopup(
                     closeButton.style.border = 'none';
                     closeButton.style.color = '#fff';
                 }
-                // Botón secundario (back)
+                // Secondary button (back)
                 if (s.buttonSecondaryColor) {
 
                     backButton.style.color = '#fff';
@@ -498,7 +498,7 @@ export async function renderPopup(
                 }
                 if (s.logo) {
                     if (!document.getElementById('deepdots-popup-logo')) {
-                        // Insertar logo si existe
+                        // Insert logo if provided
                         const logoImg = document.createElement('img');
                         logoImg.id = 'deepdots-popup-logo';
                         logoImg.src = s.logo;
@@ -535,39 +535,39 @@ export async function renderPopup(
                                     break;
                             }
                         }
-                        // Insertar antes del main si no existe ya
+                        // Insert above main if not already present
                         containerContent.insertBefore(logoImg, main);
                     }
                 }
 
                 if (s.startMessage && s.startMessage !== '') {
-                    // Si hay mensaje de inicio, mostrar botón Start inicialmente
+                    // With a start message, show the Start button first
                     console.log(s.startMessage);
                     updateButtons('start');
                 } else {
-                    // Si no hay mensaje de inicio, mostrar estado de primera página (solo Send)
+                    // No start message → render the first-page state (Send only)
                     updateButtons('in_progress_first');
                 }
             } else {
-                // Sin estilos, asumir primera página normal
+                // No styles provided, assume a normal first page
                 updateButtons('in_progress_first');
             }
 
             emit('popup_clicked', surveyId, {action: 'loaded'});
-            setLoading(false); // hace visible el formulario y oculta el spinner
+            setLoading(false); // reveals the form and hides the spinner
         };
         generateOptions.beforeSubmitEvent = () => {
             setLoading(true);
             emit('popup_clicked', surveyId, {action: 'before_submit'});
         };
         generateOptions.afterSubmitEvent = ({error, completed, total, progress}) => {
-            // No cambiar estado de loading aquí; lo gestiona cada transición
-            // Normalizar el error a texto seguro
+            // Don't change the loading state here; each transition handles it
+            // Normalize the error to safe text
             const errText = error ? (typeof error === 'string' ? error : ((error as unknown as {message?: string}).message ?? String(error))) : '';
             if (errText) {
-                // Desactivar loading para que se vean los botones
+                // Turn off loading so buttons are visible again
                 setLoading(false);
-                // Caso específico: error de pregunta obligatoria
+                // Special case: required-question validation error
                 if (errText.toLowerCase().includes('no response')) {
                     errorHint.textContent = 'Please answer the required question to continue.';
                     errorHint.style.display = 'block';
@@ -575,14 +575,14 @@ export async function renderPopup(
                     updateButtons('in_progress_next');
                     return;
                 }
-                // Otros errores: mostrar mensaje genérico y permitir cerrar
+                // Other errors: show a generic message and let the user close
                 errorHint.textContent = 'An error occurred while submitting. Please try again or close the popup.';
                 errorHint.style.display = 'block';
                 emit('popup_clicked', surveyId, {action: 'submit_error', error: errText});
                 // updateButtons('error');
                 return;
             }
-            // Limpiar hint si no hay error
+            // Clear the hint when there's no error
             errorHint.style.display = 'none';
             setLoading(false);
             if (completed) {
@@ -599,7 +599,7 @@ export async function renderPopup(
         };
         generateOptions.onBackEvent = ({progress}) => {
             emit('popup_clicked', surveyId, {action: 'back'});
-            // Si volvemos a la primera página, ocultar Back
+            // Hide Back when returning to the first page
             if (progress === 0) {
                 updateButtons('in_progress_first');
             } else {
@@ -607,7 +607,7 @@ export async function renderPopup(
             }
         };
 
-        // Ejecutar generación con opciones tipadas
+        // Run form generation with the typed options
         formInstance.generate(formDivId, generateOptions)
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .catch((err: any) => {

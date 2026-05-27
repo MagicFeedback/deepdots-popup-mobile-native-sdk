@@ -1,6 +1,6 @@
 package com.deepdots.sdk.storage
 
-/** Persistencia sencilla para cooldowns y timestamps multiplataforma */
+/** Lightweight cross-platform key/value store used internally for cooldown caching. */
 interface KeyValueStorage {
     fun getLong(key: String): Long?
     fun putLong(key: String, value: Long)
@@ -9,7 +9,7 @@ interface KeyValueStorage {
     fun remove(key: String)
 }
 
-/** Implementación en memoria (fallback si la plataforma no provee storage real) */
+/** In-memory implementation used as the default within-session cache. */
 class InMemoryStorage : KeyValueStorage {
     private val longMap = mutableMapOf<String, Long>()
     private val stringMap = mutableMapOf<String, String>()
