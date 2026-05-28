@@ -2,6 +2,65 @@
 
 All notable changes to the Deepdots Popup SDK are documented in this file.
 
+## 0.2.2
+
+### Added
+
+- Built-in localization for the SDK's default button labels (Send / Cancel /
+  Start survey / Complete survey / Back). `provideLang` now drives the
+  fallback used when `PopupDefinition.actions` does not supply an explicit
+  label. Supported locales: `en`, `es`, `da`, `no` (incl. `nb` / `nn`), `sv`,
+  `fi`, `zh-CN` (incl. `zh-Hans`). Region tags (`es-ES`, `nb-NO`, `zh-Hans`)
+  and underscore variants (`es_419`) are accepted; unsupported locales fall
+  back to English. Host- or server-supplied labels still take precedence.
+- Public read-only `DeepdotsPopups.environment: Environment` property so
+  host apps can assert at runtime which backend their `publicKey` is
+  hitting. Reflects the value passed in `InitOptions.environment` and
+  defaults to `Environment.Production` before `init()` is called.
+
+### Fixed
+
+- Survey WebView popups now wrap the form container with the `deepdots-popup`
+  CSS class. The official popup stylesheet scopes most input, select,
+  textarea, radio and focus rules under `.deepdots-popup`, so without this
+  wrapper Android (and iOS) WebViews fell back to the platform's default
+  user-agent styles. Symptoms reported by integrators included text inputs
+  showing the orange WebView focus outline and rating questions rendering as
+  a native multi-`<select>` with the default blue selection highlight. With
+  the wrapper in place all scoped rules now apply correctly.
+
+### Changed
+
+- Bumped bundled `@magicfeedback/native` from `2.1.7-alpha.9` to the latest
+  stable `2.2.4`. The CDN URLs (jsDelivr and unpkg) and the three local
+  fallback bundles (`shared/src/androidMain/assets/magicfeedback/`,
+  `shared/src/iosMain/resources/magicfeedback/`,
+  `iosApp/iosApp/magicfeedback/`) have all been refreshed.
+- `example-android` now depends on `:shared` via `project()` instead of the
+  published Maven artifact so unreleased SDK changes are exercisable in the
+  demo without first publishing a snapshot.
+- `example-android` Login screen exposes a language picker for all seven
+  supported locales, and the Home top bar surfaces the active environment
+  and language as a subtitle (`env=… · lang=…`).
+- Translated remaining Spanish KDocs and inline source comments to English
+  across the public `commonMain` surface so IDE hover documentation reads
+  in English for SDK consumers. The internal example
+  `ui/example-ts-renderPopup.ts` was translated as well.
+- Added a clarifying KDoc to `DeepdotsPopups.markSurveyAnswered()` noting
+  that the SDK invokes it automatically on survey completion; hosts do not
+  need to call it manually in normal flows.
+
+### Documentation
+
+- Documented the i18n behavior and the new `environment` getter in the
+  English, Spanish, and Danish quickstart pages, and added a "Diagnostics"
+  entry to the API reference.
+- Removed the internal `Storage` / `KeyValueStorage` option from the public
+  documentation (quickstart, models reference, server-mode guide). The SDK
+  is designed for server mode where frequency caps are enforced by the
+  backend; the in-memory cooldown cache is an internal detail and is no
+  longer surfaced as a configurable knob.
+
 ## 0.2.0
 
 ### Breaking changes

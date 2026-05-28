@@ -3,7 +3,7 @@ package com.deepdots.sdk.ui
 import com.deepdots.sdk.SdkRuntime
 
 // Centralized MagicFeedback package version used for all CDN URLs
-private const val MAGICFEEDBACK_VERSION: String = "2.1.7-alpha.9"
+private const val MAGICFEEDBACK_VERSION: String = "2.2.4"
 
 /**
  * Common HTML builder for MagicFeedback survey popup used by Android/iOS WebViews.
@@ -110,7 +110,7 @@ internal fun buildMagicFeedbackHtml(
           <style>body{margin:0;background:transparent;font-family:$fontFamily;} #mf-status{color:#666;font-size:12px;padding:4px;} </style>
           <link rel="stylesheet" href="$urlStyleDefault" />
         </head>
-        <body>
+        <body class="deepdots-popup">
           <div id='mf-form'></div>
           <script>
             (function(){

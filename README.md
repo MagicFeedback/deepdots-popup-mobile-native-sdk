@@ -48,7 +48,7 @@ Deepdots Popup SDK helps you:
 - Add Maven Central (already in demos) and depend on the published artifact:
 ```kotlin
 dependencies {
-    implementation("com.deepdots.sdk:shared-android:0.2.0")
+    implementation("com.deepdots.sdk:shared-android:0.2.2")
 }
 ```
 - Server mode uses your `publicKey` and remote popups. In the demo (`example-android/MainActivity.kt`), update `publicKey` and `metadata` (e.g., userId). Paths are set via `setPath("/home")`, `setPath("/detail/1")`, etc.
@@ -59,7 +59,7 @@ dependencies {
 ```
 
 ### iOS (Swift Package Manager - Binary) [Official]
-- Add package: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`, version `0.2.0` (requires the release with `DeepdotsSDK-0.2.0.xcframework.zip` uploaded).
+- Add package: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`, version `0.2.2` (requires the release with `DeepdotsSDK-0.2.2.xcframework.zip` uploaded).
 - In the demo (`iosApp/DeepdotsDemo.swift`), set your `publicKey` and optional metadata (userId). Paths are updated when navigating (`/home`, `/detail/1`, `/detail/2`, `/detail/3`, `/detail/4`).
 - The checked-in iOS demo project resolves a local package from `spm-local/`. Run `./run_ios_example.sh` to regenerate `dist/spm-local/ComposeApp.xcframework` before opening Xcode if that local binary is missing.
 - Resolve/build demo:
