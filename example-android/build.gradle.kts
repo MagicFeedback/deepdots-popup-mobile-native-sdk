@@ -26,7 +26,9 @@ android {
 }
 
 dependencies {
-    implementation("com.deepdots.sdk:shared-android:0.2.0")
+    // Use the local :shared module so the example exercises the latest SDK
+    // source (including features still en route to a Maven release).
+    implementation(project(":shared"))
     implementation(libs.androidx.activity.compose)
     implementation("androidx.compose.ui:ui:1.7.0")
     implementation("androidx.compose.material3:material3:1.2.0")

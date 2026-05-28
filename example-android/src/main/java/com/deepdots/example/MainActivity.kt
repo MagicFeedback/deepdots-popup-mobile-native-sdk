@@ -55,6 +55,24 @@ private fun Context.findActivity(): Activity? {
     return null
 }
 
+// Mutable holder read by the SDK's provideLang lambda. Updated by the language
+// selector on the Login screen so the next popup picks up the new locale
+// without needing a full re-init.
+@Volatile
+private var currentLang: String = "en"
+
+private data class LangOption(val tag: String, val label: String)
+
+private val SUPPORTED_LANGS = listOf(
+    LangOption("en", "🇬🇧 English"),
+    LangOption("es", "🇪🇸 Español"),
+    LangOption("da", "🇩🇰 Dansk"),
+    LangOption("no", "🇳🇴 Norsk"),
+    LangOption("sv", "🇸🇪 Svenska"),
+    LangOption("fi", "🇫🇮 Suomi"),
+    LangOption("zh-CN", "🇨🇳 简体中文"),
+)
+
 class MainActivity : ComponentActivity() {
     private val sdk = Deepdots.create()
 
@@ -118,20 +136,30 @@ private fun DemoApp(sdk: DeepdotsPopupsSdk) {
         sdk.on(Event.SurveyCompleted) { event -> println("[Android] SurveyCompleted: ${'$'}{event.surveyId}") }
     }
 
+    var selectedLang by remember { mutableStateOf(currentLang) }
+
     when (screen) {
         ScreenState.Login -> LoginScreen(
             selectedUserId = selectedUserId,
             onSelectUser = { selectedUserId = it },
             customUserId = customUserId,
             onCustomUserChange = { customUserId = it },
+            selectedLang = selectedLang,
+            onSelectLang = {
+                selectedLang = it
+                currentLang = it
+            },
             onStart = {
                 val uid = if (customUserId.isBlank()) selectedUserId else customUserId
+                currentLang = selectedLang
                 initSdkForUser(sdk, uid)
                 screen = ScreenState.Home
             }
         )
         ScreenState.Home -> HomeScreen(
             events = events,
+            environmentLabel = sdk.environment.name,
+            activeLang = selectedLang,
             onSelect = { item ->
                 sdk.setPath(item.path)
                 selectedEvent = item
@@ -178,19 +206,23 @@ private fun initSdkForUser(sdk: DeepdotsPopupsSdk, userId: String) {
             publicKey = "12mGEGK4YXHXHrxZ45bJOsH6fiOl6ew1"
         ),
         autoLaunch = true,
-        provideLang = { "en" },
+        // Read from the mutable holder so the user can change the locale on the
+        // Login screen and the next popup picks it up immediately.
+        provideLang = { currentLang },
         metadata = mapOf("userId" to userId)
     )
     sdk.init(options)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun LoginScreen(
     selectedUserId: String,
     onSelectUser: (String) -> Unit,
     customUserId: String,
     onCustomUserChange: (String) -> Unit,
+    selectedLang: String,
+    onSelectLang: (String) -> Unit,
     onStart: () -> Unit
 ) {
     val presets = listOf("alpha-01", "beta-01", "gamma-01")
@@ -220,6 +252,27 @@ private fun LoginScreen(
                 label = { Text("Custom User ID") },
                 modifier = Modifier.fillMaxWidth()
             )
+            Divider()
+            // Language selector to demo the built-in i18n fallbacks
+            Text(
+                "provideLang locale — drives the SDK's default button labels",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+            )
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                SUPPORTED_LANGS.forEach { option ->
+                    val selected = option.tag == selectedLang
+                    if (selected) {
+                        Button(onClick = { onSelectLang(option.tag) }) { Text(option.label) }
+                    } else {
+                        OutlinedButton(onClick = { onSelectLang(option.tag) }) { Text(option.label) }
+                    }
+                }
+            }
             Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text("Start") }
         }
     }
@@ -229,13 +282,24 @@ private fun LoginScreen(
 @Composable
 private fun HomeScreen(
     events: List<EventItem>,
+    environmentLabel: String,
+    activeLang: String,
     onSelect: (EventItem) -> Unit,
     onLogout: () -> Unit
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("deepdots", fontWeight = FontWeight.Bold) },
+                title = {
+                    Column {
+                        Text("deepdots", fontWeight = FontWeight.Bold)
+                        Text(
+                            "env=$environmentLabel · lang=$activeLang",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                        )
+                    }
+                },
                 actions = { OutlinedButton(onClick = onLogout) { Text("Sign out") } }
             )
         }
