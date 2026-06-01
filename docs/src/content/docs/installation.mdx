@@ -38,7 +38,7 @@ The Android example app in this repository uses that exact coordinate.
 
 ## iOS
 
-The checked-in SPM manifest is binary-based and currently named `DeepdotsSDK`. It exposes the library product `ComposeApp`.
+The checked-in SPM manifest is binary-based and currently named `DeepdotsSDK`. It exposes the library product `DeepdotsSDK`.
 
 ```swift
 // swift-tools-version: 5.7
@@ -50,7 +50,7 @@ let package = Package(
         .iOS(.v13)
     ],
     products: [
-        .library(name: "ComposeApp", targets: ["ComposeApp"])
+        .library(name: "DeepdotsSDK", targets: ["DeepdotsSDK"])
     ]
 )
 ```

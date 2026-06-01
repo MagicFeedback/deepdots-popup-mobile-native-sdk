@@ -1,6 +1,6 @@
 import SwiftUI
 import WebKit
-import ComposeApp
+import DeepdotsSDK
 
 struct DeepdotsLogoView: View {
     let urlString: String

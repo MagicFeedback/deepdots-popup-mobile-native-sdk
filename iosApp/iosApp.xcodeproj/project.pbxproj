@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		765FC1C82F1553C5004E2751 /* ComposeApp in Frameworks */ = {isa = PBXBuildFile; productRef = 765FC1C72F1553C5004E2751 /* ComposeApp */; };
+		765FC1C82F1553C5004E2751 /* DeepdotsSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 765FC1C72F1553C5004E2751 /* DeepdotsSDK */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -41,7 +41,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				765FC1C82F1553C5004E2751 /* ComposeApp in Frameworks */,
+				765FC1C82F1553C5004E2751 /* DeepdotsSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -92,7 +92,7 @@
 			);
 			name = iosApp;
 			packageProductDependencies = (
-				765FC1C72F1553C5004E2751 /* ComposeApp */,
+				765FC1C72F1553C5004E2751 /* DeepdotsSDK */,
 			);
 			productName = iosApp;
 			productType = "com.apple.product-type.application";
@@ -369,10 +369,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		765FC1C72F1553C5004E2751 /* ComposeApp */ = {
+		765FC1C72F1553C5004E2751 /* DeepdotsSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 765FC1C62F1553C5004E2751 /* XCLocalSwiftPackageReference "spm-local" */;
-			productName = ComposeApp;
+			productName = DeepdotsSDK;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

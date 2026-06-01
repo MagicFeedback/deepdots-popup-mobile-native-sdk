@@ -66,7 +66,7 @@ dependencies {
   <true/>
   ```
 - In the demo (`iosApp/DeepdotsDemo.swift`), set your `publicKey` and optional metadata (userId). Paths are updated when navigating (`/home`, `/detail/1`, `/detail/2`, `/detail/3`, `/detail/4`).
-- The checked-in iOS demo project resolves a local package from `spm-local/`. Run `./run_ios_example.sh` to regenerate `dist/spm-local/ComposeApp.xcframework` before opening Xcode if that local binary is missing.
+- The checked-in iOS demo project resolves a local package from `spm-local/`. Run `./run_ios_example.sh` to regenerate `dist/spm-local/DeepdotsSDK.xcframework` before opening Xcode if that local binary is missing.
 - Resolve/build demo:
 ```bash
 cd iosApp
@@ -100,7 +100,7 @@ let options = InitOptions(
     storage: nil,
     metadata: ["userId": uid]
 )
-let instance = ComposeApp.DeepdotsPopups()
+let instance = DeepdotsSDK.DeepdotsPopups()
 instance.initialize(options: options)
 instance.setPath(path: "/home")
 ```
@@ -110,7 +110,7 @@ instance.setPath(path: "/home")
 sdk.show(ShowOptions(surveyId = "survey-123", productId = "product-xyz"), PlatformContext(activity))
 ```
 ```swift
-// iOS: similar call via ComposeApp.DeepdotsPopups().show(...) if needed
+// iOS: similar call via DeepdotsSDK.DeepdotsPopups().show(...) if needed
 ```
 
 ### Listen for events

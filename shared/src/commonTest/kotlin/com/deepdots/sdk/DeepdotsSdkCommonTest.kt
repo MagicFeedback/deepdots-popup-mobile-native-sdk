@@ -3,7 +3,7 @@ package com.deepdots.sdk
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ComposeAppCommonTest {
+class DeepdotsSdkCommonTest {
 
     @Test
     fun example() {

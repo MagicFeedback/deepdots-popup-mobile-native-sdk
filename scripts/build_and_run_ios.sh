@@ -11,8 +11,8 @@ VERSION=${1:-2.1.7-alpha.9}
 SIM_NAME=${2:-'iPhone 15'}
 GRADLEW="$ROOT_DIR/gradlew"
 LOCAL_XCFRAMEWORK_DIR="$ROOT_DIR/dist/spm-local"
-LOCAL_XCFRAMEWORK_PATH="$LOCAL_XCFRAMEWORK_DIR/ComposeApp.xcframework"
-LOCAL_SIM_FRAMEWORK="$ROOT_DIR/shared/build/bin/iosSimulatorArm64/debugFramework/ComposeApp.framework"
+LOCAL_XCFRAMEWORK_PATH="$LOCAL_XCFRAMEWORK_DIR/DeepdotsSDK.xcframework"
+LOCAL_SIM_FRAMEWORK="$ROOT_DIR/shared/build/bin/iosSimulatorArm64/debugFramework/DeepdotsSDK.framework"
 
 info() { echo "[iOS] $1"; }
 

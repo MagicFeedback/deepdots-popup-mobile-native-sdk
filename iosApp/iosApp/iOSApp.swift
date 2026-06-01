@@ -1,5 +1,5 @@
 import SwiftUI
-import ComposeApp
+import DeepdotsSDK
 
 @main
 struct iOSApp: App {

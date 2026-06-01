@@ -9,8 +9,8 @@ DEST_NAME=${DEST_NAME:-""}
 DEST_ID=${DEST_ID:-""}
 CONFIG=${CONFIG:-"Debug"}
 LOCAL_XCFRAMEWORK_DIR="dist/spm-local"
-LOCAL_XCFRAMEWORK_PATH="$LOCAL_XCFRAMEWORK_DIR/ComposeApp.xcframework"
-LOCAL_SIM_FRAMEWORK="shared/build/bin/iosSimulatorArm64/debugFramework/ComposeApp.framework"
+LOCAL_XCFRAMEWORK_PATH="$LOCAL_XCFRAMEWORK_DIR/DeepdotsSDK.xcframework"
+LOCAL_SIM_FRAMEWORK="shared/build/bin/iosSimulatorArm64/debugFramework/DeepdotsSDK.framework"
 
 function info() { echo "[run_ios_example] $1"; }
 
@@ -68,7 +68,7 @@ xcrun simctl bootstatus "$SIM_ID" -b || true
 
 # 1) Construir la app para el simulador usando SPM
 # Antes de resolver paquetes, regeneramos el XCFramework local del simulador.
-info "Regenerando ComposeApp.xcframework local para Simulator"
+info "Regenerando DeepdotsSDK.xcframework local para Simulator"
 ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 >/dev/null
 rm -rf "$LOCAL_XCFRAMEWORK_PATH"
 mkdir -p "$LOCAL_XCFRAMEWORK_DIR"
@@ -111,7 +111,7 @@ info "Localizando el .app construido en DerivedData"
 APP_PATH=$(ls -d ~/Library/Developer/Xcode/DerivedData/iosApp-*/Build/Products/${CONFIG}-iphonesimulator/DeepdotsPopupSDK.app 2>/dev/null | head -n1)
 if [[ -z "$APP_PATH" ]]; then
   echo "Error: .app no encontrado en DerivedData" >&2
-  echo "Sugerencia: abre Xcode y compila el esquema 'iosApp' para el simulador, asegurando que el paquete SPM 'ComposeApp' esté vinculado y eliminando referencias a Pods si ya no se usan." >&2
+  echo "Sugerencia: abre Xcode y compila el esquema 'iosApp' para el simulador, asegurando que el paquete SPM 'DeepdotsSDK' esté vinculado y eliminando referencias a Pods si ya no se usan." >&2
   exit 1
 fi
 info "Instalando app: $APP_PATH"

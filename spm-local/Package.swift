@@ -7,12 +7,12 @@ let package = Package(
         .iOS(.v13)
     ],
     products: [
-        .library(name: "ComposeApp", targets: ["ComposeApp"])
+        .library(name: "DeepdotsSDK", targets: ["DeepdotsSDK"])
     ],
     targets: [
         .binaryTarget(
-            name: "ComposeApp",
-            path: "../dist/spm-local/ComposeApp.xcframework"
+            name: "DeepdotsSDK",
+            path: "../dist/spm-local/DeepdotsSDK.xcframework"
         )
     ]
 )

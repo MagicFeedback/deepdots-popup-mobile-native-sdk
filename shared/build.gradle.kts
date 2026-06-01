@@ -69,7 +69,7 @@ kotlin {
                 }
             }
             binaries.framework {
-                baseName = "ComposeApp"
+                baseName = "DeepdotsSDK"
                 isStatic = true
                 xcf.add(this)
             }

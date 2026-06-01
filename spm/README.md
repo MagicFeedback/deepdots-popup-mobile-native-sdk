@@ -16,10 +16,10 @@ Usage:
 
 Consumer (iOS App):
 - In Xcode, File > Add Packages... and use the URL to your Package.swift (repo hosting it or a tag).
-- Add the product "ComposeApp" to your target.
-- Swift code already imports ComposeApp.
+- Add the product "DeepdotsSDK" to your target.
+- Swift code already imports DeepdotsSDK.
 
 Notes:
-- The binary target is named ComposeApp to match the KMP framework module imported by Swift.
+- The binary target is named DeepdotsSDK to match the KMP framework module imported by Swift.
 - Supported: iOS 13+, arm64 devices and arm64 simulators.
 - If you change the module name, also change baseName in shared/build.gradle.kts and the Package.swift binary target name.

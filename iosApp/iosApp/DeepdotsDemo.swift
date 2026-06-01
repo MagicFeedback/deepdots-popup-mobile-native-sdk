@@ -1,5 +1,5 @@
 import SwiftUI
-import ComposeApp
+import DeepdotsSDK
 import UIKit
 
 private enum IOSScreen { case login, home, detail(EventItem) }
@@ -20,12 +20,12 @@ struct DeepdotsDemoView: View {
         EventItem(title: "Event 1", description: "Popup on enter", path: "/detail/1", eventName: nil),
         EventItem(title: "Event 2", description: "Popup on scroll", path: "/detail/2", eventName: nil),
         EventItem(title: "Event 3", description: "Popup on exit", path: "/detail/3", eventName: nil),
-        EventItem(title: "Event 4", description: "Popup on custom event", path: "/detail/4", eventName: "custom-event")
+        EventItem(title: "Event 4", description: "Popup on custom event", path: "/detail/4", eventName: "general-survey")
     ]
-    @State private var popups: ComposeApp.DeepdotsPopups? = nil
+    @State private var popups: DeepdotsSDK.DeepdotsPopups? = nil
 
     // Server config
-    private let publicKey: String = "12mGEGK4YXHXHrxZ45bJOsH6fiOl6ew1"
+    private let publicKey: String = "dIvDpv0GC1HCp3FjTo5O2vq3MFBJMLJO"
 
     var body: some View {
         VStack(spacing: 0) {
@@ -62,10 +62,10 @@ struct DeepdotsDemoView: View {
     // Inicializa el SDK con el userId elegido y navega a Home
     private func startDemo() {
         let uid = customUserId.isEmpty ? selectedUserId : customUserId
-        let provideLang: () -> String = { Locale.current.language.languageCode?.identifier ?? "en" }
+        let provideLang: () -> String = { "da" }
         let options = InitOptions(
             debug: true,
-            environment: Environment.development,
+            environment: Environment.production,
             mode: Mode.server,
             popupOptions: PopupOptions(
                 id: nil,
@@ -78,7 +78,7 @@ struct DeepdotsDemoView: View {
             storage: nil,
             metadata: ["userId": uid]
         )
-        let instance = ComposeApp.DeepdotsPopups()
+        let instance = DeepdotsSDK.DeepdotsPopups()
         instance.initialize(options: options)
         wireEvents(instance)
         popups = instance
@@ -87,7 +87,7 @@ struct DeepdotsDemoView: View {
         screen = .home
     }
 
-    private func wireEvents(_ instance: ComposeApp.DeepdotsPopups) {
+    private func wireEvents(_ instance: DeepdotsSDK.DeepdotsPopups) {
         instance.on(event: Events.shared.popupShown) { event in
             print("[iOS] popupShown popupId=\(event.popupId)")
         }

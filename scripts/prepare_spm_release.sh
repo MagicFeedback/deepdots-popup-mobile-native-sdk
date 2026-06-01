@@ -8,7 +8,7 @@
 # Si no se pasa artifact_base_url, usa SPM_RELEASE_BASE_URL o construye
 # https://github.com/<SPM_RELEASE_REPO>/releases/download/<version>.
 # Salida:
-#   - dist/spm/ComposeApp.xcframework
+#   - dist/spm/DeepdotsSDK.xcframework
 #   - dist/spm/DeepdotsSDK-<version>.xcframework.zip
 #   - dist/spm/DeepdotsSDK-<version>.xcframework.zip.checksum
 #   - spm/Package.swift (generado con URL + checksum)
@@ -34,8 +34,8 @@ info "Compilando frameworks iOS (KMP) para version ${VERSION}"
   "-PPUBLISHING_VERSION=${VERSION}"
 
 # 2) Localizar frameworks
-FW_DEV="$ROOT_DIR/shared/build/bin/iosArm64/releaseFramework/ComposeApp.framework"
-FW_SIM="$ROOT_DIR/shared/build/bin/iosSimulatorArm64/releaseFramework/ComposeApp.framework"
+FW_DEV="$ROOT_DIR/shared/build/bin/iosArm64/releaseFramework/DeepdotsSDK.framework"
+FW_SIM="$ROOT_DIR/shared/build/bin/iosSimulatorArm64/releaseFramework/DeepdotsSDK.framework"
 if [[ ! -d "$FW_DEV" || ! -d "$FW_SIM" ]]; then
   echo "[SPM] ERROR: No se encontraron los frameworks esperados:" >&2
   echo "  $FW_DEV" >&2
@@ -45,7 +45,7 @@ fi
 
 # 3) Crear XCFramework combinado
 mkdir -p "$DIST_DIR"
-XCFRAMEWORK_OUT="$DIST_DIR/ComposeApp.xcframework"
+XCFRAMEWORK_OUT="$DIST_DIR/DeepdotsSDK.xcframework"
 info "Creando XCFramework combinado"
 rm -rf "$XCFRAMEWORK_OUT"
 xcodebuild -create-xcframework \
@@ -80,11 +80,11 @@ let package = Package(
         .iOS(.v13)
     ],
     products: [
-        .library(name: "ComposeApp", targets: ["ComposeApp"]) // módulo consumido desde Swift
+        .library(name: "DeepdotsSDK", targets: ["DeepdotsSDK"]) // módulo consumido desde Swift
     ],
     targets: [
         .binaryTarget(
-            name: "ComposeApp",
+            name: "DeepdotsSDK",
             url: "$ARTIFACT_URL",
             checksum: "$CHECKSUM"
         )
