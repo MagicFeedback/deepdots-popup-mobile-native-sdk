@@ -48,7 +48,7 @@ Deepdots Popup SDK helps you:
 - Add Maven Central (already in demos) and depend on the published artifact:
 ```kotlin
 dependencies {
-    implementation("com.deepdots.sdk:shared-android:0.2.2")
+    implementation("com.deepdots.sdk:shared-android:0.3.0")
 }
 ```
 - Server mode uses your `publicKey` and remote popups. In the demo (`example-android/MainActivity.kt`), update `publicKey` and `metadata` (e.g., userId). Paths are set via `setPath("/home")`, `setPath("/detail/1")`, etc.
@@ -59,7 +59,7 @@ dependencies {
 ```
 
 ### iOS (Swift Package Manager - Binary) [Official]
-- Add package: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`, version `0.2.2` (requires the release with `DeepdotsSDK-0.2.2.xcframework.zip` uploaded).
+- Add package: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`, version `0.3.0` (requires the release with `DeepdotsSDK-0.3.0.xcframework.zip` uploaded).
 - **Required `Info.plist` key.** Add the following to your app's `Info.plist`. The popup is rendered with Compose Multiplatform, which requires this key on iOS — without it the app can crash on ProMotion (120 Hz) devices when the popup is shown:
   ```xml
   <key>CADisableMinimumFrameDurationOnPhone</key>

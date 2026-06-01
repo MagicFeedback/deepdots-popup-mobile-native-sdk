@@ -10,15 +10,10 @@ let package = Package(
         .library(name: "DeepdotsSDK", targets: ["DeepdotsSDK"]) // módulo consumido desde Swift
     ],
     targets: [
-        // RENAME (ComposeApp -> DeepdotsSDK): the url/checksum below still point at the
-        // 0.2.2 release whose archive contains the OLD `ComposeApp.xcframework`. They MUST be
-        // regenerated for the next release: build the framework with the new baseName, produce
-        // `DeepdotsSDK-<version>.xcframework.zip`, upload it, then update the url and checksum
-        // here. Until then this published manifest will not resolve against the new name.
         .binaryTarget(
             name: "DeepdotsSDK",
-            url: "https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.2.2/DeepdotsSDK-0.2.2.xcframework.zip",
-            checksum: "cebee8ae4921d00b8dbec8fe21eba577cdbe3a481bfaf54c678d8327f1776db5"
+            url: "https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/0.3.0/DeepdotsSDK-0.3.0.xcframework.zip",
+            checksum: "9cccabcfd96ffb06e95e51a0690dd95e0707c90cc6fe72f6cfa350be80e5385f"
         )
     ]
 )

@@ -2,7 +2,21 @@
 
 All notable changes to the Deepdots Popup SDK are documented in this file.
 
-## Unreleased
+## 0.3.0 - 2026-06-01
+
+### Migration
+
+- **iOS framework renamed `ComposeApp` → `DeepdotsSDK`.** Update your import
+  and re-select the package product:
+  - `import ComposeApp` → `import DeepdotsSDK`
+  - In Xcode, remove the old `ComposeApp` product from your target and add the
+    `DeepdotsSDK` product from the Swift package.
+  - Objective-C consumers: exported class prefix changed `ComposeApp*` →
+    `DeepdotsSDK*` (e.g. `ComposeAppDeepdotsPopups` → `DeepdotsSDKDeepdotsPopups`).
+  - Swift type names are unchanged (`DeepdotsPopups`, `InitOptions`, …).
+- **Backend: popup event statuses changed** (see "Changed" below) — the API
+  must accept `SHOWED` / `PARTIAL` / `COMPLETED` (upper-case); `opened` is no
+  longer sent.
 
 ### Added
 
