@@ -4,6 +4,27 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- **`PARTIAL` popup event reported to the API.** The SDK now posts a `PARTIAL`
+  status (`POST /sdk/popups`) the first time the user answers a question and
+  advances (first non-error `after_submit` from the survey). Only one `PARTIAL`
+  is sent per survey; further answered questions do not re-post. Previously the
+  `partial` progress path existed only for local cooldown logic and was never
+  exercised by the live survey, so the backend never received it.
+
+### Changed
+
+- **Popup event statuses sent to the API are now upper-case and aligned with
+  the cooldown enum.** `POST /sdk/popups` now sends `SHOWED` / `PARTIAL` /
+  `COMPLETED` (matching the `SHOWED`/`PARTIAL`/`COMPLETED` values the API
+  already returns in popup cooldown conditions). The "popup shown" event status
+  changed from `opened` to **`SHOWED`**, and the completion status from
+  `completed` to **`COMPLETED`**. **Backend must accept the new values.**
+  - When each is sent: `SHOWED` on popup display (`showDefinition`), `PARTIAL`
+    on first answered question (`recordSurveyPartial`), `COMPLETED` on survey
+    completion (`completeSurvey`).
+
 ### Fixed
 
 - **Survey popup unreadable in system dark mode (iOS).** When the host device

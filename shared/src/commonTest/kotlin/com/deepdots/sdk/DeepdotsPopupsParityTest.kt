@@ -18,6 +18,7 @@ import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class DeepdotsPopupsParityTest {
@@ -178,6 +179,52 @@ class DeepdotsPopupsParityTest {
 
         assertEquals(TriggerConditionStatus.PARTIAL, sdk.debugProgressStatus("survey-partial"))
         assertFalse(sdk.debugShouldShowPopup("popup-partial"))
+    }
+
+    @Test
+    fun partial_is_recorded_when_user_answers_a_question() {
+        val sdk = createSdk(
+            popups = listOf(
+                popup(
+                    id = "popup-answer",
+                    surveyId = "survey-answer",
+                    triggers = listOf(Trigger.Event("search")),
+                ),
+            ),
+        )
+
+        // A successful, non-final step submission (no error) means the user
+        // answered a question and advanced -> first PARTIAL.
+        sdk.debugHandleSurveyRuntimeEvent(
+            popupId = "popup-answer",
+            name = "after_submit",
+            payload = """{"name":"after_submit","payload":{"error":"","completed":false,"progress":1,"total":3}}""",
+        )
+
+        assertEquals(TriggerConditionStatus.PARTIAL, sdk.debugProgressStatus("survey-answer"))
+    }
+
+    @Test
+    fun validation_error_after_submit_does_not_record_partial() {
+        val sdk = createSdk(
+            popups = listOf(
+                popup(
+                    id = "popup-valerr",
+                    surveyId = "survey-valerr",
+                    triggers = listOf(Trigger.Event("search")),
+                ),
+            ),
+        )
+
+        // after_submit is also emitted on validation errors; a non-empty error
+        // must NOT be counted as a partial answer.
+        sdk.debugHandleSurveyRuntimeEvent(
+            popupId = "popup-valerr",
+            name = "after_submit",
+            payload = """{"name":"after_submit","payload":{"error":"No response","completed":false,"progress":0,"total":3}}""",
+        )
+
+        assertNull(sdk.debugProgressStatus("survey-valerr"))
     }
 
     @Test

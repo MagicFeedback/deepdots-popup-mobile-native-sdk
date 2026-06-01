@@ -524,12 +524,12 @@ class DeepdotsPopups {
                 try {
                     popupsService.postPopupEvent(
                         publicKey = publicKey,
-                        status = "opened",
+                        status = "SHOWED",
                         popupId = popup.id,
                         userId = SdkRuntime.userId,
                     )
                 } catch (t: Throwable) {
-                    log("Error posting opened event", t.message ?: "unknown")
+                    log("Error posting showed event", t.message ?: "unknown")
                 }
             }
         }
@@ -595,7 +595,19 @@ class DeepdotsPopups {
                 emitPopupClicked(popup, extra)
                 val action = extra["action"] as? String
                 if (action == "partial") {
-                    markSurveyProgress(popup.surveyId, TriggerConditionStatus.PARTIAL)
+                    recordSurveyPartial(popup)
+                }
+            }
+
+            // A successful, non-final step submission means the user answered a
+            // question and advanced. Treat the first such event as PARTIAL progress.
+            // (after_submit is also emitted on validation errors with a non-empty
+            // `error`; those must not count as a partial answer.)
+            "after_submit" -> {
+                val data = parseEventPayload(payload)
+                val err = data["error"] as? String
+                if (err.isNullOrBlank()) {
+                    recordSurveyPartial(popup)
                 }
             }
 
@@ -635,7 +647,7 @@ class DeepdotsPopups {
                 try {
                     popupsService.postPopupEvent(
                         publicKey = publicKey,
-                        status = "completed",
+                        status = "COMPLETED",
                         popupId = popup.id,
                         userId = SdkRuntime.userId,
                     )
@@ -647,6 +659,36 @@ class DeepdotsPopups {
             if (dismissAfter) {
                 initOptionsContextCache?.let { context ->
                     withContext(Dispatchers.Main) { dismissPopup(context) }
+                }
+            }
+        }
+    }
+
+    /**
+     * Records the first partial progress for a survey and reports it to the API
+     * (status `PARTIAL`). Only the first partial per survey is sent: once the local
+     * progress is PARTIAL (or already COMPLETED) this is a no-op, so repeated
+     * `after_submit` events do not generate duplicate calls.
+     */
+    private fun recordSurveyPartial(popup: PopupDefinition) {
+        val current = surveyProgress[popup.surveyId]?.status
+        if (current == TriggerConditionStatus.PARTIAL || current == TriggerConditionStatus.COMPLETED) {
+            return
+        }
+        markSurveyProgress(popup.surveyId, TriggerConditionStatus.PARTIAL)
+
+        scope.launch {
+            val publicKey = initOptions?.popupOptions?.publicKey
+            if (!publicKey.isNullOrBlank()) {
+                try {
+                    popupsService.postPopupEvent(
+                        publicKey = publicKey,
+                        status = "PARTIAL",
+                        popupId = popup.id,
+                        userId = SdkRuntime.userId,
+                    )
+                } catch (t: Throwable) {
+                    log("Error posting partial event", t.message ?: "unknown")
                 }
             }
         }
