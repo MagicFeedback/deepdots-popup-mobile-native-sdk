@@ -2,6 +2,33 @@
 
 All notable changes to the Deepdots Popup SDK are documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- **Survey popup unreadable in system dark mode (iOS).** When the host device
+  was in dark mode the survey area rendered with a black background and
+  near-invisible text, while the popup card header stayed light. Root cause:
+  the survey is hosted in a `WKWebView` via Compose's UIKit interop, which
+  punches a transparent hole in the Compose canvas; with a transparent WebView
+  the host view controller's background (black in system dark mode) showed
+  through — it was **not** a `prefers-color-scheme` / CSS issue. The survey
+  WebView now paints the popup's themed background as an opaque color, so the
+  survey area always matches the rest of the popup. The same opaque themed
+  background is applied on Android as a precaution. Also pins the survey
+  document to `color-scheme: light` and forces the iOS WebView's
+  `overrideUserInterfaceStyle` to light so native form controls don't adopt
+  dark styling.
+  - `SurveyView` now takes a `backgroundColor` parameter
+    (`SurveyView.kt`, `PopupView.kt`, `SurveyView.ios.kt`,
+    `SurveyView.android.kt`, `MagicFeedbackHtml.kt`).
+
+> Note: true dark-mode theming of the survey is **not** included — the
+> MagicFeedback web form has no dark variant (its stylesheet has no
+> `prefers-color-scheme` rules and uses light-assumed text colors), so a dark
+> background would make the survey text unreadable. Real dark support is
+> tracked separately and requires theming the survey content layer first.
+
 ## 0.2.2
 
 ### Added

@@ -107,7 +107,22 @@ internal fun buildMagicFeedbackHtml(
     return """
         <html><head>
           <meta name='viewport' content='width=device-width, initial-scale=1.0'/>
-          <style>body{margin:0;background:transparent;font-family:$fontFamily;} #mf-status{color:#666;font-size:12px;padding:4px;} </style>
+          <!-- Render the survey in light mode only. The host app may be in system dark mode,
+               which otherwise leaks into the WebView (prefers-color-scheme: dark) and turns the
+               survey background/text dark and illegible. Native side also forces a light UI style. -->
+          <meta name='color-scheme' content='light'/>
+          <style>
+            :root{color-scheme:light;}
+            html,body{margin:0;padding:0;height:100%;background:transparent;font-family:$fontFamily;}
+            /* Allow the survey to scroll vertically inside the WebView, never horizontally. */
+            body{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:15px;line-height:1.4;}
+            #mf-form{width:100%;max-width:100%;box-sizing:border-box;}
+            #mf-form *{max-width:100%;box-sizing:border-box;}
+            /* Typography hierarchy: question slightly larger, with comfortable line-height. */
+            #mf-form .magicfeedback-title,#mf-form h1,#mf-form h2,#mf-form h3,#mf-form legend{font-size:16px;line-height:1.35;margin:0 0 8px 0;}
+            #mf-form label,#mf-form .magicfeedback-label{line-height:1.35;}
+            #mf-status{color:#666;font-size:12px;padding:4px;}
+          </style>
           <link rel="stylesheet" href="$urlStyleDefault" />
         </head>
         <body class="deepdots-popup">

@@ -60,6 +60,11 @@ dependencies {
 
 ### iOS (Swift Package Manager - Binary) [Official]
 - Add package: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`, version `0.2.2` (requires the release with `DeepdotsSDK-0.2.2.xcframework.zip` uploaded).
+- **Required `Info.plist` key.** Add the following to your app's `Info.plist`. The popup is rendered with Compose Multiplatform, which requires this key on iOS — without it the app can crash on ProMotion (120 Hz) devices when the popup is shown:
+  ```xml
+  <key>CADisableMinimumFrameDurationOnPhone</key>
+  <true/>
+  ```
 - In the demo (`iosApp/DeepdotsDemo.swift`), set your `publicKey` and optional metadata (userId). Paths are updated when navigating (`/home`, `/detail/1`, `/detail/2`, `/detail/3`, `/detail/4`).
 - The checked-in iOS demo project resolves a local package from `spm-local/`. Run `./run_ios_example.sh` to regenerate `dist/spm-local/ComposeApp.xcframework` before opening Xcode if that local binary is missing.
 - Resolve/build demo:

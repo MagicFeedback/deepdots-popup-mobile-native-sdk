@@ -58,7 +58,7 @@ fun PopupView(
     var surveyController: SurveyController? by remember { mutableStateOf(null) }
 
     var imageUrlOverride by remember { mutableStateOf<String?>(null) }
-    var imageMaxHeight by remember { mutableStateOf(120.dp) }
+    var imageMaxHeight by remember { mutableStateOf(80.dp) }
     var imageAlignment by remember { mutableStateOf(Alignment.Center) }
     var imageHorizontalPadding by remember { mutableStateOf(PaddingValues(0.dp)) }
     var popupMaxWidth by remember { mutableStateOf(420.dp) }
@@ -85,12 +85,16 @@ fun PopupView(
                 val minSurveyHeight = (maxPopupHeight * 0.35f).coerceAtLeast(280.dp)
                 val scrollState = rememberScrollState()
                 Box(modifier = Modifier.fillMaxWidth()) {
+                    // Wrap-content column with a hard max-height. If the total intrinsic size
+                    // (header + image + survey area + footer) overflows maxPopupHeight, users
+                    // can scroll the popup. The WebView itself also scrolls internally for very
+                    // long surveys, so this is a defensive outer scroll.
                     Column(
                         modifier = Modifier
-                            .padding(16.dp)
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
                             .heightIn(max = maxPopupHeight)
                             .verticalScroll(scrollState),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // Header row
                         Row(
@@ -100,9 +104,10 @@ fun PopupView(
                         ) {
                             Text(
                                 text = popup.title,
-                                fontSize = 20.sp,
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = textColor
+                                color = textColor,
+                                lineHeight = 24.sp
                             )
                             IconButton(
                                 onClick = {
@@ -142,17 +147,20 @@ fun PopupView(
                             }
                         }
 
-                        // Survey render area (give it a decent min height so inner WebView can scroll)
+                        // Survey render area — wrap-content height with a sensible floor so
+                        // common scale surveys fit. The WebView handles its own internal
+                        // vertical scroll if the rendered form is taller; horizontal overflow
+                        // is suppressed via CSS in MagicFeedbackHtml.
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .weight(1f, fill = false) // take available vertical space, keep footer visible
                                     .heightIn(min = minSurveyHeight)
                             ) {
                                 SurveyView(
                                     popup.surveyId,
                                     popup.productId,
+                                    backgroundColor = bgColor,
                                     onEvent = { eventJson ->
                                         val name: String
                                         val payload: String?
@@ -218,15 +226,15 @@ fun PopupView(
                                                 val imgUrl = payloadValue("image") ?: payloadValue("logo")
                                                 if (!imgUrl.isNullOrBlank()) { imageUrlOverride = imgUrl }
                                                 when (payloadValue("imageSize") ?: payloadValue("logoSize")) {
-                                                    "small" -> imageMaxHeight = 80.dp
-                                                    "medium" -> imageMaxHeight = 120.dp
-                                                    "large" -> imageMaxHeight = 160.dp
+                                                    "small" -> imageMaxHeight = 60.dp
+                                                    "medium" -> imageMaxHeight = 80.dp
+                                                    "large" -> imageMaxHeight = 120.dp
                                                     else -> { /* keep default */ }
                                                 }
                                                 when (payloadValue("imagePosition") ?: payloadValue("logoPosition")) {
-                                                    "left" -> { imageAlignment = Alignment.CenterStart; imageHorizontalPadding = PaddingValues(start = 0.dp, end = 16.dp, top = 0.dp, bottom = 21.dp) }
-                                                    "right" -> { imageAlignment = Alignment.CenterEnd; imageHorizontalPadding = PaddingValues(start = 16.dp, end = 0.dp, top = 0.dp, bottom = 21.dp) }
-                                                    "center" -> { imageAlignment = Alignment.Center; imageHorizontalPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 21.dp) }
+                                                    "left" -> { imageAlignment = Alignment.CenterStart; imageHorizontalPadding = PaddingValues(start = 0.dp, end = 16.dp, top = 0.dp, bottom = 8.dp) }
+                                                    "right" -> { imageAlignment = Alignment.CenterEnd; imageHorizontalPadding = PaddingValues(start = 16.dp, end = 0.dp, top = 0.dp, bottom = 8.dp) }
+                                                    "center" -> { imageAlignment = Alignment.Center; imageHorizontalPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp) }
                                                     else -> { /* center by default */ }
                                                 }
                                                 // Optional popup sizing overrides
@@ -250,6 +258,9 @@ fun PopupView(
                                                 } else if (name == "survey_completed") {
                                                     // Move to completed state and show final message; don't auto-close
                                                     viewState = ViewState.Completed
+                                                    // Clear any stale validation banner so the completion screen isn't
+                                                    // shown next to a leftover error hint from a previous step.
+                                                    errorHint = null
                                                     // Previously we called onAction(complete/decline) here, which closed the popup before user could read the message.
                                                 } else if (name == "after_submit") {
                                                     val progress = Regex("\"progress\"\\s*:\\s*(\\d+)").find(payload ?: "")?.groupValues?.get(1)?.toIntOrNull() ?: 0
@@ -347,7 +358,8 @@ fun PopupView(
                         }
                     }
 
-                    // Auto-scroll to reveal error banner
+                    // Auto-scroll to reveal the error banner when it appears (banner sits
+                    // just above the footer, so we jump to the end of the scroll range).
                     LaunchedEffect(errorHint) {
                         if (errorHint != null) {
                             scrollState.animateScrollTo(scrollState.maxValue)

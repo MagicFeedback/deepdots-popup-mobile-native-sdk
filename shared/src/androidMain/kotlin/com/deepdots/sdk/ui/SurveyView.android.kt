@@ -1,7 +1,6 @@
 package com.deepdots.sdk.ui
 
 import android.annotation.SuppressLint
-import android.graphics.Color
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -19,6 +18,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import android.webkit.ConsoleMessage
@@ -33,6 +34,7 @@ import org.json.JSONObject
 actual fun SurveyView(
     surveyId: String,
     productId: String,
+    backgroundColor: Color,
     onEvent: (String) -> Unit,
     onController: (SurveyController) -> Unit
 ) {
@@ -41,13 +43,13 @@ actual fun SurveyView(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(360.dp)
+            .height(520.dp)
     ) {
         AndroidView(factory = { ctx ->
             WebView.setWebContentsDebuggingEnabled(true)
             val assetSize = try { ctx.assets.open("magicfeedback/magicfeedback-sdk.browser.js").use { it.available() } } catch (e: Exception) { -1 }
             val webView = WebView(ctx).apply {
-                setBackgroundColor(Color.TRANSPARENT)
+                setBackgroundColor(backgroundColor.toArgb())
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 settings.cacheMode = WebSettings.LOAD_DEFAULT
@@ -78,7 +80,12 @@ actual fun SurveyView(
                             }
                             onEvent(json.toString())
                         }
-                        if (lower.contains("required") || lower.contains("no response")) {
+                        // NOTE: do NOT match on "required" alone — magicfeedback's debug logs
+                        // emit question metadata like "required: true" which triggers a false
+                        // validation banner. The authoritative path is afterSubmitEvent in
+                        // MagicFeedbackHtml.kt; this console heuristic is only a safety net for
+                        // the explicit "No response" string emitted on real validation errors.
+                        if (lower.contains("no response")) {
                             emitJson("validation_error_required", "Please answer the required question to continue.")
                         } else if (lower.contains("error occurred while submitting")) {
                             // Try to extract a trailing reason like 'No response'
@@ -144,7 +151,7 @@ actual fun SurveyView(
             webView
         }, update = {})
         if (errorMessage != null) {
-            Box(modifier = Modifier.fillMaxWidth().height(360.dp), contentAlignment = Alignment.Center) { Text(errorMessage!!) }
+            Box(modifier = Modifier.fillMaxWidth().height(520.dp), contentAlignment = Alignment.Center) { Text(errorMessage!!) }
         }
         DisposableEffect(Unit) { onDispose { } }
     }
