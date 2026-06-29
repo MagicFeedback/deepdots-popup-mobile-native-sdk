@@ -103,7 +103,7 @@ class AnalyticsManagerParityTest {
         val am = mgr()
         am.enterMiniService("checkout", "home")
         now += 4000
-        am.exitMiniService()
+        am.exitMiniService("checkout")
         am.track("after_exit")
 
         val events = am.buildPayload(identity).events
@@ -116,9 +116,43 @@ class AnalyticsManagerParityTest {
     }
 
     @Test
-    fun exit_mini_service_noop_when_none_active() {
+    fun supports_concurrent_mini_services_exit_by_name_closes_the_right_one() {
+        now = 1000
         val am = mgr()
-        am.exitMiniService()
+        am.enterMiniService("checkout", "home")
+        now += 1000
+        am.enterMiniService("support_chat", "fab")
+        assertEquals("support_chat", am.getMiniService()) // el más reciente etiqueta
+
+        now += 2000
+        am.exitMiniService("checkout") // cierra el de dentro, no el más reciente
+        val exit = am.buildPayload(identity).events.first { it.name == "deepdots_mini_service_exit" }
+        assertEquals("checkout", exit.params?.get("mini_service")?.jsonPrimitive?.content)
+        assertEquals("3", exit.params?.get("duration_seconds")?.jsonPrimitive?.content)
+
+        assertEquals("support_chat", am.getMiniService()) // sigue activo
+        am.track("still_in_support")
+        val ev = am.buildPayload(identity).events.first { it.name == "still_in_support" }
+        assertEquals("support_chat", ev.params?.get("mini_service")?.jsonPrimitive?.content)
+        now = 1000
+    }
+
+    @Test
+    fun exit_all_mini_services_closes_every_active_lifo() {
+        val am = mgr()
+        am.enterMiniService("a")
+        am.enterMiniService("b")
+        am.exitAllMiniServices()
+
+        val exits = am.buildPayload(identity).events.filter { it.name == "deepdots_mini_service_exit" }
+        assertEquals(listOf("b", "a"), exits.map { it.params?.get("mini_service")?.jsonPrimitive?.content })
+        assertNull(am.getMiniService())
+    }
+
+    @Test
+    fun exit_mini_service_noop_when_that_one_not_active() {
+        val am = mgr()
+        am.exitMiniService("nope")
         assertEquals(0, am.pending())
     }
 

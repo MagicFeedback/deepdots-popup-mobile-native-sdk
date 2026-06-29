@@ -83,8 +83,8 @@ class AnalyticsManager(
 ) {
     private val events = mutableListOf<AnalyticsEvent>()
     private val attributes = mutableMapOf<String, String>()
-    private var miniService: String? = null
-    private var miniServiceEnteredAt: Long = 0
+    /** Mini-services activos: nombre → timestamp de entrada. El orden de inserción marca el "más reciente". */
+    private val activeMiniServices = LinkedHashMap<String, Long>()
 
     /** Actualiza country/city en el DeviceInfo cuando resuelve la geolocalización async. */
     fun updateDevice(geo: GeoInfo) {
@@ -99,25 +99,37 @@ class AnalyticsManager(
         }
     }
 
-    /** Marca el inicio de un mini-service; etiqueta los eventos siguientes con `mini_service`. */
+    /**
+     * Marca el inicio de un mini-service; etiqueta los eventos siguientes con `mini_service`.
+     * Admite varios activos a la vez (concurrencia); el "actual" para etiquetar es el más reciente.
+     * Reentrar con un nombre ya activo refresca su orden y su tiempo de entrada.
+     */
     fun enterMiniService(name: String, entryPointType: String? = null) {
-        miniService = name
-        miniServiceEnteredAt = now()
+        activeMiniServices.remove(name) // reinsertar = pasa a ser el más reciente
+        activeMiniServices[name] = now()
         track("deepdots_mini_service_enter", mapOf("entry_point_type" to entryPointType))
     }
 
-    /** Cierra el mini-service activo emitiendo `mini_service_exit` con su duración (#27). No-op si no hay ninguno. */
-    fun exitMiniService() {
-        val name = miniService ?: return
-        val durationSeconds = maxOf(0L, (now() - miniServiceEnteredAt) / 1000)
-        miniService = null // dejar de etiquetar antes de emitir el evento de salida
+    /**
+     * Cierra el mini-service `name` emitiendo `mini_service_exit` con su duración (#27).
+     * No-op si ese nombre no está activo. Cierre coherente con concurrencia.
+     */
+    fun exitMiniService(name: String) {
+        val enteredAt = activeMiniServices[name] ?: return
+        val durationSeconds = maxOf(0L, (now() - enteredAt) / 1000)
+        activeMiniServices.remove(name) // dejar de etiquetar con este antes de emitir
         track("deepdots_mini_service_exit", mapOf("mini_service" to name, "duration_seconds" to durationSeconds))
+    }
+
+    /** Cierra TODOS los mini-services activos (orden LIFO). Para el cierre por lifecycle (background). */
+    fun exitAllMiniServices() {
+        for (name in activeMiniServices.keys.toList().asReversed()) exitMiniService(name)
     }
 
     /** Registra un evento de analítica (modelo GA: nombre + params). */
     fun track(name: String, params: Map<String, Any?>? = null) {
         val merged = LinkedHashMap<String, Any?>()
-        miniService?.let { merged["mini_service"] = it }
+        getMiniService()?.let { merged["mini_service"] = it }
         params?.let { merged.putAll(it) }
         val obj = if (merged.isEmpty()) null else JsonObject(merged.mapValues { anyToJsonElement(it.value) })
         events.add(AnalyticsEvent(name = name, timestamp = now(), params = obj))
@@ -126,8 +138,8 @@ class AnalyticsManager(
         }
     }
 
-    /** Mini-service activo (para inyectarlo en la metadata del survey, #33). */
-    fun getMiniService(): String? = miniService
+    /** Mini-service actual (el más reciente aún activo) para etiquetar eventos + metadata del survey (#33). */
+    fun getMiniService(): String? = activeMiniServices.keys.lastOrNull()
 
     /** Nº de eventos pendientes de flush. */
     fun pending(): Int = events.size

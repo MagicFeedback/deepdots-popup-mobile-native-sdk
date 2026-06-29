@@ -356,11 +356,11 @@ class DeepdotsPopups {
         SdkRuntime.miniService = analytics?.getMiniService() // se inyecta en la metadata del survey (#33)
     }
 
-    /** Cierra el mini-service activo (emite `mini_service_exit` con duración, #27). No-op si tracking off. */
-    fun exitMiniService() {
+    /** Cierra el mini-service `name` (emite `mini_service_exit` con duración, #27). No-op si tracking off o si ese no está activo. */
+    fun exitMiniService(name: String) {
         if (tracking?.isTrackingEnabled() != true) return
-        analytics?.exitMiniService()
-        SdkRuntime.miniService = analytics?.getMiniService() // null tras salir
+        analytics?.exitMiniService(name)
+        SdkRuntime.miniService = analytics?.getMiniService() // el actual pasa a ser el siguiente más reciente (o null)
     }
 
     /** Findability (#31/#35): registra una búsqueda. `has_results` se deriva de `resultsCount`. */
@@ -399,7 +399,8 @@ class DeepdotsPopups {
     fun onBackground() {
         navObserver?.stop()
         navStarted = false
-        exitMiniService()
+        if (tracking?.isTrackingEnabled() == true) analytics?.exitAllMiniServices()
+        SdkRuntime.miniService = analytics?.getMiniService()
         flushEngagement()
         engagement?.pause()
         flushAnalytics()
