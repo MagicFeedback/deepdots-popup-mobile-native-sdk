@@ -25,6 +25,10 @@ import com.deepdots.sdk.analytics.AnalyticsEnvelope
 import com.deepdots.sdk.analytics.AnalyticsContext
 import com.deepdots.sdk.analytics.AnalyticsIdentity
 import com.deepdots.sdk.analytics.collectGeoInfo
+import com.deepdots.sdk.analytics.CrashReporter
+import com.deepdots.sdk.analytics.DeviceSnapshot
+import com.deepdots.sdk.analytics.crashRecordToParams
+import com.deepdots.sdk.analytics.installCrashHandlers
 import com.deepdots.sdk.tracking.NavigationObserver
 import com.deepdots.sdk.models.Trigger
 import com.deepdots.sdk.models.TriggerConditionStatus
@@ -172,6 +176,8 @@ class DeepdotsPopups {
     private var engagement: com.deepdots.sdk.analytics.EngagementTracker? = null
     /** Storage resuelto internamente: el del host si lo pasa, si no el persistente por defecto. */
     private var resolvedStorage: KeyValueStorage? = null
+    /** Crash & error reporting (#14–17). Null hasta init(). */
+    private var crashReporter: CrashReporter? = null
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     private val lastShownStoragePrefix = "popup_last_shown_"
@@ -232,15 +238,37 @@ class DeepdotsPopups {
         } else {
             null
         }
+        val device = com.deepdots.sdk.analytics.collectDeviceInfo()
         analytics = AnalyticsManager(
             sink = analyticsSink ?: com.deepdots.sdk.analytics.dryRunSink,
             publicKey = analyticsKeys?.publicKey ?: options.popupOptions.publicKey,
             platform = if (getPlatform().name.startsWith("iOS", ignoreCase = true)) "ios" else "android",
             language = options.provideLang.invoke(),
-            device = com.deepdots.sdk.analytics.collectDeviceInfo(),
+            device = device,
             maxBatchSize = ANALYTICS_MAX_BATCH_SIZE,
             onFlushNeeded = { flushAnalytics() },
         )
+        // Crash & error reporting (#14–17): captura uncaught (a disco, replay en el siguiente
+        // arranque) y expone reportError() para el host (emite ya).
+        val crash = CrashReporter(
+            storage = storage,
+            emit = { params -> track("deepdots_app_crash", params) },
+            device = { DeviceSnapshot(appVersion = device.appVersion, osVersion = device.osVersion, deviceModel = device.deviceModel) },
+            sessionId = { tracking?.getSessionId() },
+            now = { currentTimeMillis() },
+            enabled = { tracking?.isTrackingEnabled() == true },
+        )
+        crashReporter = crash
+        if (tracking?.isTrackingEnabled() == true) {
+            installCrashHandlers(crash) { tracking?.isTrackingEnabled() == true }
+        }
+        // Marca de inicio de sesión (base para Crash-Free Users #14).
+        track("deepdots_session_start", emptyMap())
+        // Drena SIEMPRE la cola (descarta pendientes si tracking off); solo reenvía si activo.
+        val pendingCrashes = crash.drainPendingCrashes()
+        if (tracking?.isTrackingEnabled() == true) {
+            for (rec in pendingCrashes) track("deepdots_app_crash", crashRecordToParams(rec))
+        }
         // Flush periódico: envía el lote cada 30 s mientras la app está activa.
         scope.launch {
             while (isActive) {
@@ -308,6 +336,17 @@ class DeepdotsPopups {
     fun setUserAttributes(attributes: Map<String, Any?>) {
         if (tracking?.isTrackingEnabled() != true) return
         analytics?.setUserAttributes(attributes)
+    }
+
+    /** Reporta un error del host (manejado o no) → evento `deepdots_app_crash`. No-op si tracking off. */
+    fun reportError(
+        error: Throwable,
+        severity: String = "error",
+        handled: Boolean = true,
+        context: Map<String, Any?>? = null,
+    ) {
+        if (tracking?.isTrackingEnabled() != true) return
+        crashReporter?.reportError(error, severity, handled, context)
     }
 
     /** Marca el inicio de un mini-service; etiqueta los eventos siguientes. No-op si tracking off. */
