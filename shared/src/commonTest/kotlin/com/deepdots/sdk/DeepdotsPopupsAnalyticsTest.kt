@@ -166,4 +166,22 @@ class DeepdotsPopupsAnalyticsTest {
         assertTrue(!names.contains("deepdots_session_start"))
         assertTrue(!names.contains("deepdots_app_crash"))
     }
+
+    @Test
+    fun track_message_emits_deepdots_message_with_stage_and_core_fields() {
+        val s = sdk()
+        s.trackMessage("delivered", "msg-42", "Rebajas de verano", "push", campaign = "summer_sale")
+        s.trackMessage("clicked", "msg-42", "Rebajas de verano", "push")
+        s.trackMessage("converted", "msg-42", "Rebajas de verano", "push", value = 49.9, currency = "EUR")
+
+        val msgs = s.previewAnalytics().events.filter { it.name == "deepdots_message" }
+        assertEquals(3, msgs.size)
+        assertEquals("delivered", msgs[0].params?.get("stage")?.jsonPrimitive?.content)
+        assertEquals("msg-42", msgs[0].params?.get("message_id")?.jsonPrimitive?.content)
+        assertEquals("Rebajas de verano", msgs[0].params?.get("message_title")?.jsonPrimitive?.content)
+        assertEquals("push", msgs[0].params?.get("channel")?.jsonPrimitive?.content)
+        assertEquals("summer_sale", msgs[0].params?.get("campaign")?.jsonPrimitive?.content)
+        assertEquals("converted", msgs[2].params?.get("stage")?.jsonPrimitive?.content)
+        assertEquals("EUR", msgs[2].params?.get("currency")?.jsonPrimitive?.content)
+    }
 }

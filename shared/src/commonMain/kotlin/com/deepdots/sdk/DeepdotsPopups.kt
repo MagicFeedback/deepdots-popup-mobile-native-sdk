@@ -391,6 +391,20 @@ class DeepdotsPopups {
         })
     }
 
+    /** Messaging (#18–22): registra una etapa del funnel de una notificación (push/in-app). No-op si tracking off. */
+    fun trackMessage(
+        stage: String,
+        id: String,
+        title: String,
+        channel: String,
+        campaign: String? = null,
+        value: Double? = null,
+        currency: String? = null,
+        params: Map<String, Any?>? = null,
+    ) {
+        track("deepdots_message", com.deepdots.sdk.analytics.buildMessageParams(stage, id, title, channel, campaign, value, currency, params))
+    }
+
     /**
      * Señal de "app a background" (el host la llama desde Activity.onStop /
      * applicationDidEnterBackground): cierra la pantalla actual (page_view), cierra el
