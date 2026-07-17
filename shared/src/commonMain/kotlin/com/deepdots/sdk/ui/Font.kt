@@ -27,7 +27,7 @@ private val SCHEME = Regex("^(https?:|data:)", RegexOption.IGNORE_CASE)
 
 // Control chars 0x00-0x20 + quote/angle-bracket/backslash (mirrors Web font.ts UNSAFE_URL_RE).
 private val UNSAFE_URL = Regex("[\\x00-\\x20\"<>\\\\]")
-private fun isSafeFontUrl(url: String): Boolean =
+internal fun isSafeFontUrl(url: String): Boolean =
     SCHEME.containsMatchIn(url) && !UNSAFE_URL.containsMatchIn(url)
 
 fun buildFontFamilyValue(family: String): String =
