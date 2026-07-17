@@ -1,6 +1,7 @@
 package com.deepdots.sdk.ui
 
 import com.deepdots.sdk.SdkRuntime
+import com.deepdots.sdk.models.PopupFont
 
 // Centralized MagicFeedback package version used for all CDN URLs
 private const val MAGICFEEDBACK_VERSION: String = "2.2.4"
@@ -18,11 +19,16 @@ internal fun buildMagicFeedbackHtml(
     assetSize: Int?,
     bridgeEmitCall: String, // JS snippet to emit an event string (e.g. DeepdotsBridge.emit or window.webkit?.messageHandlers?.DeepdotsBridge?.postMessage)
     timeoutMs: Int = 6000,
-    isIOS: Boolean
+    isIOS: Boolean,
+    font: PopupFont? = null
 ): String {
     val localSrcLiteral = localAssetUrl?.let { "'${it}'" } ?: "null"
     val assetSizeLiteral = assetSize?.toString() ?: "-1"
-    val fontFamily = if (isIOS) "-apple-system" else "system-ui"
+    // Default per-platform stack kept as-is when no custom font is set (existing behaviour).
+    val defaultFontFamily = if (isIOS) "-apple-system" else "system-ui"
+    // Espejo de Web src/ui/surveyHtml.ts: family/url son del API -> se sanean antes de ir al <style>.
+    val fontFaceCss = if (font != null) buildFontFaceCss(font.family, font.url) else ""
+    val fontFamilyValue = if (font != null) buildFontFamilyValue(font.family) else defaultFontFamily
     val emitWrapper = if (bridgeEmitCall.contains("(")) {
         "function emit(e){ try { ${
             bridgeEmitCall.replace(
@@ -112,8 +118,9 @@ internal fun buildMagicFeedbackHtml(
                survey background/text dark and illegible. Native side also forces a light UI style. -->
           <meta name='color-scheme' content='light'/>
           <style>
+            $fontFaceCss
             :root{color-scheme:light;}
-            html,body{margin:0;padding:0;height:100%;background:transparent;font-family:$fontFamily;}
+            html,body{margin:0;padding:0;height:100%;background:transparent;font-family:$fontFamilyValue;}
             /* Allow the survey to scroll vertically inside the WebView, never horizontally. */
             body{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:15px;line-height:1.4;}
             #mf-form{width:100%;max-width:100%;box-sizing:border-box;}
@@ -227,4 +234,4 @@ internal fun buildMagicFeedbackHtml(
 /**
  * Expect platform implementation to expose pre-built HTML string so iOS native app can obtain it directly.
  */
-expect fun platformSurveyHtml(surveyId: String, productId: String): String
+expect fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont? = null): String

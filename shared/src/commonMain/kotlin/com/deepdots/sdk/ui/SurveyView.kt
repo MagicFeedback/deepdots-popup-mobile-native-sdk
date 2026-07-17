@@ -2,6 +2,7 @@ package com.deepdots.sdk.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.deepdots.sdk.models.PopupFont
 
 interface SurveyController {
     fun send()
@@ -27,5 +28,6 @@ expect fun SurveyView(
     productId: String,
     backgroundColor: Color,
     onEvent: (String) -> Unit,
-    onController: (SurveyController) -> Unit = {}
+    onController: (SurveyController) -> Unit = {},
+    font: PopupFont? = null
 )

@@ -11,6 +11,7 @@ import com.deepdots.sdk.models.EventData
 import com.deepdots.sdk.models.InitOptions
 import com.deepdots.sdk.models.LegacyCondition
 import com.deepdots.sdk.models.PopupDefinition
+import com.deepdots.sdk.models.PopupFont
 import com.deepdots.sdk.models.Position
 import com.deepdots.sdk.models.Segments
 import com.deepdots.sdk.models.ShowOptions
@@ -127,10 +128,17 @@ class DeepdotsPopups {
     )
 
     @Serializable
+    private data class ServerFontDto(
+        val family: String? = null,
+        val url: String? = null,
+    )
+
+    @Serializable
     private data class ServerStyleDto(
         val theme: String? = null,
         val position: String? = null,
         @SerialName("imageUrl") val imageUrl: String? = null,
+        val font: ServerFontDto? = null,
     )
 
     private var initOptions: InitOptions? = null
@@ -1350,7 +1358,10 @@ class DeepdotsPopups {
             "bottom-right" -> Position.BottomRight
             else -> Position.Center
         }
-        return Style(theme = theme, position = position, imageUrl = style?.imageUrl)
+        val font = style?.font?.family?.takeIf { it.isNotBlank() }?.let { family ->
+            PopupFont(family = family, url = style.font.url)
+        }
+        return Style(theme = theme, position = position, imageUrl = style?.imageUrl, font = font)
     }
 
     private fun parseEventPayload(payload: String?): Map<String, Any?> {

@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import android.webkit.ConsoleMessage
+import com.deepdots.sdk.models.PopupFont
 import org.json.JSONObject
 
 /**
@@ -36,7 +37,8 @@ actual fun SurveyView(
     productId: String,
     backgroundColor: Color,
     onEvent: (String) -> Unit,
-    onController: (SurveyController) -> Unit
+    onController: (SurveyController) -> Unit,
+    font: PopupFont?
 ) {
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -137,7 +139,8 @@ actual fun SurveyView(
                     localAssetUrl = "file:///android_asset/magicfeedback/magicfeedback-sdk.browser.js",
                     assetSize = assetSize,
                     bridgeEmitCall = "DeepdotsBridge.emit",
-                    isIOS = false
+                    isIOS = false,
+                    font = font
                 )
                 loadDataWithBaseURL("https://magicfeedback.app/", html, "text/html", "utf-8", null)
             }
@@ -158,11 +161,12 @@ actual fun SurveyView(
 }
 
 // Provide actual implementation for platformSurveyHtml so native Android code could also fetch it if needed.
-actual fun platformSurveyHtml(surveyId: String, productId: String): String = buildMagicFeedbackHtml(
+actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?): String = buildMagicFeedbackHtml(
     surveyId = surveyId,
     productId = productId,
     localAssetUrl = "file:///android_asset/magicfeedback/magicfeedback-sdk.browser.js",
     assetSize = null,
     bridgeEmitCall = "DeepdotsBridge.emit",
-    isIOS = false
+    isIOS = false,
+    font = font
 )

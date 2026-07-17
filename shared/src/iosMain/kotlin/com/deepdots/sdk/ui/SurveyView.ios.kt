@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.interop.UIKitView
+import com.deepdots.sdk.models.PopupFont
 import androidx.compose.ui.unit.dp
 import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -42,7 +43,8 @@ actual fun SurveyView(
     productId: String,
     backgroundColor: Color,
     onEvent: (String) -> Unit,
-    onController: (SurveyController) -> Unit
+    onController: (SurveyController) -> Unit,
+    font: PopupFont?
 ) {
     // Keep a reference to WKWebView for controller actions
     var webViewRef by remember { mutableStateOf<WKWebView?>(null) }
@@ -116,7 +118,7 @@ actual fun SurveyView(
                 )
                 // Also force light UI controls so native form widgets don't adopt dark styling.
                 wv.overrideUserInterfaceStyle = UIUserInterfaceStyle.UIUserInterfaceStyleLight
-                val html = platformSurveyHtml(surveyId, productId)
+                val html = platformSurveyHtml(surveyId, productId, font)
                 wv.loadHTMLString(html, baseURL = NSURL(string = "https://magicfeedback.app/"))
                 webViewRef = wv
                 wv as UIView
@@ -127,7 +129,7 @@ actual fun SurveyView(
     }
 }
 
-actual fun platformSurveyHtml(surveyId: String, productId: String): String {
+actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?): String {
     val bundle = NSBundle.mainBundle
     val resPath = bundle.pathForResource("magicfeedback/magicfeedback-sdk.browser", ofType = "js")
     val localScript = resPath?.let { "file://${it}" }
@@ -137,6 +139,7 @@ actual fun platformSurveyHtml(surveyId: String, productId: String): String {
         localAssetUrl = localScript,
         assetSize = null,
         bridgeEmitCall = "window.webkit.messageHandlers.DeepdotsBridge.postMessage",
-        isIOS = true
+        isIOS = true,
+        font = font
     )
 }
