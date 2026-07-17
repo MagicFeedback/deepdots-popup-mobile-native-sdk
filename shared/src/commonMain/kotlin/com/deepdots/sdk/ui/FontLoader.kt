@@ -2,8 +2,13 @@ package com.deepdots.sdk.ui
 
 import androidx.compose.ui.text.font.FontFamily
 import com.deepdots.sdk.models.PopupFont
+import io.ktor.client.HttpClient
+import io.ktor.client.request.get
+import io.ktor.client.statement.readBytes
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /**
  * Descarga y cachea una fuente remota como [FontFamily] de Compose para el chrome
@@ -33,3 +38,18 @@ class FontLoader(
         }
     }
 }
+
+private val fontHttpClient by lazy { HttpClient() }
+
+/** Descarga los bytes de la fuente; null ante cualquier fallo de red. */
+internal suspend fun ktorFetchFontBytes(url: String): ByteArray? = try {
+    withContext(Dispatchers.Default) { fontHttpClient.get(url).readBytes() }
+} catch (t: Throwable) {
+    null
+}
+
+/**
+ * Instancia de proceso: la cache vive durante la sesión, así que popups repetidos
+ * con la misma url comparten la fuente ya descargada.
+ */
+val SharedFontLoader: FontLoader = FontLoader(fetch = ::ktorFetchFontBytes)
