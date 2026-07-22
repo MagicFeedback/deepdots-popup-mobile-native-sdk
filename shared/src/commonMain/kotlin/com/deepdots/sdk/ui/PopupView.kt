@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,6 +59,11 @@ fun PopupView(
     var errorHint by remember { mutableStateOf<String?>(null) }
     var surveyController: SurveyController? by remember { mutableStateOf(null) }
 
+    var customFontFamily by remember { mutableStateOf<FontFamily?>(null) }
+    LaunchedEffect(popup.style.font) {
+        customFontFamily = SharedFontLoader.load(popup.style.font)
+    }
+
     var imageUrlOverride by remember { mutableStateOf<String?>(null) }
     var imageMaxHeight by remember { mutableStateOf(80.dp) }
     var imageAlignment by remember { mutableStateOf(Alignment.Center) }
@@ -80,7 +87,11 @@ fun PopupView(
             tonalElevation = 6.dp,
             shadowElevation = 8.dp
         ) {
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            MaterialTheme(typography = MaterialTheme.typography.withFontFamily(customFontFamily)) {
+                CompositionLocalProvider(
+                    LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = customFontFamily)
+                ) {
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val maxPopupHeight = maxHeight * popupMaxHeightFraction
                 val minSurveyHeight = (maxPopupHeight * 0.35f).coerceAtLeast(280.dp)
                 val scrollState = rememberScrollState()
@@ -161,6 +172,7 @@ fun PopupView(
                                     popup.surveyId,
                                     popup.productId,
                                     backgroundColor = bgColor,
+                                    font = popup.style.font,
                                     onEvent = { eventJson ->
                                         val name: String
                                         val payload: String?
@@ -377,6 +389,8 @@ fun PopupView(
                             CircularProgressIndicator(color = primaryColor)
                         }
                     }
+                }
+            }
                 }
             }
         }

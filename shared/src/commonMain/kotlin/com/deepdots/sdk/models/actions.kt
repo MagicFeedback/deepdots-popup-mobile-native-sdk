@@ -47,7 +47,18 @@ data class Style(
     val position: Position = Position.Center,
     val imageUrl: String? = null,
     val imageSize: ImageSize = ImageSize.Medium,
-    val imageAlignment: ImageAlignment = ImageAlignment.Center
+    val imageAlignment: ImageAlignment = ImageAlignment.Center,
+    val font: PopupFont? = null
+)
+
+/**
+ * Custom popup/survey font, mirrors Web's `PopupStyle.font = { family, url? }`.
+ * `family`/`url` are API-controlled and get sanitized before being interpolated
+ * into CSS (see `ui/Font.kt`).
+ */
+data class PopupFont(
+    val family: String,
+    val url: String? = null,
 )
 
 enum class Theme {

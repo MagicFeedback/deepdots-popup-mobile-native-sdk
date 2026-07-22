@@ -10,14 +10,27 @@ import com.deepdots.sdk.models.Environment
 import com.deepdots.sdk.models.EventData
 import com.deepdots.sdk.models.InitOptions
 import com.deepdots.sdk.models.LegacyCondition
-import com.deepdots.sdk.models.Mode
 import com.deepdots.sdk.models.PopupDefinition
+import com.deepdots.sdk.models.PopupFont
 import com.deepdots.sdk.models.Position
 import com.deepdots.sdk.models.Segments
 import com.deepdots.sdk.models.ShowOptions
 import com.deepdots.sdk.models.Style
 import com.deepdots.sdk.models.SurveyProgressState
 import com.deepdots.sdk.models.Theme
+import com.deepdots.sdk.tracking.TrackingManager
+import com.deepdots.sdk.storage.KeyValueStorage
+import com.deepdots.sdk.storage.createDefaultStorage
+import com.deepdots.sdk.analytics.AnalyticsManager
+import com.deepdots.sdk.analytics.AnalyticsEnvelope
+import com.deepdots.sdk.analytics.AnalyticsContext
+import com.deepdots.sdk.analytics.AnalyticsIdentity
+import com.deepdots.sdk.analytics.collectGeoInfo
+import com.deepdots.sdk.analytics.CrashReporter
+import com.deepdots.sdk.analytics.DeviceSnapshot
+import com.deepdots.sdk.analytics.crashRecordToParams
+import com.deepdots.sdk.analytics.installCrashHandlers
+import com.deepdots.sdk.tracking.NavigationObserver
 import com.deepdots.sdk.models.Trigger
 import com.deepdots.sdk.models.TriggerConditionStatus
 import com.deepdots.sdk.i18n.DefaultLabels
@@ -33,6 +46,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
@@ -51,6 +65,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlin.math.roundToInt
+
+private const val ANALYTICS_MAX_BATCH_SIZE = 20
+private const val ANALYTICS_FLUSH_INTERVAL_MS = 30_000L
 
 class DeepdotsPopups {
 
@@ -111,10 +128,17 @@ class DeepdotsPopups {
     )
 
     @Serializable
+    private data class ServerFontDto(
+        val family: String? = null,
+        val url: String? = null,
+    )
+
+    @Serializable
     private data class ServerStyleDto(
         val theme: String? = null,
         val position: String? = null,
         @SerialName("imageUrl") val imageUrl: String? = null,
+        val font: ServerFontDto? = null,
     )
 
     private var initOptions: InitOptions? = null
@@ -147,6 +171,21 @@ class DeepdotsPopups {
     private val scrollTriggeredPopupIds = mutableSetOf<String>()
     private val deferredExitJobs = mutableMapOf<String, Job>()
     private var popupsService: PopupsService = DefaultPopupsService()
+    /** Identidad + sesión (Fase 1 tracking). Null hasta init(). */
+    private var tracking: TrackingManager? = null
+    /** Capa de analytics (canal separado del feedback). Null hasta init(). */
+    private var analytics: AnalyticsManager? = null
+    /** feedbackSessionId cacheado del canal de analytics (devuelto por POST /sdk/feedback). */
+    private var analyticsFeedbackSessionId: String? = null
+    /** Observador de navegación (Fase 2): emite page_view por el canal de analytics. */
+    private var navObserver: NavigationObserver? = null
+    private var navStarted = false
+    /** Tiempo activo (engagement time, #8). */
+    private var engagement: com.deepdots.sdk.analytics.EngagementTracker? = null
+    /** Storage resuelto internamente: el del host si lo pasa, si no el persistente por defecto. */
+    private var resolvedStorage: KeyValueStorage? = null
+    /** Crash & error reporting (#14–17). Null hasta init(). */
+    private var crashReporter: CrashReporter? = null
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     private val lastShownStoragePrefix = "popup_last_shown_"
@@ -175,35 +214,250 @@ class DeepdotsPopups {
             else -> null
         }
 
-        if (options.mode == Mode.Server) {
-            val publicKey = options.popupOptions.publicKey
-            if (publicKey.isNullOrBlank()) {
-                log("Server mode requires popupOptions.publicKey")
-                return
-            }
+        // Storage interno: host > persistente por defecto (SharedPreferences/NSUserDefaults).
+        val storage = options.storage ?: createDefaultStorage()
+        resolvedStorage = storage
+        // user_id lo gestiona el SDK (persistente); el session_id lo provee el backend
+        // (respuesta de POST /sdk/popups) y se cachea — el SDK no genera ni expira sesiones.
+        val tm = TrackingManager(storage = storage, clientUserId = SdkRuntime.userId, enabled = options.trackingEnabled ?: true)
+        tracking = tm
+        // Expone el user_id resuelto para el builder del HTML del WebView (inyección §5).
+        SdkRuntime.userId = tm.getUserId()
 
-            scope.launch {
-                try {
-                    val responseText = popupsService.fetchPopups(publicKey, buildFilterParam())
-                    log("Server response (truncated)", responseText.take(512))
-                    val remoteDefinitions = parseServerPopups(responseText)
-                    loadPopupDefinitions(remoteDefinitions)
-                    if (options.autoLaunch == true || pendingAutoLaunch) {
-                        startAutoLaunch()
-                        pendingAutoLaunch = false
+        // Analytics: se envía como Feedback a la integración (POST /sdk/feedback) si se
+        // pasan claves en options.analytics; si no, queda en dry-run (solo println).
+        val analyticsKeys = options.analytics
+        val analyticsSink: com.deepdots.sdk.analytics.AnalyticsSink? = if (analyticsKeys != null) {
+            { envelope ->
+                val body = com.deepdots.sdk.analytics.buildAnalyticsFeedbackBody(envelope, analyticsKeys, analyticsFeedbackSessionId)
+                scope.launch {
+                    try {
+                        val returnedSessionId = popupsService.postFeedback(body)
+                        if (returnedSessionId != null && returnedSessionId != analyticsFeedbackSessionId) {
+                            analyticsFeedbackSessionId = returnedSessionId
+                            SdkRuntime.analyticsFeedbackSessionId = returnedSessionId
+                            log("analytics · feedbackSessionId cacheado: $analyticsFeedbackSessionId")
+                        }
+                    } catch (t: Throwable) {
+                        log("analytics · error enviando feedback", t.message)
                     }
-                } catch (t: Throwable) {
-                    log("Error fetching server popups", t.message ?: "unknown")
                 }
             }
-            return
+        } else {
+            null
+        }
+        val device = com.deepdots.sdk.analytics.collectDeviceInfo()
+        analytics = AnalyticsManager(
+            sink = analyticsSink ?: com.deepdots.sdk.analytics.dryRunSink,
+            publicKey = analyticsKeys?.publicKey ?: options.popupOptions.publicKey,
+            platform = if (getPlatform().name.startsWith("iOS", ignoreCase = true)) "ios" else "android",
+            // Idioma del context: explicit (provideLang) > locale del dispositivo > null.
+            // Paridad Web (src/analytics/language.ts): fallback automático al idioma del device.
+            language = com.deepdots.sdk.analytics.resolveLanguage(
+                explicit = options.provideLang.invoke(),
+                deviceLanguage = com.deepdots.sdk.analytics.deviceLanguage(),
+            ),
+            device = device,
+            maxBatchSize = ANALYTICS_MAX_BATCH_SIZE,
+            onFlushNeeded = { flushAnalytics() },
+        )
+        // Crash & error reporting (#14–17): captura uncaught (a disco, replay en el siguiente
+        // arranque) y expone reportError() para el host (emite ya).
+        val crash = CrashReporter(
+            storage = storage,
+            emit = { params -> track("deepdots_app_crash", params) },
+            device = { DeviceSnapshot(appVersion = device.appVersion, osVersion = device.osVersion, deviceModel = device.deviceModel) },
+            sessionId = { tracking?.getSessionId() },
+            now = { currentTimeMillis() },
+            enabled = { tracking?.isTrackingEnabled() == true },
+        )
+        crashReporter = crash
+        if (tracking?.isTrackingEnabled() == true) {
+            installCrashHandlers(crash) { tracking?.isTrackingEnabled() == true }
+        }
+        // Marca de inicio de sesión (base para Crash-Free Users #14).
+        track("deepdots_session_start", emptyMap())
+        // Drena SIEMPRE la cola (descarta pendientes si tracking off); solo reenvía si activo.
+        val pendingCrashes = crash.drainPendingCrashes()
+        if (tracking?.isTrackingEnabled() == true) {
+            for (rec in pendingCrashes) track("deepdots_app_crash", crashRecordToParams(rec))
+        }
+        // Flush periódico: envía el lote cada 30 s mientras la app está activa.
+        scope.launch {
+            while (isActive) {
+                delay(ANALYTICS_FLUSH_INTERVAL_MS)
+                flushAnalytics()
+            }
         }
 
-        loadPopupDefinitions(options.popupOptions.popups ?: emptyList())
-        if (options.autoLaunch == true) {
-            autoLaunch()
+        // Geo info async: country/city via ipapi.co (fire-and-forget, igual que Web)
+        scope.launch {
+            try {
+                val geo = collectGeoInfo()
+                if (geo != null) analytics?.updateDevice(geo)
+            } catch (_: Throwable) {}
+        }
+
+        // Fase 2: navegación → eventos page_view por el canal de analytics.
+        // En KMP la navegación entra por setPath() (manual); ahí se alimenta el observador.
+        navObserver = NavigationObserver().also { obs ->
+            obs.onVisit { v -> track("deepdots_page_view", mapOf("screen" to v.screen, "duration_seconds" to v.durationSeconds)) }
+        }
+        // Engagement time (#8): cuenta tiempo activo en primer plano (resume al arrancar).
+        engagement = com.deepdots.sdk.analytics.EngagementTracker().also { it.resume() }
+
+        // Los popups se reciben SIEMPRE de la API (no se definen en init).
+        val publicKey = options.popupOptions.publicKey
+        if (publicKey.isNullOrBlank()) {
+            log("Missing publicKey; cannot fetch popups from API")
+            return
+        }
+        scope.launch {
+            try {
+                val responseText = popupsService.fetchPopups(publicKey, buildFilterParam())
+                log("API response (truncated)", responseText.take(512))
+                val remoteDefinitions = parseServerPopups(responseText)
+                loadPopupDefinitions(remoteDefinitions)
+                if (options.autoLaunch == true || pendingAutoLaunch) {
+                    startAutoLaunch()
+                    pendingAutoLaunch = false
+                }
+            } catch (t: Throwable) {
+                log("Error fetching popups", t.message ?: "unknown")
+            }
         }
     }
+
+    /** User id actual (generado por el SDK o provisto por el cliente). Null si tracking off. */
+    fun getUserId(): String? = tracking?.getUserId()
+
+    /** Session id de navegación actual. Null si tracking off. */
+    fun getSessionId(): String? = tracking?.getSessionId()
+
+    /** Activa/desactiva el tracking (identidad + sesión). Kill-switch del contrato §7bis. */
+    fun setTrackingEnabled(enabled: Boolean) { tracking?.setTrackingEnabled(enabled) }
+
+    // ───────── Analytics (canal separado del feedback, vinculado por user_id) ─────────
+
+    /** Registra un evento de analítica (modelo GA: nombre + params). No-op si tracking off. */
+    fun track(name: String, params: Map<String, Any?>? = null) {
+        if (tracking?.isTrackingEnabled() != true) return
+        analytics?.track(name, params)
+    }
+
+    /** User attributes para breakdowns (registration_status, pass_type, sector, pass_status…). */
+    fun setUserAttributes(attributes: Map<String, Any?>) {
+        if (tracking?.isTrackingEnabled() != true) return
+        analytics?.setUserAttributes(attributes)
+    }
+
+    /** Reporta un error del host (manejado o no) → evento `deepdots_app_crash`. No-op si tracking off. */
+    fun reportError(
+        error: Throwable,
+        severity: String = "error",
+        handled: Boolean = true,
+        context: Map<String, Any?>? = null,
+    ) {
+        if (tracking?.isTrackingEnabled() != true) return
+        crashReporter?.reportError(error, severity, handled, context)
+    }
+
+    /** Marca el inicio de un mini-service; etiqueta los eventos siguientes. No-op si tracking off. */
+    fun enterMiniService(name: String, entryPointType: String? = null) {
+        if (tracking?.isTrackingEnabled() != true) return
+        analytics?.enterMiniService(name, entryPointType)
+        SdkRuntime.miniService = analytics?.getMiniService() // se inyecta en la metadata del survey (#33)
+    }
+
+    /** Cierra el mini-service `name` (emite `mini_service_exit` con duración, #27). No-op si tracking off o si ese no está activo. */
+    fun exitMiniService(name: String) {
+        if (tracking?.isTrackingEnabled() != true) return
+        analytics?.exitMiniService(name)
+        SdkRuntime.miniService = analytics?.getMiniService() // el actual pasa a ser el siguiente más reciente (o null)
+    }
+
+    /** Findability (#31/#35): registra una búsqueda. `has_results` se deriva de `resultsCount`. */
+    fun trackSearch(query: String, resultsCount: Int, params: Map<String, Any?>? = null) {
+        track("deepdots_search", buildMap<String, Any?> {
+            put("query", query)
+            put("results_count", resultsCount)
+            put("has_results", resultsCount > 0)
+            params?.let { putAll(it) }
+        })
+    }
+
+    /** Findability friction (#34/#35): señal de fricción con su `friction_topic`. */
+    fun trackFindabilityFriction(frictionTopic: String, params: Map<String, Any?>? = null) {
+        track("deepdots_findability_friction", buildMap<String, Any?> {
+            put("friction_topic", frictionTopic)
+            params?.let { putAll(it) }
+        })
+    }
+
+    /** Funnel: un paso del embudo, correlacionado por `taskId`. El backend reconstruye conversión/drop-off/tiempo. */
+    fun trackFunnelStep(funnel: String, step: String, taskId: String, params: Map<String, Any?>? = null) {
+        track("deepdots_funnel_step", buildMap<String, Any?> {
+            put("funnel", funnel)
+            put("step", step)
+            put("task_id", taskId)
+            params?.let { putAll(it) }
+        })
+    }
+
+    /** Messaging (#18–22): registra una etapa del funnel de una notificación (push/in-app). No-op si tracking off. */
+    fun trackMessage(
+        stage: String,
+        id: String,
+        title: String,
+        channel: String,
+        campaign: String? = null,
+        value: Double? = null,
+        currency: String? = null,
+        params: Map<String, Any?>? = null,
+    ) {
+        track("deepdots_message", com.deepdots.sdk.analytics.buildMessageParams(stage, id, title, channel, campaign, value, currency, params))
+    }
+
+    /**
+     * Señal de "app a background" (el host la llama desde Activity.onStop /
+     * applicationDidEnterBackground): cierra la pantalla actual (page_view), cierra el
+     * mini-service activo (mini_service_exit) y hace flush del lote de analytics.
+     */
+    fun onBackground() {
+        navObserver?.stop()
+        navStarted = false
+        if (tracking?.isTrackingEnabled() == true) analytics?.exitAllMiniServices()
+        SdkRuntime.miniService = analytics?.getMiniService()
+        flushEngagement()
+        engagement?.pause()
+        flushAnalytics()
+    }
+
+    /** Señal de "app a foreground" (Activity.onStart / applicationWillEnterForeground): reanuda el engagement time. */
+    fun onForeground() {
+        engagement?.resume()
+    }
+
+    /** Emite `user_engagement` con el tiempo activo acumulado (#8). */
+    private fun flushEngagement() {
+        if (tracking?.isTrackingEnabled() != true) return
+        val ms = engagement?.consume() ?: 0L
+        if (ms > 0) track("deepdots_user_engagement", mapOf("engagement_time_msec" to ms))
+    }
+
+    /** Payload que se ENVIARÍA al endpoint de analytics (no envía ni vacía el buffer). */
+    fun previewAnalytics(): AnalyticsEnvelope =
+        analytics?.buildPayload(analyticsIdentity())
+            ?: AnalyticsEnvelope(context = AnalyticsContext(platform = "unknown"), events = emptyList())
+
+    /** Envía (hoy dry-run → println) el lote acumulado de analytics y vacía el buffer. */
+    fun flushAnalytics() {
+        if (tracking?.isTrackingEnabled() != true) return
+        analytics?.flush(analyticsIdentity())
+    }
+
+    private fun analyticsIdentity(): AnalyticsIdentity =
+        AnalyticsIdentity(userId = tracking?.getUserId(), sessionId = tracking?.getSessionId())
 
     fun initialize(options: InitOptions) {
         init(options)
@@ -331,6 +585,8 @@ class DeepdotsPopups {
     }
 
     fun setPath(path: String?) {
+        // Fase 2: alimentar el observador de navegación (su propia dedup/normalización).
+        path?.let { feedNavigation(it) }
         val normalizedPath = normalizeUrl(path ?: "")
         if (normalizedPath == currentPath) return
 
@@ -346,6 +602,16 @@ class DeepdotsPopups {
 
         if (initOptions?.autoLaunch == true) {
             startAutoLaunch()
+        }
+    }
+
+    private fun feedNavigation(path: String) {
+        val obs = navObserver ?: return
+        if (!navStarted) {
+            obs.begin(path)
+            navStarted = true
+        } else {
+            obs.visit(path)
         }
     }
 
@@ -377,6 +643,9 @@ class DeepdotsPopups {
     }
 
     fun debugListPopups(): List<PopupDefinition> = popupDefinitions.values.toList()
+
+    /** Solo test: carga definiciones directamente (los popups vienen de la API en producción). */
+    internal fun debugLoadPopups(defs: List<PopupDefinition>) = loadPopupDefinitions(defs)
 
     internal fun debugQueuedPopupIds(): List<String> = popupQueue.toList()
 
@@ -522,12 +791,17 @@ class DeepdotsPopups {
             val publicKey = initOptions?.popupOptions?.publicKey
             if (!publicKey.isNullOrBlank()) {
                 try {
-                    popupsService.postPopupEvent(
+                    val returnedSessionId = popupsService.postPopupEvent(
                         publicKey = publicKey,
                         status = "SHOWED",
                         popupId = popup.id,
-                        userId = SdkRuntime.userId,
+                        userId = tracking?.getUserId() ?: SdkRuntime.userId,
                     )
+                    // El backend devuelve el sessionId (lo cose por user_id); lo cacheamos.
+                    if (returnedSessionId != null) {
+                        tracking?.setSessionId(returnedSessionId)
+                        SdkRuntime.sessionId = tracking?.getSessionId()
+                    }
                 } catch (t: Throwable) {
                     log("Error posting showed event", t.message ?: "unknown")
                 }
@@ -645,12 +919,17 @@ class DeepdotsPopups {
             val publicKey = initOptions?.popupOptions?.publicKey
             if (!publicKey.isNullOrBlank()) {
                 try {
-                    popupsService.postPopupEvent(
+                    val returnedSessionId = popupsService.postPopupEvent(
                         publicKey = publicKey,
                         status = "COMPLETED",
                         popupId = popup.id,
-                        userId = SdkRuntime.userId,
+                        userId = tracking?.getUserId() ?: SdkRuntime.userId,
                     )
+                    // El backend devuelve el sessionId (lo cose por user_id); lo cacheamos.
+                    if (returnedSessionId != null) {
+                        tracking?.setSessionId(returnedSessionId)
+                        SdkRuntime.sessionId = tracking?.getSessionId()
+                    }
                 } catch (t: Throwable) {
                     log("Error posting completed event", t.message ?: "unknown")
                 }
@@ -681,12 +960,17 @@ class DeepdotsPopups {
             val publicKey = initOptions?.popupOptions?.publicKey
             if (!publicKey.isNullOrBlank()) {
                 try {
-                    popupsService.postPopupEvent(
+                    val returnedSessionId = popupsService.postPopupEvent(
                         publicKey = publicKey,
                         status = "PARTIAL",
                         popupId = popup.id,
-                        userId = SdkRuntime.userId,
+                        userId = tracking?.getUserId() ?: SdkRuntime.userId,
                     )
+                    // El backend devuelve el sessionId (lo cose por user_id); lo cacheamos.
+                    if (returnedSessionId != null) {
+                        tracking?.setSessionId(returnedSessionId)
+                        SdkRuntime.sessionId = tracking?.getSessionId()
+                    }
                 } catch (t: Throwable) {
                     log("Error posting partial event", t.message ?: "unknown")
                 }
@@ -792,7 +1076,7 @@ class DeepdotsPopups {
     }
 
     private fun getDeferredExitQueue(): List<DeferredExitPopup> {
-        val raw = initOptions?.storage?.getString(exitQueueStorageKey) ?: return emptyList()
+        val raw = resolvedStorage?.getString(exitQueueStorageKey) ?: return emptyList()
         return try {
             json.decodeFromString<List<DeferredExitPopup>>(raw)
         } catch (_: Throwable) {
@@ -801,7 +1085,7 @@ class DeepdotsPopups {
     }
 
     private fun setDeferredExitQueue(queue: List<DeferredExitPopup>) {
-        val storage = initOptions?.storage ?: return
+        val storage = resolvedStorage ?: return
         if (queue.isEmpty()) {
             storage.remove(exitQueueStorageKey)
             return
@@ -890,12 +1174,12 @@ class DeepdotsPopups {
     }
 
     private fun getLastShown(popupId: String): Long? {
-        return lastShown[popupId] ?: initOptions?.storage?.getLong(lastShownStoragePrefix + popupId)
+        return lastShown[popupId] ?: resolvedStorage?.getLong(lastShownStoragePrefix + popupId)
     }
 
     private fun setLastShown(popupId: String, timestamp: Long) {
         lastShown[popupId] = timestamp
-        initOptions?.storage?.putLong(lastShownStoragePrefix + popupId, timestamp)
+        resolvedStorage?.putLong(lastShownStoragePrefix + popupId, timestamp)
     }
 
     private fun buildFilterParam(): String? {
@@ -1079,7 +1363,10 @@ class DeepdotsPopups {
             "bottom-right" -> Position.BottomRight
             else -> Position.Center
         }
-        return Style(theme = theme, position = position, imageUrl = style?.imageUrl)
+        val font = style?.font?.family?.takeIf { it.isNotBlank() }?.let { family ->
+            PopupFont(family = family, url = style.font.url)
+        }
+        return Style(theme = theme, position = position, imageUrl = style?.imageUrl, font = font)
     }
 
     private fun parseEventPayload(payload: String?): Map<String, Any?> {
