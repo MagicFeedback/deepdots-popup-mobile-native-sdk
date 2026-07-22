@@ -168,6 +168,24 @@ class DeepdotsPopupsAnalyticsTest {
     }
 
     @Test
+    fun explicit_provide_lang_overrides_the_device_language_in_context() {
+        // Paridad con Web (src/core/deepdots-popups.rn.test.ts): el language explícito del init
+        // manda en context.language. En KMP el explicit es provideLang; debe ganar al fallback
+        // automático del locale del dispositivo (deviceLanguage()).
+        val s = DeepdotsPopups().apply {
+            init(
+                InitOptions(
+                    debug = true,
+                    popupOptions = PopupOptions(publicKey = "pk-1"),
+                    storage = InMemoryStorage(),
+                    provideLang = { "fr-CA" },
+                ),
+            )
+        }
+        assertEquals("fr-CA", s.previewAnalytics().context.language)
+    }
+
+    @Test
     fun track_message_emits_deepdots_message_with_stage_and_core_fields() {
         val s = sdk()
         s.trackMessage("delivered", "msg-42", "Rebajas de verano", "push", campaign = "summer_sale")

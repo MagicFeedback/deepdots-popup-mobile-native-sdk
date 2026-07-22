@@ -251,7 +251,12 @@ class DeepdotsPopups {
             sink = analyticsSink ?: com.deepdots.sdk.analytics.dryRunSink,
             publicKey = analyticsKeys?.publicKey ?: options.popupOptions.publicKey,
             platform = if (getPlatform().name.startsWith("iOS", ignoreCase = true)) "ios" else "android",
-            language = options.provideLang.invoke(),
+            // Idioma del context: explicit (provideLang) > locale del dispositivo > null.
+            // Paridad Web (src/analytics/language.ts): fallback automático al idioma del device.
+            language = com.deepdots.sdk.analytics.resolveLanguage(
+                explicit = options.provideLang.invoke(),
+                deviceLanguage = com.deepdots.sdk.analytics.deviceLanguage(),
+            ),
             device = device,
             maxBatchSize = ANALYTICS_MAX_BATCH_SIZE,
             onFlushNeeded = { flushAnalytics() },

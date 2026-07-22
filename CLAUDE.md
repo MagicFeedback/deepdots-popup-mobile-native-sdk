@@ -29,6 +29,7 @@ Este SDK es un port del SDK Web `@magicfeedback/popup-sdk`. Varias piezas son **
 exacto** de ficheros del repo Web y cualquier cambio debe replicarse en ambos lados:
 
 - `ui/Font.kt` ⇔ `src/ui/font.ts` (saneado anti-inyección de `family`/`url`).
+- `analytics/Language.kt` ⇔ `src/analytics/language.ts` (`resolveLanguage`: explicit > device > null).
 
 La encuesta en KMP se renderiza en un **WebView** (`SurveyView` + `MagicFeedbackHtml`),
 mientras que el **chrome del popup (título, mensaje, botones, ✕, banner, completado) es
@@ -55,6 +56,22 @@ Estado: **implementada en survey + chrome nativo**, ambas plataformas.
   precarga antes de mostrar, múltiples pesos/estilos.
 - Diseño y plan: `docs/superpowers/specs/2026-07-17-native-chrome-custom-font-design.md`
   y `docs/superpowers/plans/2026-07-17-native-chrome-custom-font.md`.
+
+## Feature: idioma del context de analytics (auto-detección)
+
+Estado: **implementada**, ambas plataformas. Espejo del Web `src/analytics/language.ts`.
+
+- `analytics/Language.kt` (commonMain): `resolveLanguage(explicit, deviceLanguage)` — función
+  pura con prioridad **`explicit` (InitOptions.provideLang) > `deviceLanguage` (locale del
+  dispositivo) > `null`**; hace `trim` y descarta cadenas en blanco (mirror del `clean()` Web).
+- `expect fun deviceLanguage(): String?` con `actual`s: Android
+  `Locale.getDefault().toLanguageTag()`; iOS `NSLocale.preferredLanguages.first` (ambos dan
+  BCP-47 tipo `"es-ES"`). Cualquier fallo → `null` (el campo se omite del metadata).
+- Cableado en `DeepdotsPopups.init()`: `AnalyticsManager(language = resolveLanguage(
+  options.provideLang.invoke(), deviceLanguage()))`. `provideLang` sigue siendo el override
+  explícito de máxima prioridad; el fallback al device es nuevo.
+- Tests (paridad con `language.test.ts`): `analytics/LanguageParityTest.kt` (`deviceLanguage`
+  inyectado/fakeado para tests puros).
 
 ## Ramas
 
