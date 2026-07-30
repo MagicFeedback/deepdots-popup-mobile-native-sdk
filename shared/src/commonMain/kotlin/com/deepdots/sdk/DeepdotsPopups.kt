@@ -30,6 +30,8 @@ import com.deepdots.sdk.analytics.CrashReporter
 import com.deepdots.sdk.analytics.DeviceSnapshot
 import com.deepdots.sdk.analytics.crashRecordToParams
 import com.deepdots.sdk.analytics.installCrashHandlers
+import com.deepdots.sdk.analytics.MessageGuard
+import com.deepdots.sdk.analytics.MessageGuardVerdict
 import com.deepdots.sdk.tracking.NavigationObserver
 import com.deepdots.sdk.models.Trigger
 import com.deepdots.sdk.models.TriggerConditionStatus
@@ -186,6 +188,8 @@ class DeepdotsPopups {
     private var resolvedStorage: KeyValueStorage? = null
     /** Crash & error reporting (#14–17). Null hasta init(). */
     private var crashReporter: CrashReporter? = null
+    /** Protecciones del funnel de Messaging (#18–22). Vigencia de sesión: se reinicia en init(). */
+    private val messageGuard = MessageGuard()
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     private val lastShownStoragePrefix = "popup_last_shown_"
@@ -247,6 +251,7 @@ class DeepdotsPopups {
             null
         }
         val device = com.deepdots.sdk.analytics.collectDeviceInfo()
+        messageGuard.reset()
         analytics = AnalyticsManager(
             sink = analyticsSink ?: com.deepdots.sdk.analytics.dryRunSink,
             publicKey = analyticsKeys?.publicKey ?: options.popupOptions.publicKey,
@@ -399,7 +404,12 @@ class DeepdotsPopups {
         })
     }
 
-    /** Messaging (#18–22): registra una etapa del funnel de una notificación (push/in-app). No-op si tracking off. */
+    /**
+     * Messaging (#18–22): registra una etapa del funnel de una notificación (push/in-app).
+     * No-op si tracking off. El evento se descarta (con warning) si el `channel` no es válido,
+     * si ese `(message_id, stage)` ya se emitió en la sesión, o si el `message_id` ya se reportó
+     * en otro canal — ver `MessageGuard`.
+     */
     fun trackMessage(
         stage: String,
         id: String,
@@ -410,6 +420,11 @@ class DeepdotsPopups {
         currency: String? = null,
         params: Map<String, Any?>? = null,
     ) {
+        val verdict = messageGuard.evaluate(stage, id, channel)
+        if (verdict is MessageGuardVerdict.Discard) {
+            println("[DeepdotsPopups] trackMessage descartado (${verdict.reason.name.lowercase()}): ${verdict.detail}")
+            return
+        }
         track("deepdots_message", com.deepdots.sdk.analytics.buildMessageParams(stage, id, title, channel, campaign, value, currency, params))
     }
 
