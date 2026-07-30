@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Library manifest intentionally minimal: no application tag to let consuming app define label/theme -->
+    <!-- Library manifest intentionally minimal: no label/theme, so the consuming app keeps
+         defining its own. The provider below only captures the application context before
+         Application.onCreate (the Firebase/WorkManager pattern) so the SDK can persist the
+         user_id in SharedPreferences without asking the host for a Context. -->
+    <application>
+        <provider
+            android:name="com.deepdots.sdk.platform.DeepdotsInitProvider"
+            android:authorities="${applicationId}.deepdots-init"
+            android:exported="false"
+            android:initOrder="100" />
+    </application>
 </manifest>

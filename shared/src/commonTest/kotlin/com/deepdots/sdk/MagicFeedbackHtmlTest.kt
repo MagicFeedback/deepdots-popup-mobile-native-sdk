@@ -35,4 +35,37 @@ class MagicFeedbackHtmlTest {
             "font-family debe usar la familia custom con el stack de fallback",
         )
     }
+
+    /**
+     * Identidad del tracking inyectada en el survey (contrato §5): mismas claves que Web, para
+     * poder coser las respuestas con la analítica y con el mini-service activo (#33).
+     */
+    @Test
+    fun html_injects_tracking_identity_into_the_survey() {
+        SdkRuntime.userId = "u-1"
+        SdkRuntime.sessionId = "s-9"
+        SdkRuntime.miniService = "checkout"
+        try {
+            val html = buildMagicFeedbackHtml(
+                surveyId = "survey-abc",
+                productId = "product-xyz",
+                localAssetUrl = null,
+                assetSize = null,
+                bridgeEmitCall = "DeepdotsBridge.emit",
+                isIOS = false,
+            )
+            assertTrue(html.contains("{ key: 'user_id', value: ['u-1'] }"), "user_id en la metadata")
+            assertTrue(html.contains("{ key: 'session_id', value: ['s-9'] }"), "session_id en la metadata")
+            assertTrue(html.contains("{ key: 'mini_service', value: ['checkout'] }"), "mini_service en la metadata")
+            // external-user-id va como profile, 3er argumento de form()
+            assertTrue(
+                html.contains("form('survey-abc', 'product-xyz', [{ key: 'external-user-id', value: ['u-1'] }])"),
+                "external-user-id como profile de form()",
+            )
+        } finally {
+            SdkRuntime.userId = null
+            SdkRuntime.sessionId = null
+            SdkRuntime.miniService = null
+        }
+    }
 }

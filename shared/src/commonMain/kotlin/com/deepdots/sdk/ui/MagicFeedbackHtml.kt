@@ -2,6 +2,7 @@ package com.deepdots.sdk.ui
 
 import com.deepdots.sdk.SdkRuntime
 import com.deepdots.sdk.models.PopupFont
+import com.deepdots.sdk.tracking.buildSurveyIdentity
 
 // Centralized MagicFeedback package version used for all CDN URLs
 private const val MAGICFEEDBACK_VERSION: String = "2.2.4"
@@ -86,6 +87,19 @@ internal fun buildMagicFeedbackHtml(
             }
         }
     }
+    // Identidad del tracking (contrato §5): mismas claves que Web (buildSurveyIdentity) para que
+    // las respuestas del survey se puedan coser con la analítica: session_id, user_id y el
+    // mini_service activo (#33, CSAT por mini-service).
+    val identity = buildSurveyIdentity(
+        userId = SdkRuntime.userId,
+        sessionId = SdkRuntime.sessionId,
+        miniService = SdkRuntime.miniService,
+        analyticsFeedbackSessionId = SdkRuntime.analyticsFeedbackSessionId,
+    )
+    identity.metadata.forEach { answer ->
+        meta[answer.key] = answer.value.toMutableList()
+    }
+
     // Now serialize into JS array of objects { key, value: [...] }
     val customMetaJsArray = buildString {
         append("[")
@@ -103,6 +117,18 @@ internal fun buildMagicFeedbackHtml(
                 append(escapedVals)
                 append("] }")
             }
+        }
+        append("]")
+    }
+
+    // `profile` del survey: el external-user-id, 3er argumento de form() (igual que Web).
+    val profileJsArray = buildString {
+        append("[")
+        identity.profile.forEachIndexed { index, answer ->
+            if (index > 0) append(",")
+            val values = answer.value.filter { it.isNotBlank() }
+                .joinToString(",") { "'" + it.replace("'", "\\'") + "'" }
+            append("{ key: '").append(answer.key.replace("'", "\\'")).append("', value: [").append(values).append("] }")
         }
         append("]")
     }
@@ -152,7 +178,18 @@ internal fun buildMagicFeedbackHtml(
                   if (window.magicfeedback && !initialized) {
                     initialized = true;
                     window.magicfeedback.init({debug:true, env: ENV, publicKey: PUBLIC_KEY});
-                    var form = ${if (hasProduct) "window.magicfeedback.form('$surveyId', '$productId')" else "window.magicfeedback.form('$surveyId')"};
+                    var form = ${
+        if (hasProduct) {
+            // 3er argumento = profile (external-user-id), como en Web.
+            if (identity.profile.isNotEmpty()) {
+                "window.magicfeedback.form('$surveyId', '$productId', $profileJsArray)"
+            } else {
+                "window.magicfeedback.form('$surveyId', '$productId')"
+            }
+        } else {
+            "window.magicfeedback.form('$surveyId')"
+        }
+    };
                     window.DeepdotsForm = form;
                     window.DeepdotsActions = {
                       send: function(){ try { form.send(); } catch(e){ console.error('[DeepdotsActions] send error', e); } },

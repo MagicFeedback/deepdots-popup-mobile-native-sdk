@@ -281,6 +281,12 @@ class DeepdotsPopupsParityTest {
         assertEquals(listOf("/detail/3"), popups.first().segments?.path)
     }
 
+    /**
+     * Los popups vienen SIEMPRE de la API (igual que en Web, donde `init()` dejó de aceptarlos:
+     * `PopupOptions.popups` es un resto que nada lee). Los tests de comportamiento los inyectan
+     * por el seam interno `debugLoadPopups`, espejo del `mockPopupsApi()` del SDK Web. Sin
+     * publicKey, `init()` no llega a llamar a la API.
+     */
     private fun createSdk(
         popups: List<PopupDefinition>,
         storage: InMemoryStorage = InMemoryStorage(),
@@ -289,10 +295,11 @@ class DeepdotsPopupsParityTest {
             init(
                 InitOptions(
                     debug = true,
-                    popupOptions = PopupOptions(popups = popups),
+                    popupOptions = PopupOptions(),
                     storage = storage,
                 ),
             )
+            debugLoadPopups(popups)
         }
     }
 

@@ -10,4 +10,13 @@ object SdkRuntime {
     var metadata: Map<String, Any>? = null // raw metadata from InitOptions
     /** Lambda resolving the current UI language (BCP-47). Set from InitOptions.provideLang. */
     var provideLang: (() -> String?)? = null
+
+    /** session_id de navegación devuelto por el backend (POST /sdk/popups). Se inyecta en el survey. */
+    var sessionId: String? = null
+
+    /** Mini-service activo si hay: va en la metadata del survey (#33, CSAT por mini-service). */
+    var miniService: String? = null
+
+    /** sessionId del registro de analytics (POST /sdk/feedback), para correlacionar survey ↔ analytics. */
+    var analyticsFeedbackSessionId: String? = null
 }

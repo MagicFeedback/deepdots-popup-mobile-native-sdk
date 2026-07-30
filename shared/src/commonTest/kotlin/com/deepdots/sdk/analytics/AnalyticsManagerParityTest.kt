@@ -14,7 +14,11 @@ class AnalyticsManagerParityTest {
 
     private var now: Long = 1000
     private var captured: AnalyticsEnvelope? = null
-    private val sink: AnalyticsSink = { captured = it }
+    private var capturedMeta: AnalyticsFlushMeta? = null
+    private val sink: AnalyticsSink = { envelope, meta, _ ->
+        captured = envelope
+        capturedMeta = meta
+    }
     private val identity = AnalyticsIdentity(userId = "u-1", sessionId = "s-1")
 
     private fun mgr() = AnalyticsManager(
@@ -159,10 +163,106 @@ class AnalyticsManagerParityTest {
     @Test
     fun calls_onFlushNeeded_when_events_reach_maxBatchSize() {
         var called = 0
-        val am = AnalyticsManager(sink = {}, now = { 1000L }, maxBatchSize = 3, onFlushNeeded = { called++ })
+        val am = AnalyticsManager(sink = { _, _, _ -> }, now = { 1000L }, maxBatchSize = 3, onFlushNeeded = { called++ })
         am.track("e1"); am.track("e2")
         assertEquals(0, called)
         am.track("e3")
         assertEquals(1, called)
+    }
+
+    // ───────── setMetric → feedback.metrics (campo dedicado, no metadata) ─────────
+
+    @Test
+    fun set_metric_feeds_context_metrics_and_overwrites_by_key() {
+        val am = mgr()
+        am.setMetric("cart_value", 42)
+        am.setMetric("cart_value", 51.5) // sobrescribe
+        am.setMetric("items", "3")
+
+        val metrics = am.buildPayload(identity).context.metrics
+        assertEquals("51.5", metrics["cart_value"])
+        assertEquals("3", metrics["items"])
+    }
+
+    @Test
+    fun set_metric_ignores_blank_key_and_survives_flushes() {
+        val am = mgr()
+        am.setMetric("", "x")
+        am.setMetric("score", 9)
+        am.track("e1")
+        am.flush(identity)
+        am.track("e2")
+
+        val metrics = am.buildPayload(identity).context.metrics
+        assertEquals(1, metrics.size)
+        assertEquals("9", metrics["score"]) // persistente: se reenvía en cada flush
+    }
+
+    // ───────── Fin de sesión ─────────
+
+    @Test
+    fun flush_forwards_meta_to_the_sink() {
+        val am = mgr()
+        am.track("e1")
+        am.flush(identity, AnalyticsFlushMeta(final = true, sessionEnd = true))
+
+        assertEquals(true, capturedMeta?.final)
+        assertEquals(true, capturedMeta?.sessionEnd)
+    }
+
+    @Test
+    fun reset_user_scope_forgets_attributes_and_metrics_not_events() {
+        val am = mgr()
+        am.setUserAttributes(mapOf("pass_type" to "premium"))
+        am.setMetric("cart_value", 42)
+        am.track("e1")
+        am.resetUserScope()
+
+        val p = am.buildPayload(identity)
+        assertEquals(0, p.context.attributes.size)
+        assertEquals(0, p.context.metrics.size)
+        assertEquals(1, p.events.size) // el buffer no se toca
+    }
+
+    // ───────── Fiabilidad de entrega ─────────
+
+    @Test
+    fun requeues_the_batch_when_the_sink_reports_a_transient_failure() {
+        var attempts = 0
+        val am = AnalyticsManager(
+            sink = { _, _, requeue ->
+                attempts++
+                if (attempts == 1) requeue() // primer intento: 5xx
+            },
+            now = { now },
+        )
+        am.track("e1")
+        am.track("e2")
+
+        am.flush(identity)
+        assertEquals(2, am.pending()) // devueltos al buffer
+
+        am.track("e3")
+        val p = am.flush(identity)
+        // orden cronológico: los re-encolados van delante de lo nuevo
+        assertEquals(listOf("e1", "e2", "e3"), p!!.events.map { it.name })
+        assertEquals(0, am.pending())
+    }
+
+    @Test
+    fun requeues_when_the_sink_throws() {
+        val am = AnalyticsManager(sink = { _, _, _ -> throw IllegalStateException("boom") }, now = { now })
+        am.track("e1")
+        am.flush(identity)
+        assertEquals(1, am.pending())
+    }
+
+    @Test
+    fun buffer_cap_drops_the_oldest_events() {
+        val am = AnalyticsManager(sink = { _, _, _ -> }, now = { now }, maxBatchSize = 1000, maxBufferedEvents = 3)
+        am.track("e1"); am.track("e2"); am.track("e3"); am.track("e4")
+
+        assertEquals(3, am.pending())
+        assertEquals(listOf("e2", "e3", "e4"), am.buildPayload(identity).events.map { it.name })
     }
 }

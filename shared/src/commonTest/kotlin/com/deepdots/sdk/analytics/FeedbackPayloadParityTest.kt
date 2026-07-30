@@ -109,6 +109,55 @@ class FeedbackPayloadParityTest {
         assertEquals("fbk-sess-1", body.sessionId)
     }
 
+    // ───────── Fin de sesión: completed:true ─────────
+
+    @Test
+    fun session_end_marks_the_body_completed_keeping_the_session_id() {
+        val body = buildAnalyticsFeedbackBody(
+            envelope(),
+            keys,
+            feedbackSessionId = "fbk-sess-1",
+            options = BuildBodyOptions(sessionEnd = true),
+        )
+        // completed:true cierra el registro; el sessionId SÍ va (es el registro que se cierra).
+        assertEquals(true, body.completed)
+        assertEquals("fbk-sess-1", body.sessionId)
+        // `finished` no es la señal de cierre acordada: se queda en false.
+        assertEquals(false, body.finished)
+        assertEquals(false, body.feedback.finished)
+    }
+
+    @Test
+    fun streaming_batches_are_not_completed() {
+        val body = buildAnalyticsFeedbackBody(envelope(), keys, feedbackSessionId = "fbk-sess-1")
+        assertEquals(false, body.completed)
+    }
+
+    // ───────── métricas del host → feedback.metrics ─────────
+
+    @Test
+    fun host_metrics_go_to_the_dedicated_metrics_field_without_prefix() {
+        val body = buildAnalyticsFeedbackBody(
+            envelope(
+                context = AnalyticsContext(
+                    platform = "android",
+                    attributes = mapOf("pass_type" to "premium"),
+                    metrics = mapOf("cart_value" to "51.5"),
+                ),
+            ),
+            keys,
+        )
+        assertEquals(listOf(FeedbackKV("cart_value", listOf("51.5"))), body.feedback.metrics)
+        // no se cuela en metadata
+        assertTrue(body.feedback.metadata.none { it.key == "cart_value" })
+    }
+
+    @Test
+    fun metrics_is_always_present_and_empty_when_unused() {
+        val body = buildAnalyticsFeedbackBody(envelope(), keys)
+        assertEquals(emptyList(), body.feedback.metrics)
+    }
+
     @Test
     fun omits_missing_metadata_and_profile() {
         val body = buildAnalyticsFeedbackBody(
