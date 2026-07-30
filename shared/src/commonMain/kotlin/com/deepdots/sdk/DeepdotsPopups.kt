@@ -293,11 +293,11 @@ class DeepdotsPopups {
                         if (!closing && returnedSessionId != null && returnedSessionId != analyticsFeedbackSessionId) {
                             analyticsFeedbackSessionId = returnedSessionId
                             SdkRuntime.analyticsFeedbackSessionId = returnedSessionId
-                            log("analytics · feedbackSessionId cacheado: $analyticsFeedbackSessionId")
+                            log("analytics · feedbackSessionId cached: $analyticsFeedbackSessionId")
                         }
                     } catch (t: Throwable) {
                         // Fallo transitorio (red/5xx/408/429): devolver el lote al buffer.
-                        log("analytics · fallo transitorio enviando feedback, lote re-encolado:", t.message)
+                        log("analytics · transient failure sending feedback, batch requeued:", t.message)
                         requeue()
                     }
                 }
@@ -536,7 +536,7 @@ class DeepdotsPopups {
     ) {
         val verdict = messageGuard.evaluate(stage, id, channel)
         if (verdict is MessageGuardVerdict.Discard) {
-            println("[DeepdotsPopups] trackMessage descartado (${verdict.reason.name.lowercase()}): ${verdict.detail}")
+            println("[DeepdotsPopups] trackMessage discarded (${verdict.reason.name.lowercase()}): ${verdict.detail}")
             return
         }
         track("deepdots_message", com.deepdots.sdk.analytics.buildMessageParams(stage, id, title, channel, campaign, value, currency, params))

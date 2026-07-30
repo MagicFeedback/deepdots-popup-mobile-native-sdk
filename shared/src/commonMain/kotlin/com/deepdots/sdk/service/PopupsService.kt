@@ -125,7 +125,7 @@ class DefaultPopupsService(
                 throw RetryableFeedbackException("POST /sdk/feedback $status: ${text.take(500)}")
             }
             // 4xx (p. ej. 406 Contact not found): visible y descartado, nunca en silencio.
-            println("[DeepdotsAnalytics] POST /sdk/feedback rechazado con $status; lote DESCARTADO: ${text.take(500)}")
+            println("[DeepdotsAnalytics] POST /sdk/feedback rejected with $status; batch DISCARDED: ${text.take(500)}")
             return null
         }
         return parseSessionId(text)
@@ -140,7 +140,7 @@ class DefaultPopupsService(
         val status = response.status.value
         if (status < 200 || status >= 300) {
             val text = runCatching { response.bodyAsText() }.getOrDefault("")
-            println("[DeepdotsPopups] POST /sdk/popups/contact rechazado con $status: ${text.take(500)}")
+            println("[DeepdotsPopups] POST /sdk/popups/contact rejected with $status: ${text.take(500)}")
         }
     }
 

@@ -84,7 +84,7 @@ private val dryRunJson = Json { prettyPrint = true; encodeDefaults = true; expli
 fun createDryRunSink(log: (String) -> Unit = { println(it) }): AnalyticsSink = { payload, meta, _ ->
     val suffix = if (meta.sessionEnd) " · completed:true (fin de sesión)" else ""
     log(
-        "[DeepdotsAnalytics] (dry-run · NO enviado · sin init.analytics) POST /sdk/feedback$suffix → " +
+        "[DeepdotsAnalytics] (dry-run · NOT sent · no init.analytics) POST /sdk/feedback$suffix → " +
             dryRunJson.encodeToString(AnalyticsEnvelope.serializer(), payload),
     )
 }

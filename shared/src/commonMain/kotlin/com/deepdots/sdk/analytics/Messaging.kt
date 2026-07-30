@@ -66,7 +66,7 @@ class MessageGuard(private val maxTrackedMessages: Int = MAX_TRACKED_MESSAGES) {
         if (channel !in MESSAGE_CHANNELS) {
             return MessageGuardVerdict.Discard(
                 MessageRejectionReason.INVALID_CHANNEL,
-                "channel \"$channel\" no válido (esperado ${MESSAGE_CHANNELS.joinToString(" | ")})",
+                "invalid channel \"$channel\" (expected ${MESSAGE_CHANNELS.joinToString(" | ")})",
             )
         }
 
@@ -78,13 +78,13 @@ class MessageGuard(private val maxTrackedMessages: Int = MAX_TRACKED_MESSAGES) {
         if (entry.channel != channel) {
             return MessageGuardVerdict.Discard(
                 MessageRejectionReason.CHANNEL_CONFLICT,
-                "message_id \"$id\" ya se reportó en channel \"${entry.channel}\"; se descarta \"$channel\"",
+                "message_id \"$id\" was already reported on channel \"${entry.channel}\"; discarding \"$channel\"",
             )
         }
         if (stage in entry.stages) {
             return MessageGuardVerdict.Discard(
                 MessageRejectionReason.DUPLICATE_STAGE,
-                "stage \"$stage\" ya emitido para message_id \"$id\"",
+                "stage \"$stage\" was already sent for message_id \"$id\"",
             )
         }
         entry.stages.add(stage)
