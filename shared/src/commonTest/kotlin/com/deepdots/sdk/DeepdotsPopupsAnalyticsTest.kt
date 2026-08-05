@@ -111,6 +111,32 @@ class DeepdotsPopupsAnalyticsTest {
     }
 
     @Test
+    fun track_meaningful_interaction_emits_event_with_interaction_type_and_params() {
+        val s = sdk()
+        s.trackMeaningfulInteraction("get_help", mapOf("source" to "navbar"))
+        val e = s.previewAnalytics().events.first { it.name == "deepdots_meaningful_interaction" }
+        assertEquals("get_help", e.params?.get("interaction_type")?.jsonPrimitive?.content)
+        assertEquals("navbar", e.params?.get("source")?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun track_meaningful_interaction_discards_blank_interaction_type() {
+        val s = sdk()
+        s.flushAnalytics() // clear session_start emitted at init
+        s.trackMeaningfulInteraction("   ")
+        assertEquals(0, s.previewAnalytics().events.size)
+    }
+
+    @Test
+    fun track_meaningful_interaction_respects_kill_switch() {
+        val s = sdk()
+        s.flushAnalytics() // clear session_start emitted at init
+        s.setTrackingEnabled(false)
+        s.trackMeaningfulInteraction("get_help")
+        assertEquals(0, s.previewAnalytics().events.size)
+    }
+
+    @Test
     fun navigation_via_setPath_emits_page_view() {
         val s = sdk()
         s.setPath("/home")          // begin (no emite)
