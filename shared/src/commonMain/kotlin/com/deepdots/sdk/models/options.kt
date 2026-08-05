@@ -41,6 +41,16 @@ data class InitOptions(
      * identificado). También se puede llamar después con `setContactAttributes`.
      */
     val contactAttributes: Map<String, Any?>? = null,
+    /**
+     * Si el SDK pinta el "modal" del popup (scrim + tarjeta con sombra/bordes redondeados en
+     * `PopupView`). Default `true`. Con `false` el popup se pinta sin scrim ni tarjeta
+     * (transparente, a pantalla completa), para que el host controle el marco visual. El survey
+     * sigue funcional (header con cerrar + footer con back/start/complete/send). Paridad con
+     * Web/RN `DeepdotsInitParams.renderChrome`.
+     * ⚠️ En KMP el SDK sigue auto-montando el overlay a pantalla completa; el flag solo quita el
+     * scrim + la tarjeta, no cede el montaje del contenedor al host.
+     */
+    val renderChrome: Boolean? = true,
     val metadata: Map<String, Any>? = null // arbitrary host-supplied metadata forwarded to the backend
 )
 

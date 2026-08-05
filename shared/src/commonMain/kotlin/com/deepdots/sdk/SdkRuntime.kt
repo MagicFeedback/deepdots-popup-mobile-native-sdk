@@ -19,4 +19,10 @@ object SdkRuntime {
 
     /** sessionId del registro de analytics (POST /sdk/feedback), para correlacionar survey ↔ analytics. */
     var analyticsFeedbackSessionId: String? = null
+
+    /**
+     * Si `PopupView` pinta su scrim + tarjeta (chrome). Default true; false = sin scrim ni
+     * tarjeta (el host controla el marco). Se fija en init desde `InitOptions.renderChrome`.
+     */
+    var renderChrome: Boolean = true
 }

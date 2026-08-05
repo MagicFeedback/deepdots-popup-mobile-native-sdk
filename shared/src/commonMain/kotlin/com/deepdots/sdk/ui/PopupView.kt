@@ -71,21 +71,31 @@ fun PopupView(
     var popupMaxWidth by remember { mutableStateOf(420.dp) }
     var popupMaxHeightFraction by remember { mutableStateOf(0.9f) }
 
+    // renderChrome=false (InitOptions): sin scrim ni tarjeta; el host controla el marco visual.
+    // El survey (header cerrar + footer) sigue funcional. Paridad con Web/RN.
+    val chrome = SdkRuntime.renderChrome
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0x66000000)),
+            .background(if (chrome) Color(0x66000000) else Color.Transparent),
         contentAlignment = mapPosition(popup.style.position)
     ) {
         Surface(
-            modifier = Modifier
-                .padding(16.dp)
-                .widthIn(max = popupMaxWidth)
-                .wrapContentHeight(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-            color = bgColor,
-            tonalElevation = 6.dp,
-            shadowElevation = 8.dp
+            modifier = if (chrome) {
+                Modifier
+                    .padding(16.dp)
+                    .widthIn(max = popupMaxWidth)
+                    .wrapContentHeight()
+            } else {
+                Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+            },
+            shape = if (chrome) androidx.compose.foundation.shape.RoundedCornerShape(16.dp) else androidx.compose.ui.graphics.RectangleShape,
+            color = if (chrome) bgColor else Color.Transparent,
+            tonalElevation = if (chrome) 6.dp else 0.dp,
+            shadowElevation = if (chrome) 8.dp else 0.dp
         ) {
             MaterialTheme(typography = MaterialTheme.typography.withFontFamily(customFontFamily)) {
                 CompositionLocalProvider(
