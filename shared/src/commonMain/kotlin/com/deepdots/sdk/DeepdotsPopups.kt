@@ -233,6 +233,7 @@ class DeepdotsPopups {
         SdkRuntime.metadata = options.metadata
         SdkRuntime.provideLang = options.provideLang
         SdkRuntime.renderChrome = options.renderChrome ?: true
+        SdkRuntime.showProgressBar = options.showProgressBar
         SdkRuntime.userId = when (val userIdMeta = options.metadata?.get("userId")) {
             is String -> userIdMeta
             is Number -> userIdMeta.toString()

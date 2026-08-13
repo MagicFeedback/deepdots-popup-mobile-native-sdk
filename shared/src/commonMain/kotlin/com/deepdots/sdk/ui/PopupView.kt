@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -58,6 +59,22 @@ fun PopupView(
     var viewState by remember { mutableStateOf(ViewState.Loading) }
     var errorHint by remember { mutableStateOf<String?>(null) }
     var surveyController: SurveyController? by remember { mutableStateOf(null) }
+
+    // Profundidad de navegación DENTRO del survey: +1 por página avanzada, -1 al volver.
+    // Sustituye a `total > 1 && progress in 1 until total`, que escondía el Back siempre que la
+    // siguiente pantalla era una follow-up dinámica: las follow-up no entran en el grafo (suman
+    // +0.5 al progress y no tocan el total), así que un survey de una pregunta con follow-up
+    // tenía total=1 y nunca cumplía `total > 1`. Paridad con el fix de Web/RN.
+    var pageDepth by remember { mutableStateOf(0) }
+
+    // Estado de la barra de progreso. `enabled` lo decide el host (InitOptions.showProgressBar)
+    // y, si no se pronuncia, la plataforma (style.showProgressBar del survey).
+    var progressValue by remember { mutableStateOf(0.0) }
+    var progressTotal by remember { mutableStateOf(0) }
+    var platformShowProgressBar by remember { mutableStateOf(false) }
+    var progressShowUnit by remember { mutableStateOf(true) }
+    var progressUnit by remember { mutableStateOf(ProgressUnit.Fraction) }
+    var progressBarColor by remember { mutableStateOf(Color(0xFF22C55E)) }
 
     var customFontFamily by remember { mutableStateOf<FontFamily?>(null) }
     LaunchedEffect(popup.style.font) {
@@ -137,6 +154,42 @@ fun PopupView(
                                 },
                                 modifier = Modifier.size(32.dp)
                             ) { Text("✕", color = textColor, fontSize = 18.sp) }
+                        }
+
+                        // Barra de progreso: "Question X of Y" + barra. El host manda si se
+                        // pronunció en init; si no, la plataforma vía style.showProgressBar.
+                        val progressBar = progressBarState(
+                            enabled = SdkRuntime.showProgressBar ?: platformShowProgressBar,
+                            progress = progressValue,
+                            total = progressTotal,
+                            completed = viewState == ViewState.Completed,
+                            onStartPage = viewState == ViewState.Start,
+                            showUnit = progressShowUnit,
+                            unit = progressUnit,
+                        )
+                        if (progressBar.visible) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (progressBar.label.isNotEmpty()) {
+                                    Text(
+                                        text = progressBar.label,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = textColor
+                                    )
+                                }
+                                LinearProgressIndicator(
+                                    progress = { progressBar.fraction },
+                                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                                    color = progressBarColor,
+                                    trackColor = Color(0xFFE5E7EB),
+                                    strokeCap = StrokeCap.Round,
+                                    gapSize = 0.dp,
+                                    drawStopIndicator = {}
+                                )
+                            }
                         }
 
                         // Optional image placeholder (supports runtime override via loaded style)
@@ -226,6 +279,17 @@ fun PopupView(
                                             val m = Regex("\"$key\"\\s*:\\s*\"(.*?)\"").find(payload)
                                             return m?.groupValues?.get(1)
                                         }
+                                        // `payloadValue` solo lee strings entrecomillados; los flags y
+                                        // los números del bridge llegan sin comillas.
+                                        fun payloadBool(key: String): Boolean? =
+                                            Regex("\"$key\"\\s*:\\s*(true|false)").find(payload ?: "")
+                                                ?.groupValues?.get(1)?.toBooleanStrictOrNull()
+                                        fun payloadNumber(key: String): Double? =
+                                            Regex("\"$key\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)").find(payload ?: "")
+                                                ?.groupValues?.get(1)?.toDoubleOrNull()
+                                        /** Estado de navegación según la profundidad recorrida, no según `total`. */
+                                        fun navState(): ViewState =
+                                            if (pageDepth > 0) ViewState.InProgressNext else ViewState.InProgressFirst
                                         when (name) {
                                             "popup_clicked", "loaded" -> {
                                                 // Apply runtime style overrides if provided
@@ -262,21 +326,30 @@ fun PopupView(
                                                 // Optional popup sizing overrides
                                                 payloadValue("popupMaxWidth")?.toFloatOrNull()?.let { w -> popupMaxWidth = w.dp }
                                                 payloadValue("popupMaxHeightFraction")?.toFloatOrNull()?.let { f -> popupMaxHeightFraction = f.coerceIn(0.5f, 0.98f) }
+                                                // Barra de progreso: el total solo se conoce con el form montado.
+                                                payloadBool("showProgressBar")?.let { platformShowProgressBar = it }
+                                                payloadBool("showProgressUnit")?.let { progressShowUnit = it }
+                                                if (payloadValue("progressUnit") == "percentage") progressUnit = ProgressUnit.Percentage
+                                                parseHexColor(Regex("\"loadingBarColor\"\\s*:\\s*\"(#[0-9A-Fa-f]{3,8})\"").find(payload ?: "")?.groupValues?.get(1))
+                                                    ?.let { progressBarColor = it }
+                                                payloadNumber("total")?.let { progressTotal = it.toInt() }
+                                                payloadNumber("progress")?.let { progressValue = it }
                                             }
                                             "before_submit" -> { viewState = ViewState.Loading }
                                             // Broaden validation match
                                             "validation_error_required" -> {
+                                                // La página no ha cambiado: el estado de navegación se queda como estaba.
                                                 errorHint = "Please answer the required question to continue."
-                                                viewState = ViewState.InProgressNext
+                                                viewState = navState()
                                             }
                                             else -> {
                                                 if (name.startsWith("validation_error")) {
                                                     errorHint = payloadValue("message") ?: "Please check your answers and try again."
-                                                    viewState = ViewState.InProgressNext
+                                                    viewState = navState()
                                                 } else if (name == "submit_error") {
                                                     // Treat submit error as inline banner so user can correct and retry
                                                     errorHint = payloadValue("message") ?: "An error occurred while submitting. Please try again."
-                                                    viewState = ViewState.InProgressNext
+                                                    viewState = navState()
                                                 } else if (name == "survey_completed") {
                                                     // Move to completed state and show final message; don't auto-close
                                                     viewState = ViewState.Completed
@@ -285,13 +358,15 @@ fun PopupView(
                                                     errorHint = null
                                                     // Previously we called onAction(complete/decline) here, which closed the popup before user could read the message.
                                                 } else if (name == "after_submit") {
-                                                    val progress = Regex("\"progress\"\\s*:\\s*(\\d+)").find(payload ?: "")?.groupValues?.get(1)?.toIntOrNull() ?: 0
-                                                    val total = Regex("\"total\"\\s*:\\s*(\\d+)").find(payload ?: "")?.groupValues?.get(1)?.toIntOrNull() ?: 0
-                                                    viewState = if (total > 1 && progress in 1 until total) ViewState.InProgressNext else ViewState.InProgressFirst
+                                                    pageDepth += 1
+                                                    payloadNumber("progress")?.let { progressValue = it }
+                                                    payloadNumber("total")?.let { if (it > 0) progressTotal = it.toInt() }
+                                                    viewState = navState()
                                                     errorHint = null
                                                 } else if (name == "back") {
-                                                    val progress = Regex("\"progress\"\\s*:\\s*(\\d+)").find(payload ?: "")?.groupValues?.get(1)?.toIntOrNull() ?: 0
-                                                    viewState = if (progress == 0) ViewState.InProgressFirst else ViewState.InProgressNext
+                                                    if (pageDepth > 0) pageDepth -= 1
+                                                    payloadNumber("progress")?.let { progressValue = it }
+                                                    viewState = navState()
                                                     errorHint = null
                                                 } else if (name == "popup_close") {
                                                     popup.actions.decline?.let { onAction(it) }

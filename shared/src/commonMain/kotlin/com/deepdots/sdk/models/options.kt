@@ -51,6 +51,13 @@ data class InitOptions(
      * scrim + la tarjeta, no cede el montaje del contenedor al host.
      */
     val renderChrome: Boolean? = true,
+    /**
+     * Barra de progreso ("Question X of Y" + barra) bajo la cabecera del popup. `null` respeta
+     * el `showProgressBar` que la plataforma configure en el estilo del survey; `true`/`false`
+     * lo fuerzan desde el host. Solo se pinta con más de una página, fuera de la pantalla de
+     * inicio y antes de completar. Paridad con Web/RN `DeepdotsInitParams.showProgressBar`.
+     */
+    val showProgressBar: Boolean? = null,
     val metadata: Map<String, Any>? = null // arbitrary host-supplied metadata forwarded to the backend
 )
 

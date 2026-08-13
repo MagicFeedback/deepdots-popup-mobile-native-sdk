@@ -25,4 +25,10 @@ object SdkRuntime {
      * tarjeta (el host controla el marco). Se fija en init desde `InitOptions.renderChrome`.
      */
     var renderChrome: Boolean = true
+
+    /**
+     * Preferencia del host sobre la barra de progreso. `null` = decide la plataforma
+     * (`style.showProgressBar` del survey). Se fija en init desde `InitOptions.showProgressBar`.
+     */
+    var showProgressBar: Boolean? = null
 }

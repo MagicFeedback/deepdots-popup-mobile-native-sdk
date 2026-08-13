@@ -155,11 +155,16 @@ internal fun buildMagicFeedbackHtml(
             #mf-form .magicfeedback-title,#mf-form h1,#mf-form h2,#mf-form h3,#mf-form legend{font-size:16px;line-height:1.35;margin:0 0 8px 0;}
             #mf-form label,#mf-form .magicfeedback-label{line-height:1.35;}
             #mf-status{color:#666;font-size:12px;padding:4px;}
+            /* Pantalla final: HTML del editor de la plataforma (imagen + texto), centrado. */
+            .deepdots-success{display:none;width:100%;text-align:center;padding:24px 0;}
+            .deepdots-success img{max-width:100%;height:auto;margin:0 auto 16px auto;display:block;}
+            .deepdots-success p{margin:0;font-size:16px;font-weight:600;line-height:1.4;}
           </style>
           <link rel="stylesheet" href="$urlStyleDefault" />
         </head>
         <body class="deepdots-popup">
           <div id='mf-form'></div>
+          <div id='mf-success' class='deepdots-success'></div>
           <script>
             (function(){
               var LOCAL_SRC = $localSrcLiteral;
@@ -167,6 +172,18 @@ internal fun buildMagicFeedbackHtml(
               $emitWrapper
               var initialized = false;
               var mfReady = false; // becomes true when form onLoadedEvent fires
+              // Mensaje final configurado en la plataforma (style.successMessage). Va por
+              // innerHTML porque es HTML del editor (imagen + texto), igual que hace
+              // renderStartMessage de @magicfeedback/native con el mensaje de inicio.
+              var successMessageHtml = '';
+              function showSuccessScreen(){
+                try {
+                  var form = document.getElementById('mf-form'); if (form) { form.style.display = 'none'; }
+                  var done = document.getElementById('mf-success'); if (!done) return;
+                  done.innerHTML = successMessageHtml || '<p>Thank you for your feedback!</p>';
+                  done.style.display = 'block';
+                } catch(e){ console.error('[MagicFeedback] success screen error', e); }
+              }
               var PUBLIC_KEY = ${if (pubKeyJs.isNotEmpty()) "'${pubKeyJs}'" else "null"};
               var ENV = ${if (envJs.isNotEmpty()) "'${envJs}'" else "'prod'"};
             
@@ -200,11 +217,19 @@ internal fun buildMagicFeedbackHtml(
                  
                     form.generate('mf-form', {
                       addButton:false,
+                      // La pantalla final la pinta este HTML: renderSuccess de
+                      // @magicfeedback/native usa textContent, así que el mensaje de la
+                      // plataforma (HTML con imagen) no se vería, y su fallback es un literal
+                      // genérico que ignora style.successMessage. Paridad con Web/RN.
+                      addSuccessScreen:false,
                       onLoadedEvent: function(args){
                         mfReady = true; var s=document.getElementById('mf-status'); if(s) s.textContent='';
                         try {
                           var style = (args && args.formData && args.formData.style) ? args.formData.style : null;
-                          emitJSON('popup_clicked', { style: style });
+                          if (style && style.successMessage) { successMessageHtml = style.successMessage; }
+                          // El total solo se conoce con el form ya montado: lo necesita la barra
+                          // de progreso que pinta la capa nativa.
+                          emitJSON('popup_clicked', { style: style, progress: form.progress || 0, total: form.total || 0 });
                           emit('loaded'); // explicit loaded for Kotlin UI state
                         } catch(e){ console.error('[MagicFeedback] onLoadedEvent emit error', e); }
                       },
@@ -220,7 +245,7 @@ internal fun buildMagicFeedbackHtml(
                              if (lower.indexOf('no response') !== -1) { emitJSON('validation_error_required'); }
                              else { emitJSON('submit_error', { error: err }); }
                           }
-                          if (completed) { emitJSON('survey_completed'); }
+                          if (completed) { showSuccessScreen(); emitJSON('survey_completed'); }
                           else { emitJSON('after_submit', { error: err, completed: completed, progress: progress, total: total }); }
                         } catch(e){ console.error('[MagicFeedback] afterSubmit exception', e); }
                       },
