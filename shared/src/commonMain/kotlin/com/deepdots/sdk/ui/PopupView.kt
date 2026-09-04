@@ -156,6 +156,30 @@ fun PopupView(
                             ) { Text("✕", color = textColor, fontSize = 18.sp) }
                         }
 
+                        // Optional image placeholder (supports runtime override via loaded style).
+                        // Va ANTES de la barra de progreso: la marca abre la tarjeta y la barra
+                        // queda pegada a la pregunta (paridad con el popup web, ui/logo.ts).
+                        val finalImageUrl = imageUrlOverride ?: popup.style.imageUrl
+                        if (finalImageUrl != null) {
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(imageMaxHeight)
+                                        .padding(imageHorizontalPadding),
+                                    contentAlignment = imageAlignment
+                                ) {
+                                    PlatformImage(
+                                        url = finalImageUrl,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        maxHeight = imageMaxHeight,
+                                        alignment = imageAlignment,
+                                        contentDescription = "Popup image"
+                                    )
+                                }
+                            }
+                        }
+
                         // Barra de progreso: "Question X of Y" + barra. El host manda si se
                         // pronunció en init; si no, la plataforma vía style.showProgressBar.
                         val progressBar = progressBarState(
@@ -189,28 +213,6 @@ fun PopupView(
                                     gapSize = 0.dp,
                                     drawStopIndicator = {}
                                 )
-                            }
-                        }
-
-                        // Optional image placeholder (supports runtime override via loaded style)
-                        val finalImageUrl = imageUrlOverride ?: popup.style.imageUrl
-                        if (finalImageUrl != null) {
-                            Row(modifier = Modifier.fillMaxWidth()) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(imageMaxHeight)
-                                        .padding(imageHorizontalPadding),
-                                    contentAlignment = imageAlignment
-                                ) {
-                                    PlatformImage(
-                                        url = finalImageUrl,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        maxHeight = imageMaxHeight,
-                                        alignment = imageAlignment,
-                                        contentDescription = "Popup image"
-                                    )
-                                }
                             }
                         }
 
