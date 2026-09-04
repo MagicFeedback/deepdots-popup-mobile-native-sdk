@@ -5,7 +5,7 @@ import com.deepdots.sdk.models.PopupFont
 import com.deepdots.sdk.tracking.buildSurveyIdentity
 
 // Centralized MagicFeedback package version used for all CDN URLs
-private const val MAGICFEEDBACK_VERSION: String = "2.2.4"
+private const val MAGICFEEDBACK_VERSION: String = "2.2.8"
 
 /**
  * Common HTML builder for MagicFeedback survey popup used by Android/iOS WebViews.
