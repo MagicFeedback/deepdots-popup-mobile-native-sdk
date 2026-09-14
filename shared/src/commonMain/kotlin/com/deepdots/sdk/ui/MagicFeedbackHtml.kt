@@ -202,6 +202,7 @@ internal fun buildMagicFeedbackHtml(
               $emitWrapper
               var initialized = false;
               var mfReady = false; // becomes true when form onLoadedEvent fires
+${SurveyPalette.PRIMARY_COLOR_JS}
 ${PopupReveal.REVEAL_JS}
               // Apertura diferida: la capa nativa mantiene el popup invisible hasta este aviso,
               // para que el usuario vea la tarjeta ya pintada en vez del spinner. Se manda
@@ -288,6 +289,11 @@ ${PopupReveal.REVEAL_JS}
                         mfReady = true; var s=document.getElementById('mf-status'); if(s) s.textContent='';
                         try {
                           var style = (args && args.formData && args.formData.style) ? args.formData.style : null;
+                          // El survey pinta sus controles con --mf-primary, que sale de
+                          // primaryColor; si la integracion solo configura el del boton, el popup
+                          // mezclaria el color de la marca (que el chrome nativo si usa) con el
+                          // gris azulado por defecto del paquete.
+                          ddApplySurveyPrimaryColor(document.documentElement, style);
                           if (style && style.successMessage) { successMessageHtml = style.successMessage; }
                           // Idioma del survey: lo configura la plataforma en la integración y solo
                           // se conoce aquí dentro, pero los botones los pinta la capa nativa, así

@@ -1,6 +1,7 @@
 package com.deepdots.sdk
 
 import com.deepdots.sdk.ui.PopupReveal
+import com.deepdots.sdk.ui.SurveyPalette
 import com.deepdots.sdk.ui.buildMagicFeedbackHtml
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -117,6 +118,26 @@ class PopupRevealTest {
         assertEquals(280, PopupReveal.resolveSurveyHeightDp(-5, floorDp = 280, ceilingDp = 560))
         // Pantalla pequeña: el suelo nunca puede pasarse del techo disponible.
         assertEquals(200, PopupReveal.resolveSurveyHeightDp(null, floorDp = 280, ceilingDp = 200))
+    }
+
+    @Test
+    fun el_survey_hereda_el_color_de_marca_del_boton() {
+        // Las integraciones configuran buttonPrimaryColor pero muchas dejan primaryColor vacio,
+        // y el survey pinta sus controles con --mf-primary: sin esto, el popup mezcla el color de
+        // la marca (que el chrome de Compose si usa) con el gris azulado por defecto del paquete.
+        val h = html()
+        assertTrue(h.contains("ddApplySurveyPrimaryColor(document.documentElement, style)"), "debe aplicar el color al cargar")
+        assertTrue(h.contains("--mf-primary"), "debe escribir la variable del survey")
+        assertTrue(h.contains("--mf-border-focus"), "y las derivadas, que se resuelven en :root")
+    }
+
+    @Test
+    fun solo_acepta_colores_hex() {
+        // El estilo viene de la API y se interpola en CSS.
+        assertTrue(
+            SurveyPalette.PRIMARY_COLOR_JS.contains("hex.test(value)"),
+            "debe filtrar por hex antes de tocar el CSS",
+        )
     }
 
     @Test
