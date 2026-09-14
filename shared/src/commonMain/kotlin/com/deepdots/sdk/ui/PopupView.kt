@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.AnnotatedString
@@ -33,6 +34,7 @@ import com.deepdots.sdk.i18n.DefaultLabels
 import com.deepdots.sdk.models.*
 import com.deepdots.sdk.util.HtmlParagraph
 import com.deepdots.sdk.util.parsePopupHtml
+import kotlinx.coroutines.delay
 
 // Top-level enum to avoid local enum compile restriction
 private enum class ViewState { Loading, Start, InProgressFirst, InProgressNext, Completed, Error }
@@ -41,7 +43,13 @@ private enum class ViewState { Loading, Start, InProgressFirst, InProgressNext, 
 fun PopupView(
     popup: PopupDefinition,
     onAction: (Action) -> Unit,
-    onSurveyEvent: (name: String, payload: String?) -> Unit = { _, _ -> }
+    onSurveyEvent: (name: String, payload: String?) -> Unit = { _, _ -> },
+    /**
+     * Se llama una sola vez, cuando el popup ya se puede enseñar (survey pintado o techo de
+     * espera vencido). La capa de plataforma lo usa para sacar de la pantalla su contenedor
+     * mientras tanto, que es lo que evita además comerse los toques del usuario.
+     */
+    onReady: () -> Unit = {}
 ) {
     val primaryColorDefault = Color(0xFF1E293B)
     var primaryColor by remember { mutableStateOf(primaryColorDefault) }
@@ -54,6 +62,21 @@ fun PopupView(
     }
     val textColor = if (popup.style.theme == Theme.Light) Color.Black else Color.White
     val paragraphs = remember(popup.message) { parsePopupHtml(popup.message) }
+
+    // Apertura diferida (paridad con Web): el popup se monta invisible y se enseña cuando el
+    // WebView avisa de que el survey está pintado, en vez de enseñar el spinner girando. El techo
+    // lo abre igualmente si el survey tarda de más, así que una red mala retrasa la apertura pero
+    // nunca la impide.
+    var revealed by remember { mutableStateOf(false) }
+    fun reveal() {
+        if (revealed) return
+        revealed = true
+        onReady()
+    }
+    LaunchedEffect(Unit) {
+        delay(PopupReveal.REVEAL_TIMEOUT_MS)
+        reveal()
+    }
 
     // Initialize in first-page state so spinner doesn’t cover content until survey explicitly signals loading
     var viewState by remember { mutableStateOf(ViewState.Loading) }
@@ -72,6 +95,11 @@ fun PopupView(
     fun actionLabel(apiLabel: String?, slot: DefaultLabels.Slot): String =
         apiLabel?.takeIf { it.isNotBlank() } ?: labels.get(slot)
     var surveyController: SurveyController? by remember { mutableStateOf(null) }
+
+    // Lo que el WebView dice que ocupa el survey (px CSS = dp). El WebView no tiene tamaño
+    // propio, así que sin este dato se estira hasta el máximo y una sola pregunta deja un hueco
+    // enorme entre la última opción y el footer.
+    var surveyContentHeightDp by remember { mutableStateOf<Int?>(null) }
 
     // Profundidad de navegación DENTRO del survey: +1 por página avanzada, -1 al volver.
     // Sustituye a `total > 1 && progress in 1 until total`, que escondía el Back siempre que la
@@ -108,6 +136,10 @@ fun PopupView(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            // Invisible, no "no compuesto": el WebView tiene que estar montado para cargar el
+            // survey. El velo del scrim también desaparece, si no se vería el fondo oscuro
+            // varios cientos de ms antes que la tarjeta.
+            .alpha(if (revealed) 1f else 0f)
             .background(if (chrome) Color(0x66000000) else Color.Transparent),
         contentAlignment = mapPosition(popup.style.position)
     ) {
@@ -135,6 +167,10 @@ fun PopupView(
                     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val maxPopupHeight = maxHeight * popupMaxHeightFraction
                 val minSurveyHeight = (maxPopupHeight * 0.35f).coerceAtLeast(280.dp)
+                // Espacio que le queda al survey dentro de la tarjeta: el resto se lo llevan
+                // cabecera, logo, barra de progreso y footer. Por encima de esto el WebView hace
+                // su propio scroll vertical.
+                val maxSurveyHeight = maxPopupHeight * 0.72f
                 val scrollState = rememberScrollState()
                 Box(modifier = Modifier.fillMaxWidth()) {
                     // Wrap-content column with a hard max-height. If the total intrinsic size
@@ -242,15 +278,22 @@ fun PopupView(
                             }
                         }
 
-                        // Survey render area — wrap-content height with a sensible floor so
-                        // common scale surveys fit. The WebView handles its own internal
-                        // vertical scroll if the rendered form is taller; horizontal overflow
-                        // is suppressed via CSS in MagicFeedbackHtml.
+                        // Área del survey: se dimensiona con lo que el WebView dice que ocupa su
+                        // contenido, no llenando el espacio disponible. Un WebView no tiene
+                        // tamaño propio, así que antes se estiraba hasta el máximo y una sola
+                        // pregunta dejaba un hueco enorme hasta el footer. Mientras no llega el
+                        // dato se usa el suelo de siempre, y por encima del techo el WebView hace
+                        // su propio scroll vertical (el horizontal lo corta el CSS).
                         Row(modifier = Modifier.fillMaxWidth()) {
+                            val surveyHeight = PopupReveal.resolveSurveyHeightDp(
+                                reportedDp = surveyContentHeightDp,
+                                floorDp = minSurveyHeight.value.toInt(),
+                                ceilingDp = maxSurveyHeight.value.toInt(),
+                            ).dp
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(min = minSurveyHeight)
+                                    .height(surveyHeight)
                             ) {
                                 SurveyView(
                                     popup.surveyId,
@@ -312,6 +355,11 @@ fun PopupView(
                                         fun navState(): ViewState =
                                             if (pageDepth > 0) ViewState.InProgressNext else ViewState.InProgressFirst
                                         when (name) {
+                                            PopupReveal.READY_EVENT -> reveal()
+                                            PopupReveal.CONTENT_HEIGHT_EVENT ->
+                                                payloadNumber("height")?.let { h ->
+                                                    surveyContentHeightDp = h.toInt()
+                                                }
                                             "popup_clicked", "loaded" -> {
                                                 // Apply runtime style overrides if provided
                                                 val primaryHex = Regex("\"buttonPrimaryColor\"\\s*:\\s*\"(#[0-9A-Fa-f]{3,8})\"").find(payload ?: "")?.groupValues?.get(1)

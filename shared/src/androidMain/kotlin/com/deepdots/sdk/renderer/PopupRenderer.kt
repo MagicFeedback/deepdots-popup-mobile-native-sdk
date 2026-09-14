@@ -28,6 +28,11 @@ actual object PopupRenderer {
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
             tag = "DeepdotsPopupContainer"
+            // Apertura diferida: INVISIBLE, no GONE. Mantiene el layout (el WebView se monta y
+            // carga el survey) pero no se pinta NI recibe toques, así que mientras se espera el
+            // usuario sigue usando la app; con la vista visible y solo transparente, el overlay
+            // se comería sus toques sin enseñar nada. `PopupView` la enseña en `onReady`.
+            visibility = android.view.View.INVISIBLE
         }
         val composeView = ComposeView(activity).apply {
             setContent {
@@ -60,6 +65,7 @@ actual object PopupRenderer {
                         }
                     },
                     onSurveyEvent = onSurveyEvent,
+                    onReady = { container.visibility = android.view.View.VISIBLE },
                 )
             }
         }
