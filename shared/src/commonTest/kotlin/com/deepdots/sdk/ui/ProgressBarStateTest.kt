@@ -1,5 +1,7 @@
 package com.deepdots.sdk.ui
 
+import com.deepdots.sdk.i18n.DefaultLabels
+
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -59,6 +61,15 @@ class ProgressBarStateTest {
         val s = progressBarState(enabled = true, progress = 9.0, total = 3)
         assertEquals("Question 3 of 3", s.label)
         assertEquals(1f, s.fraction)
+    }
+
+    @Test
+    fun la_etiqueta_usa_el_idioma_del_survey() {
+        // Paridad con Web: "Question X of Y" sale de la tabla de i18n, no de un literal inglés.
+        val da = progressBarState(enabled = true, progress = 0.0, total = 3, labels = DefaultLabels.labels("da"))
+        assertEquals("Spørgsmål 1 af 3", da.label)
+        val de = progressBarState(enabled = true, progress = 1.0, total = 3, labels = DefaultLabels.labels("de"))
+        assertEquals("Frage 2 von 3", de.label)
     }
 
     @Test

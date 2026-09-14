@@ -1,5 +1,7 @@
 package com.deepdots.sdk.ui
 
+import com.deepdots.sdk.i18n.DefaultLabels
+
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -28,6 +30,7 @@ enum class ProgressUnit { Fraction, Percentage }
  *   si no el `showProgressBar` del estilo del survey.
  * @param onStartPage la pantalla de inicio no lleva barra.
  * @param completed la pantalla final tampoco.
+ * @param labels textos del chrome ya resueltos (idioma del survey > host > inglés).
  */
 fun progressBarState(
     enabled: Boolean,
@@ -37,6 +40,7 @@ fun progressBarState(
     onStartPage: Boolean = false,
     showUnit: Boolean = true,
     unit: ProgressUnit = ProgressUnit.Fraction,
+    labels: DefaultLabels.Labels = DefaultLabels.labels(null),
 ): ProgressBarState {
     // Con una sola página no hay nada que medir: el mismo corte que hace MagicSurvey.
     if (!enabled || completed || onStartPage || total <= 1) {
@@ -50,7 +54,7 @@ fun progressBarState(
         unit == ProgressUnit.Percentage -> "${(fraction * 100).roundToInt()}%"
         else -> {
             val whole = (floor(progress) + 1).coerceIn(1.0, total.toDouble()).toInt()
-            "Question $whole of $total"
+            "${labels.question} $whole ${labels.of} $total"
         }
     }
     return ProgressBarState(visible = true, label = label, fraction = fraction.toFloat())

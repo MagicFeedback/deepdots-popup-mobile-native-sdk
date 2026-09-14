@@ -5,7 +5,7 @@ import com.deepdots.sdk.models.PopupFont
 import com.deepdots.sdk.tracking.buildSurveyIdentity
 
 // Centralized MagicFeedback package version used for all CDN URLs
-private const val MAGICFEEDBACK_VERSION: String = "2.2.8"
+private const val MAGICFEEDBACK_VERSION: String = "2.2.22"
 
 /**
  * Common HTML builder for MagicFeedback survey popup used by Android/iOS WebViews.
@@ -227,9 +227,20 @@ internal fun buildMagicFeedbackHtml(
                         try {
                           var style = (args && args.formData && args.formData.style) ? args.formData.style : null;
                           if (style && style.successMessage) { successMessageHtml = style.successMessage; }
+                          // Idioma del survey: lo configura la plataforma en la integración y solo
+                          // se conoce aquí dentro, pero los botones los pinta la capa nativa, así
+                          // que se lo reenviamos para que traduzca su chrome (paridad con Web,
+                          // donde `renderPopup` lee el mismo `formData.lang` al cargar).
+                          var langs = (args && args.formData && args.formData.lang) ? args.formData.lang : null;
+                          var surveyLang = '';
+                          if (langs && langs.length) {
+                            for (var li = 0; li < langs.length; li++) {
+                              if (typeof langs[li] === 'string' && langs[li].trim()) { surveyLang = langs[li]; break; }
+                            }
+                          }
                           // El total solo se conoce con el form ya montado: lo necesita la barra
                           // de progreso que pinta la capa nativa.
-                          emitJSON('popup_clicked', { style: style, progress: form.progress || 0, total: form.total || 0 });
+                          emitJSON('popup_clicked', { style: style, surveyLang: surveyLang, progress: form.progress || 0, total: form.total || 0 });
                           emit('loaded'); // explicit loaded for Kotlin UI state
                         } catch(e){ console.error('[MagicFeedback] onLoadedEvent emit error', e); }
                       },

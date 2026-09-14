@@ -96,4 +96,13 @@ class MagicFeedbackHtmlTest {
             "onLoadedEvent debe emitir progress y total para la barra de progreso",
         )
     }
+
+    @Test
+    fun html_forwards_the_survey_language_to_the_native_chrome() {
+        // El idioma del survey (`formData.lang[0]`) solo se conoce dentro del WebView; la capa
+        // nativa pinta los botones, así que el bridge tiene que reenviárselo en el `loaded`.
+        val html = Deepdots.getSurveyHtml("survey-abc", "product-xyz")
+        assertTrue(html.contains("formData.lang"), "El bridge debe leer formData.lang")
+        assertTrue(html.contains("surveyLang"), "El payload del loaded debe incluir surveyLang")
+    }
 }

@@ -42,7 +42,6 @@ import com.deepdots.sdk.analytics.MessageGuardVerdict
 import com.deepdots.sdk.tracking.NavigationObserver
 import com.deepdots.sdk.models.Trigger
 import com.deepdots.sdk.models.TriggerConditionStatus
-import com.deepdots.sdk.i18n.DefaultLabels
 import com.deepdots.sdk.platform.PlatformContext
 import com.deepdots.sdk.platform.dismissPopup
 import com.deepdots.sdk.renderer.PopupRenderer
@@ -1539,34 +1538,25 @@ class DeepdotsPopups {
         }
     }
 
+    /**
+     * Mapea las acciones que llegan de la API. Las etiquetas se guardan **tal cual**, en blanco
+     * incluidas: la traducción por defecto NO se hornea aquí porque en este punto todavía no se
+     * conoce el idioma del survey, que manda sobre el del dispositivo. La resuelve `PopupView`
+     * al pintar, con la misma prioridad que el SDK Web (`resolveActionLabels`):
+     * etiqueta de la API > idioma del survey > idioma del host > inglés.
+     */
     private fun mapActions(actions: ServerActionsDto?): Actions {
-        val lang = initOptions?.provideLang?.invoke()
         val accept = actions?.accept?.let {
-            Action.Accept(
-                label = it.label.orFallback(DefaultLabels.Slot.ACCEPT, lang),
-                surveyId = it.surveyId ?: "",
-            )
+            Action.Accept(label = it.label.orEmpty(), surveyId = it.surveyId ?: "")
         }
         val decline = actions?.decline?.let {
-            Action.Decline(
-                label = it.label.orFallback(DefaultLabels.Slot.DECLINE, lang),
-                cooldownDays = it.cooldownDays ?: 0,
-            )
+            Action.Decline(label = it.label.orEmpty(), cooldownDays = it.cooldownDays ?: 0)
         }
-        val start = actions?.start?.let {
-            Action.Start(label = it.label.orFallback(DefaultLabels.Slot.START, lang))
-        }
-        val complete = actions?.complete?.let {
-            Action.Complete(label = it.label.orFallback(DefaultLabels.Slot.COMPLETE, lang))
-        }
-        val back = actions?.back?.let {
-            Action.Back(label = it.label.orFallback(DefaultLabels.Slot.BACK, lang))
-        }
+        val start = actions?.start?.let { Action.Start(label = it.label.orEmpty()) }
+        val complete = actions?.complete?.let { Action.Complete(label = it.label.orEmpty()) }
+        val back = actions?.back?.let { Action.Back(label = it.label.orEmpty()) }
         return Actions(accept = accept, decline = decline, start = start, complete = complete, back = back)
     }
-
-    private fun String?.orFallback(slot: DefaultLabels.Slot, lang: String?): String =
-        this?.takeIf { it.isNotBlank() } ?: DefaultLabels.resolve(slot, lang)
 
     private fun mapSegments(segments: ServerSegmentsDto?): Segments? {
         if (segments == null) return null

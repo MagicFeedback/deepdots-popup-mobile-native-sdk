@@ -22,6 +22,9 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,9 +33,6 @@ import com.deepdots.sdk.i18n.DefaultLabels
 import com.deepdots.sdk.models.*
 import com.deepdots.sdk.util.HtmlParagraph
 import com.deepdots.sdk.util.parsePopupHtml
-
-private fun defaultLabel(slot: DefaultLabels.Slot): String =
-    DefaultLabels.resolve(slot, SdkRuntime.provideLang?.invoke())
 
 // Top-level enum to avoid local enum compile restriction
 private enum class ViewState { Loading, Start, InProgressFirst, InProgressNext, Completed, Error }
@@ -58,6 +58,19 @@ fun PopupView(
     // Initialize in first-page state so spinner doesn’t cover content until survey explicitly signals loading
     var viewState by remember { mutableStateOf(ViewState.Loading) }
     var errorHint by remember { mutableStateOf<String?>(null) }
+
+    // Idioma del chrome. Arranca con el del host (`InitOptions.provideLang`) y pasa al del
+    // survey en cuanto el WebView lo reenvía en el `loaded`: un survey en danés debe traer
+    // también sus botones en danés aunque el móvil esté en inglés. Espejo del SDK Web.
+    var surveyLang by remember { mutableStateOf<String?>(null) }
+    val chromeLang = surveyLang ?: SdkRuntime.provideLang?.invoke()
+    val labels = DefaultLabels.labels(chromeLang)
+    // Desde @magicfeedback/native 2.2.22 el survey del WebView se voltea solo para los idiomas
+    // RTL; sin esto el chrome de Compose se quedaría mirando al otro lado.
+    val layoutDirection = popupLayoutDirection(chromeLang)
+    /** Etiqueta de la API si la plataforma la configuró; si no, la traducción del SDK. */
+    fun actionLabel(apiLabel: String?, slot: DefaultLabels.Slot): String =
+        apiLabel?.takeIf { it.isNotBlank() } ?: labels.get(slot)
     var surveyController: SurveyController? by remember { mutableStateOf(null) }
 
     // Profundidad de navegación DENTRO del survey: +1 por página avanzada, -1 al volver.
@@ -116,7 +129,8 @@ fun PopupView(
         ) {
             MaterialTheme(typography = MaterialTheme.typography.withFontFamily(customFontFamily)) {
                 CompositionLocalProvider(
-                    LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = customFontFamily)
+                    LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = customFontFamily),
+                    LocalLayoutDirection provides layoutDirection,
                 ) {
                     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val maxPopupHeight = maxHeight * popupMaxHeightFraction
@@ -150,9 +164,13 @@ fun PopupView(
                             IconButton(
                                 onClick = {
                                     val decline = popup.actions.decline
-                                    if (decline != null) onAction(decline) else onAction(Action.Decline(label = "Close", cooldownDays = 0))
+                                    if (decline != null) onAction(decline)
+                                    else onAction(Action.Decline(label = labels.decline, cooldownDays = 0))
                                 },
+                                // La X no tiene texto: sin descripción el lector de pantalla solo
+                                // anuncia "botón". Paridad con el aria-label del popup web.
                                 modifier = Modifier.size(32.dp)
+                                    .semantics { contentDescription = labels.closeAria },
                             ) { Text("✕", color = textColor, fontSize = 18.sp) }
                         }
 
@@ -190,6 +208,7 @@ fun PopupView(
                             onStartPage = viewState == ViewState.Start,
                             showUnit = progressShowUnit,
                             unit = progressUnit,
+                            labels = labels,
                         )
                         if (progressBar.visible) {
                             Column(
@@ -336,21 +355,29 @@ fun PopupView(
                                                     ?.let { progressBarColor = it }
                                                 payloadNumber("total")?.let { progressTotal = it.toInt() }
                                                 payloadNumber("progress")?.let { progressValue = it }
+                                                // Idioma del survey (`formData.lang[0]`), que el
+                                                // WebView reenvía al cargar: manda sobre el del host.
+                                                payloadValue("surveyLang")?.takeIf { it.isNotBlank() }
+                                                    ?.let { surveyLang = it }
                                             }
                                             "before_submit" -> { viewState = ViewState.Loading }
                                             // Broaden validation match
                                             "validation_error_required" -> {
                                                 // La página no ha cambiado: el estado de navegación se queda como estaba.
-                                                errorHint = "Please answer the required question to continue."
+                                                errorHint = labels.errorRequired
                                                 viewState = navState()
                                             }
                                             else -> {
                                                 if (name.startsWith("validation_error")) {
-                                                    errorHint = payloadValue("message") ?: "Please check your answers and try again."
+                                                    // Rama defensiva: hoy el WebView solo emite
+                                                    // `validation_error_required`. Sin mensaje del
+                                                    // bridge se usa el mismo aviso traducido, en
+                                                    // vez de un literal inglés suelto.
+                                                    errorHint = payloadValue("message") ?: labels.errorRequired
                                                     viewState = navState()
                                                 } else if (name == "submit_error") {
                                                     // Treat submit error as inline banner so user can correct and retry
-                                                    errorHint = payloadValue("message") ?: "An error occurred while submitting. Please try again."
+                                                    errorHint = payloadValue("message") ?: labels.errorSubmit
                                                     viewState = navState()
                                                 } else if (name == "survey_completed") {
                                                     // Move to completed state and show final message; don't auto-close
@@ -416,26 +443,26 @@ fun PopupView(
                                             errorHint = null
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.start?.label ?: defaultLabel(DefaultLabels.Slot.START), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.start?.label, DefaultLabels.Slot.START), color = Color.White) }
                                 }
                                 ViewState.InProgressFirst -> {
                                     Spacer(modifier = Modifier.weight(1f))
                                     Button(
                                         onClick = { surveyController?.send() },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.accept?.label ?: defaultLabel(DefaultLabels.Slot.ACCEPT), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.accept?.label, DefaultLabels.Slot.ACCEPT), color = Color.White) }
                                 }
                                 ViewState.InProgressNext -> {
                                     OutlinedButton(
                                         onClick = { surveyController?.back() },
                                         colors = ButtonDefaults.outlinedButtonColors(contentColor = primaryColor),
                                         border = BorderStroke(1.dp, primaryColor)
-                                    ) { Text(popup.actions.back?.label ?: defaultLabel(DefaultLabels.Slot.BACK)) }
+                                    ) { Text(actionLabel(popup.actions.back?.label, DefaultLabels.Slot.BACK)) }
                                     Spacer(modifier = Modifier.weight(1f))
                                     Button(
                                         onClick = { surveyController?.send() },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.accept?.label ?: defaultLabel(DefaultLabels.Slot.ACCEPT), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.accept?.label, DefaultLabels.Slot.ACCEPT), color = Color.White) }
                                 }
                                 ViewState.Completed -> {
                                     Button(
@@ -445,13 +472,13 @@ fun PopupView(
                                             if (complete != null) onAction(complete) else onAction(Action.Complete(label = "" ))
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.complete?.label ?: defaultLabel(DefaultLabels.Slot.COMPLETE), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.complete?.label, DefaultLabels.Slot.COMPLETE), color = Color.White) }
                                 }
                                 ViewState.Error -> {
                                     Button(
                                         onClick = { popup.actions.decline?.let { onAction(it) } },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.decline?.label ?: defaultLabel(DefaultLabels.Slot.DECLINE), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.decline?.label, DefaultLabels.Slot.DECLINE), color = Color.White) }
                                 }
                             }
                         }
@@ -473,7 +500,10 @@ fun PopupView(
                                 .background(Color.White.copy(alpha = 0.65f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(color = primaryColor)
+                            CircularProgressIndicator(
+                                color = primaryColor,
+                                modifier = Modifier.semantics { contentDescription = labels.loadingAria },
+                            )
                         }
                     }
                 }
