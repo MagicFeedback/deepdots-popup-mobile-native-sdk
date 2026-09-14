@@ -8,6 +8,22 @@ import com.deepdots.sdk.tracking.buildSurveyIdentity
 private const val MAGICFEEDBACK_VERSION: String = "2.2.22"
 
 /**
+ * Version de `@magicfeedback/popup-sdk` de la que se sirve la hoja de estilos del survey.
+ *
+ * ⚠️ Va PINEADA a proposito. Sin version, jsDelivr sirve la ultima publicada, de modo que una
+ * app ya distribuida -- con su [MAGICFEEDBACK_VERSION] compilado dentro -- empezaria a
+ * combinar su JS con el CSS de una release posterior en cuanto alguien publique el popup-sdk.
+ * El salto 2.2.8 -> 2.2.22 lo deja claro: la hoja cambia a propiedades logicas y anade RTL.
+ *
+ * Esta hoja es la copia vendorizada de `magicfeedback-default.css` (no la del paquete de
+ * surveys), con los 5 deltas locales del SDK, asi que el pin es a la version del popup-sdk y
+ * NO a [MAGICFEEDBACK_VERSION]. Al subir [MAGICFEEDBACK_VERSION] hay que publicar el popup-sdk
+ * con su CSS re-vendorizado y apuntar aqui a esa version; mientras ese npm no este publicado,
+ * el WebView pedira una URL que no existe y el survey saldra sin estilos.
+ */
+internal const val POPUP_SDK_CSS_VERSION: String = "1.7.0"
+
+/**
  * Common HTML builder for MagicFeedback survey popup used by Android/iOS WebViews.
  * This generates a self-contained HTML document that attempts to load a local asset first
  * and then falls back to CDN strategies. Bridge emission is abstracted so each platform
@@ -46,7 +62,7 @@ internal fun buildMagicFeedbackHtml(
     val urlBrowserUnpkg = "$unpkgBase/magicfeedback-sdk.browser.js"
     val urlEsmModule = "$cdnBase/index.js"
     val urlStyleDefault =
-        "https://cdn.jsdelivr.net/npm/@magicfeedback/popup-sdk/dist/assets/assets/style.css"
+        "https://cdn.jsdelivr.net/npm/@magicfeedback/popup-sdk@$POPUP_SDK_CSS_VERSION/dist/assets/assets/style.css"
 
     val pubKeyJs = (SdkRuntime.publicKey ?: "")
     val envJs = (SdkRuntime.env.ifBlank { "prod" })

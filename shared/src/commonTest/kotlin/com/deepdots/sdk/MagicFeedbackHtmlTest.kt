@@ -1,6 +1,7 @@
 package com.deepdots.sdk
 
 import com.deepdots.sdk.models.PopupFont
+import com.deepdots.sdk.ui.POPUP_SDK_CSS_VERSION
 import com.deepdots.sdk.ui.buildMagicFeedbackHtml
 import com.deepdots.sdk.ui.platformSurveyHtml
 import kotlin.test.Test
@@ -104,5 +105,22 @@ class MagicFeedbackHtmlTest {
         val html = Deepdots.getSurveyHtml("survey-abc", "product-xyz")
         assertTrue(html.contains("formData.lang"), "El bridge debe leer formData.lang")
         assertTrue(html.contains("surveyLang"), "El payload del loaded debe incluir surveyLang")
+    }
+
+    @Test
+    fun css_url_is_pinned_to_a_popup_sdk_version() {
+        // Sin version, jsDelivr sirve la ultima publicada: una app ya distribuida (con su
+        // MAGICFEEDBACK_VERSION compilado dentro) empezaria a combinar su JS con el CSS de una
+        // release posterior en cuanto se publique el popup-sdk. Paso que ya casi ocurre con el
+        // salto 2.2.8 -> 2.2.22, que cambia la hoja a propiedades logicas y anade RTL.
+        val html = Deepdots.getSurveyHtml("survey-abc", "product-xyz")
+        assertTrue(
+            html.contains("@magicfeedback/popup-sdk@$POPUP_SDK_CSS_VERSION/dist/assets/assets/style.css"),
+            "El CSS del popup-sdk debe cargarse con version explicita",
+        )
+        assertTrue(
+            !html.contains("@magicfeedback/popup-sdk/dist"),
+            "No debe quedar ninguna URL del popup-sdk sin version",
+        )
     }
 }
