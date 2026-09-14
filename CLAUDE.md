@@ -199,6 +199,23 @@ distintas, las dos en la ruta del WebView.
   **acotadas a `.deepdots-popup`** porque en web la hoja se inyecta en el `<head>` del host; aquí
   no hace falta, el CSS vive aislado en el WebView.
 
+## Feature: color de marca dentro del survey (2026-09-14)
+
+El chrome de Compose ya usaba `buttonPrimaryColor`, pero el survey del WebView pinta sus
+controles (chips del rating, bordes, foco, selección) con `--mf-primary`, que
+`@magicfeedback/native` rellena **solo** desde `formData.style.primaryColor`. Las
+integraciones configuran el color del botón y suelen dejar el primario vacío, así que el
+popup mezclaba el color de la marca con el `#5d7bad` por defecto del paquete.
+
+- `ui/SurveyPalette.kt` (espejo de `src/ui/surveyPalette.ts` en Web) lleva el JS que corre
+  dentro del WebView: sin `primaryColor`, usa `buttonPrimaryColor`.
+- ⚠️ Escribe **las cinco** variables que pone `applyPrimaryColor` del Surveys SDK, no solo
+  `--mf-primary`: un `color-mix` declarado en `:root` ya se resolvió allí contra el color por
+  defecto y heredaría ese valor ya calculado.
+- ⚠️ Solo acepta **hex**: el estilo viene de la API y se interpola en CSS.
+- El botón de Material3 (píldora) es ahora el canónico: web y RN se han alineado con él.
+- Verificado en el simulador: los chips pasan del gris azulado al azul de la marca.
+
 ## Ramas
 
 - `main` — base.
