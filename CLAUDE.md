@@ -113,6 +113,92 @@ Estado: **implementada en survey + chrome nativo**, ambas plataformas.
 - Diseño y plan: `docs/superpowers/specs/2026-07-17-native-chrome-custom-font-design.md`
   y `docs/superpowers/plans/2026-07-17-native-chrome-custom-font.md`.
 
+## Feature: apertura sin spinner (`PopupReveal`)
+
+Estado: **implementada**, paridad con Web/RN (2026-09-14).
+
+El popup ya no se enseña con el spinner girando mientras carga el survey: se monta invisible y
+se enseña cuando está pintado. En móvil la espera es mayor que en web, porque al `GET .../info`
+del survey (unos 250 ms de mediana, 775 ms con el backend frío) se le suman el arranque del
+WebView y la descarga del bundle del CDN.
+
+- **Contrato compartido:** `ui/PopupReveal.kt` — `REVEAL_TIMEOUT_MS = 1200` (mismo valor que
+  `src/ui/reveal.ts` en Web; hay un test que lo fija), `READY_EVENT = "ready"` y `REVEAL_JS`,
+  el algoritmo ES5 que espera a las imágenes del survey, espejo de `revealWhenPainted` (DOM web)
+  y del `REVEAL_JS` de `surveyHtml.ts` (WebView de RN).
+- **WebView:** `MagicFeedbackHtml` instala `ddCreateReveal(document, …)` y llama
+  `ddReveal.whenPainted()` en el `onLoadedEvent`; al revelar emite `ready` por el puente. Los
+  emojis del rating son SVG y llegan DESPUÉS del `loaded`, de ahí la espera por imágenes.
+- **Chrome (Compose):** `PopupView` tiene `revealed` + `onReady`, pinta el Box raíz con
+  `alpha(0f)` hasta la revelación (invisible, NO "sin componer": el WebView tiene que estar
+  montado para cargar) y arma su propio techo con `LaunchedEffect { delay(REVEAL_TIMEOUT_MS) }`.
+  El scrim tampoco se pinta antes de tiempo.
+- **Ocultación nativa, no solo Compose:** en Android el contenedor se añade al decorView como
+  `View.INVISIBLE` y pasa a `VISIBLE` en `onReady` — mantiene el layout (el WebView carga) pero
+  no se pinta ni recibe toques, así que el usuario sigue usando la app mientras espera. En iOS la
+  vista del controlador se presenta con `alpha = 0` + `setUserInteractionEnabled(false)`. ⚠️ El
+  `alpha` de Compose NO basta en iOS: el survey es un `WKWebView` metido con `UIKitView`, y los
+  modificadores de dibujo de Compose no se aplican de forma fiable a las vistas de interop; el
+  alpha de `UIView` sí baja por toda la jerarquía.
+- **⚠️ Cambio de presentación en iOS (necesario para lo anterior):** el popup se presentaba con el
+  estilo modal por defecto, que en iOS 13+ es una **sheet**, y el chrome gris que dibuja UIKit
+  para la sheet se ve SIEMPRE, aunque la vista vaya a alpha 0 — durante la espera se veía un
+  panel gris vacío, peor que el spinner que se quería quitar (observado en el simulador). Ahora
+  se presenta con `UIModalPresentationOverFullScreen` + `view.backgroundColor = clear` +
+  `ComposeUIViewController(configure = { opaque = false })`, así que la espera es realmente
+  invisible y, de paso, el popup se ve como en Android y en web (scrim + tarjeta) en lugar de
+  como una hoja que no cubre la pantalla. `opaque` es API experimental: hace falta
+  `@file:OptIn(ExperimentalComposeApi::class, ExperimentalComposeUiApi::class)`, y el opt-in debe
+  ir a nivel de FICHERO porque tiene que cubrir la lambda `configure`, no solo la función.
+- Diferir la presentación entera no se puede: sin presentar el VC, el WebView no se monta ni
+  carga, y el aviso no llegaría nunca (mismo motivo por el que en React Native no vale
+  `<Modal visible={ready}>`).
+- `ready` no toca métricas: `handleSurveyRuntimeEvent` solo actúa sobre `popup_clicked`,
+  `after_submit` y `survey_completed`, así que no marca PARTIAL.
+- Tests: `PopupRevealTest` (5, commonTest) → 192 JVM + 180 en el simulador iOS, 0 fallos.
+- **Verificado en el simulador iOS** (iPhone 17 Pro, capturas en bucle con `xcrun simctl io …
+  screenshot`): el frame anterior a la apertura muestra la pantalla de la app limpia (sin velo,
+  sin panel gris, sin spinner) y el siguiente ya trae el popup entero (logo + barra + pregunta +
+  botón). También se observó el camino del techo: cuando el survey tarda más de 1200 ms, el popup
+  se abre con el spinner, que es el comportamiento de siempre.
+- ⚠️ **El techo se queda corto en la PRIMERA apertura en frío:** el WebView tiene que traerse el
+  bundle de `@magicfeedback/native` del CDN (148 KB, medido en 780 ms en frío y 110 ms en
+  caliente) antes de pedir el survey, así que la primera vez suele vencer el techo y abrirse con
+  spinner; a partir de la segunda (bundle en la caché del WebView) se abre limpia. El equivalente
+  móvil del "precalentado del chunk" que hace el SDK Web (traer el bundle a la caché antes del
+  primer popup) queda **pendiente**.
+- ⚠️ Para probar a mano: el backend deja de devolver un popup ya visto mientras dure su cooldown
+  (1 día en la cuenta del demo), así que no se puede repetir la prueba sin cambiar de popup o de
+  cuenta; borrar `Library/Preferences/<bundle>.plist` del contenedor solo limpia el cooldown
+  local, no el del backend.
+
+## Feature: el popup aprovecha su espacio (2026-09-14)
+
+Reporte del cliente sobre una captura de iOS: el popup desperdiciaba espacio. Eran dos cosas
+distintas, las dos en la ruta del WebView.
+
+- **A lo ancho:** el logo y la barra de progreso llegan al borde de la tarjeta (16dp), pero el
+  contenido del survey quedaba ~38px más adentro, porque el CSS del paquete mete padding lateral
+  en tres capas: `.magicfeedback-container` (12px) + `.magicfeedback-form` (14px) en el breakpoint
+  móvil + `.magicfeedback-div` (12px, el bloque de cada pregunta, con fondo blanco sobre tarjeta
+  blanca: invisible, solo desalinea). `MagicFeedbackHtml` los anula con un `<style>` **después**
+  del `<link>` del CDN (a igualdad de especificidad gana el último; las `@media` no suman
+  especificidad). Solo el lateral: el vertical es el que separa las preguntas.
+- **A lo alto:** un WebView no tiene tamaño propio, así que el área del survey se estiraba hasta
+  el máximo y una sola pregunta dejaba un hueco enorme hasta el footer. Ahora el HTML mide
+  `#mf-form` (no el `body`, que va a `height:100%` y siempre devuelve el alto del WebView) y lo
+  manda por el puente como `content_height`; `PopupView` dimensiona el área con
+  `PopupReveal.resolveSurveyHeightDp` (función pura, testeada), entre un mínimo de 120dp y el 72%
+  de la tarjeta — por encima de ese techo el WebView hace su propio scroll. Un `ResizeObserver`
+  sobre `#mf-form` cubre carga, cambio de página, follow-ups y avisos de validación sin tener que
+  llamarlo en cada evento, y la altura se reenvía justo antes de `ready` para que el popup no
+  aparezca y luego dé un salto.
+- Tests: `PopupRevealTest` 9 (+4). Verificado en el simulador con el survey de producción.
+- **Web y RN llevan las mismas reglas** desde el mismo día (`renderPopup.ts` con un bloque propio
+  entre el CSS del paquete y el del host, `surveyHtml.ts` dentro de su `<style>`). ⚠️ Allí van
+  **acotadas a `.deepdots-popup`** porque en web la hoja se inyecta en el `<head>` del host; aquí
+  no hace falta, el CSS vive aislado en el WebView.
+
 ## Ramas
 
 - `main` — base.
