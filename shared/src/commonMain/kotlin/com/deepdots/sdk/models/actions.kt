@@ -79,5 +79,12 @@ enum class ImageAlignment {
 
 data class Segments(
     val lang: List<String> = emptyList(),
-    val path: List<String> = emptyList()
+    /** Rutas donde el popup PUEDE mostrarse. Vacía = en todas. */
+    val path: List<String> = emptyList(),
+    /**
+     * Rutas donde el popup NO debe mostrarse. Gana sobre [path] (`path = ["/"]` +
+     * `excludedPaths = ["/cart"]` = en todas menos el carrito) y se aplica igual
+     * cuando [path] está vacía. Mismas reglas de comparación que [path].
+     */
+    val excludedPaths: List<String> = emptyList()
 )

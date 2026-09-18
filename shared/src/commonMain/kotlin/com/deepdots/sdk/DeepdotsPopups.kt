@@ -133,6 +133,7 @@ class DeepdotsPopups {
     private data class ServerSegmentsDto(
         val lang: List<String> = emptyList(),
         val path: List<String> = emptyList(),
+        val excludedPaths: List<String> = emptyList(),
     )
 
     @Serializable
@@ -1340,6 +1341,13 @@ class DeepdotsPopups {
         pathOverride: String? = null,
         skipPathCheck: Boolean = false,
     ): Boolean {
+        // La exclusión se evalúa SIEMPRE, también cuando `skipPathCheck` levanta la
+        // restricción de "dónde PUEDE mostrarse" (popup de exit ya encolado): decir
+        // "no en /cart" es una regla sobre la pantalla en la que se va a pintar.
+        if (isPathExcluded(popup, pathOverride ?: currentPath)) {
+            return false
+        }
+
         if (!skipPathCheck && !matchesSegmentsPath(popup, pathOverride ?: currentPath)) {
             return false
         }
@@ -1355,6 +1363,7 @@ class DeepdotsPopups {
         return true
     }
 
+    /** `segments.path`: rutas donde el popup PUEDE mostrarse. Sin lista, en todas. */
     private fun matchesSegmentsPath(popup: PopupDefinition, pathValue: String?): Boolean {
         val paths = popup.segments?.path.orEmpty()
         if (paths.isEmpty()) return true
@@ -1363,13 +1372,39 @@ class DeepdotsPopups {
         if (normalizedHref.isEmpty()) return false
         val normalizedPath = normalizePathName(normalizedHref)
 
-        return paths.any { rawCandidate ->
-            val candidate = normalizeUrl(rawCandidate)
-            when {
-                candidate.startsWith("http://") || candidate.startsWith("https://") -> normalizedHref == candidate
-                candidate.startsWith("/") -> normalizedHref.contains(candidate)
-                else -> normalizedPath == candidate
-            }
+        return paths.any { matchesPathCandidate(it, normalizedHref, normalizedPath) }
+    }
+
+    /**
+     * `segments.excludedPaths`: rutas donde el popup NO debe mostrarse. Gana sobre
+     * `segments.path` y se aplica también cuando no hay `path` (= en todas menos las
+     * excluidas). Sin ruta conocida no se puede evaluar, así que no bloquea.
+     */
+    private fun isPathExcluded(popup: PopupDefinition, pathValue: String?): Boolean {
+        val excluded = popup.segments?.excludedPaths.orEmpty()
+        if (excluded.isEmpty()) return false
+
+        val normalizedHref = normalizeUrl(pathValue ?: "")
+        if (normalizedHref.isEmpty()) return false
+        val normalizedPath = normalizePathName(normalizedHref)
+
+        return excluded.any { matchesPathCandidate(it, normalizedHref, normalizedPath) }
+    }
+
+    /**
+     * Compara UN candidato de `segments.path`/`segments.excludedPaths` con la ruta
+     * actual. Mismas reglas para incluir y para excluir:
+     *  - URL absoluta  → href completo exacto
+     *  - empieza por / → subcadena del href (así entran las rutas con hash: `/#/home`)
+     *  - resto         → pathname exacto
+     */
+    private fun matchesPathCandidate(rawCandidate: String, normalizedHref: String, normalizedPath: String): Boolean {
+        val candidate = normalizeUrl(rawCandidate)
+        if (candidate.isEmpty()) return false
+        return when {
+            candidate.startsWith("http://") || candidate.startsWith("https://") -> normalizedHref == candidate
+            candidate.startsWith("/") -> normalizedHref.contains(candidate)
+            else -> normalizedPath == candidate
         }
     }
 
@@ -1560,7 +1595,7 @@ class DeepdotsPopups {
 
     private fun mapSegments(segments: ServerSegmentsDto?): Segments? {
         if (segments == null) return null
-        return Segments(lang = segments.lang, path = segments.path)
+        return Segments(lang = segments.lang, path = segments.path, excludedPaths = segments.excludedPaths)
     }
 
     private fun parseServerStyle(styleField: JsonElement?): ServerStyleDto? {
