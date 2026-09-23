@@ -60,11 +60,15 @@ kotlin {
 
     // Apply ObjC generics and minimum iOS deployment target to all iOS native binaries
     targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().configureEach {
-        if (name.startsWith("ios")) {
+        val targetName = name
+        if (targetName.startsWith("ios")) {
             binaries.all {
                 freeCompilerArgs += listOf("-Xobjc-generics")
-                // Solo agregar linkerOpts a targets físicos, no simulador
-                if (!name.contains("Simulator", ignoreCase = true)) {
+                // Solo agregar linkerOpts a targets físicos, no simulador. Ojo: dentro de
+                // `binaries.all` el `name` es el del BINARIO (debugTest, releaseFramework…), así
+                // que hay que mirar el del target o el flag se cuela en el simulador y `ld` falla
+                // con "unknown options: -mios-version-min".
+                if (!targetName.contains("Simulator", ignoreCase = true)) {
                     linkerOpts("-mios-version-min=13.0")
                 }
             }

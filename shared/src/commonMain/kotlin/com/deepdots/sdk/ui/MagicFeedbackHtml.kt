@@ -2,6 +2,7 @@ package com.deepdots.sdk.ui
 
 import com.deepdots.sdk.SdkRuntime
 import com.deepdots.sdk.models.PopupFont
+import com.deepdots.sdk.tracking.buildSurveyIdentity
 
 // Centralized MagicFeedback package version used for all CDN URLs
 private const val MAGICFEEDBACK_VERSION: String = "2.2.4"
@@ -86,6 +87,19 @@ internal fun buildMagicFeedbackHtml(
             }
         }
     }
+    // Identidad del tracking (contrato §5): mismas claves que Web (buildSurveyIdentity) para que
+    // las respuestas del survey se puedan coser con la analítica: session_id, user_id y el
+    // mini_service activo (#33, CSAT por mini-service).
+    val identity = buildSurveyIdentity(
+        userId = SdkRuntime.userId,
+        sessionId = SdkRuntime.sessionId,
+        miniService = SdkRuntime.miniService,
+        analyticsFeedbackSessionId = SdkRuntime.analyticsFeedbackSessionId,
+    )
+    identity.metadata.forEach { answer ->
+        meta[answer.key] = answer.value.toMutableList()
+    }
+
     // Now serialize into JS array of objects { key, value: [...] }
     val customMetaJsArray = buildString {
         append("[")
@@ -103,6 +117,18 @@ internal fun buildMagicFeedbackHtml(
                 append(escapedVals)
                 append("] }")
             }
+        }
+        append("]")
+    }
+
+    // `profile` del survey: el external-user-id, 3er argumento de form() (igual que Web).
+    val profileJsArray = buildString {
+        append("[")
+        identity.profile.forEachIndexed { index, answer ->
+            if (index > 0) append(",")
+            val values = answer.value.filter { it.isNotBlank() }
+                .joinToString(",") { "'" + it.replace("'", "\\'") + "'" }
+            append("{ key: '").append(answer.key.replace("'", "\\'")).append("', value: [").append(values).append("] }")
         }
         append("]")
     }
@@ -129,11 +155,16 @@ internal fun buildMagicFeedbackHtml(
             #mf-form .magicfeedback-title,#mf-form h1,#mf-form h2,#mf-form h3,#mf-form legend{font-size:16px;line-height:1.35;margin:0 0 8px 0;}
             #mf-form label,#mf-form .magicfeedback-label{line-height:1.35;}
             #mf-status{color:#666;font-size:12px;padding:4px;}
+            /* Pantalla final: HTML del editor de la plataforma (imagen + texto), centrado. */
+            .deepdots-success{display:none;width:100%;text-align:center;padding:24px 0;}
+            .deepdots-success img{max-width:100%;height:auto;margin:0 auto 16px auto;display:block;}
+            .deepdots-success p{margin:0;font-size:16px;font-weight:600;line-height:1.4;}
           </style>
           <link rel="stylesheet" href="$urlStyleDefault" />
         </head>
         <body class="deepdots-popup">
           <div id='mf-form'></div>
+          <div id='mf-success' class='deepdots-success'></div>
           <script>
             (function(){
               var LOCAL_SRC = $localSrcLiteral;
@@ -141,6 +172,18 @@ internal fun buildMagicFeedbackHtml(
               $emitWrapper
               var initialized = false;
               var mfReady = false; // becomes true when form onLoadedEvent fires
+              // Mensaje final configurado en la plataforma (style.successMessage). Va por
+              // innerHTML porque es HTML del editor (imagen + texto), igual que hace
+              // renderStartMessage de @magicfeedback/native con el mensaje de inicio.
+              var successMessageHtml = '';
+              function showSuccessScreen(){
+                try {
+                  var form = document.getElementById('mf-form'); if (form) { form.style.display = 'none'; }
+                  var done = document.getElementById('mf-success'); if (!done) return;
+                  done.innerHTML = successMessageHtml || '<p>Thank you for your feedback!</p>';
+                  done.style.display = 'block';
+                } catch(e){ console.error('[MagicFeedback] success screen error', e); }
+              }
               var PUBLIC_KEY = ${if (pubKeyJs.isNotEmpty()) "'${pubKeyJs}'" else "null"};
               var ENV = ${if (envJs.isNotEmpty()) "'${envJs}'" else "'prod'"};
             
@@ -152,7 +195,18 @@ internal fun buildMagicFeedbackHtml(
                   if (window.magicfeedback && !initialized) {
                     initialized = true;
                     window.magicfeedback.init({debug:true, env: ENV, publicKey: PUBLIC_KEY});
-                    var form = ${if (hasProduct) "window.magicfeedback.form('$surveyId', '$productId')" else "window.magicfeedback.form('$surveyId')"};
+                    var form = ${
+        if (hasProduct) {
+            // 3er argumento = profile (external-user-id), como en Web.
+            if (identity.profile.isNotEmpty()) {
+                "window.magicfeedback.form('$surveyId', '$productId', $profileJsArray)"
+            } else {
+                "window.magicfeedback.form('$surveyId', '$productId')"
+            }
+        } else {
+            "window.magicfeedback.form('$surveyId')"
+        }
+    };
                     window.DeepdotsForm = form;
                     window.DeepdotsActions = {
                       send: function(){ try { form.send(); } catch(e){ console.error('[DeepdotsActions] send error', e); } },
@@ -163,11 +217,19 @@ internal fun buildMagicFeedbackHtml(
                  
                     form.generate('mf-form', {
                       addButton:false,
+                      // La pantalla final la pinta este HTML: renderSuccess de
+                      // @magicfeedback/native usa textContent, así que el mensaje de la
+                      // plataforma (HTML con imagen) no se vería, y su fallback es un literal
+                      // genérico que ignora style.successMessage. Paridad con Web/RN.
+                      addSuccessScreen:false,
                       onLoadedEvent: function(args){
                         mfReady = true; var s=document.getElementById('mf-status'); if(s) s.textContent='';
                         try {
                           var style = (args && args.formData && args.formData.style) ? args.formData.style : null;
-                          emitJSON('popup_clicked', { style: style });
+                          if (style && style.successMessage) { successMessageHtml = style.successMessage; }
+                          // El total solo se conoce con el form ya montado: lo necesita la barra
+                          // de progreso que pinta la capa nativa.
+                          emitJSON('popup_clicked', { style: style, progress: form.progress || 0, total: form.total || 0 });
                           emit('loaded'); // explicit loaded for Kotlin UI state
                         } catch(e){ console.error('[MagicFeedback] onLoadedEvent emit error', e); }
                       },
@@ -183,7 +245,7 @@ internal fun buildMagicFeedbackHtml(
                              if (lower.indexOf('no response') !== -1) { emitJSON('validation_error_required'); }
                              else { emitJSON('submit_error', { error: err }); }
                           }
-                          if (completed) { emitJSON('survey_completed'); }
+                          if (completed) { showSuccessScreen(); emitJSON('survey_completed'); }
                           else { emitJSON('after_submit', { error: err, completed: completed, progress: progress, total: total }); }
                         } catch(e){ console.error('[MagicFeedback] afterSubmit exception', e); }
                       },
