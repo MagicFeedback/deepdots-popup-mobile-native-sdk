@@ -37,6 +37,24 @@ class MagicFeedbackHtmlTest {
         )
     }
 
+    /** Surveys multi-idioma: el idioma se pide a native en `generate({ lang })`. */
+    @Test
+    fun html_asks_native_for_the_survey_language() {
+        fun html(lang: String?) = buildMagicFeedbackHtml(
+            surveyId = "survey-abc",
+            productId = "product-xyz",
+            localAssetUrl = null,
+            assetSize = null,
+            bridgeEmitCall = "DeepdotsBridge.emit",
+            isIOS = false,
+            lang = lang,
+        )
+        assertTrue(html("es-ES").contains("lang: 'es-ES',"), "pasa el idioma a generate()")
+        assertTrue(html(null).contains("lang: undefined,"), "sin idioma no fuerza ninguno")
+        assertTrue(html("es'); alert(1); ('").contains("lang: undefined,"), "no inyecta JS")
+        assertTrue(html("es").contains("typeof args.lang === 'string'"), "el chrome sigue el idioma de native")
+    }
+
     /**
      * Identidad del tracking inyectada en el survey (contrato §5): mismas claves que Web, para
      * poder coser las respuestas con la analítica y con el mini-service activo (#33).
