@@ -141,6 +141,25 @@ class PopupRevealTest {
     }
 
     @Test
+    fun el_survey_no_acepta_toques_mientras_se_envia() {
+        // El spinner lo pinta Compose FUERA del WebView, y el WebView es una vista de interop que
+        // recibe sus propios toques: el velo no lo protege. Sin esto el usuario sigue cambiando de
+        // opcion mientras se envia la pagina, y ese cambio ya no viaja con ella.
+        val h = html()
+        assertTrue(h.contains("function ddSetSurveyBusy(el, busy)"), "debe llevar el helper")
+        assertTrue(
+            Regex("beforeSubmitEvent[\\s\\S]*?ddSetSurveyBusy\\(document\\.body, true\\)").containsMatchIn(h),
+            "debe bloquear al empezar el envio",
+        )
+        for (evento in listOf("afterSubmitEvent", "onBackEvent")) {
+            assertTrue(
+                Regex("$evento[\\s\\S]{0,200}?ddSetSurveyBusy\\(document\\.body, false\\)").containsMatchIn(h),
+                "debe soltar en $evento, o la pantalla se queda muerta",
+            )
+        }
+    }
+
+    @Test
     fun la_revelacion_ocurre_una_sola_vez() {
         // `whenPainted` se puede llamar en cada página del survey; solo la primera abre el popup.
         assertTrue(
