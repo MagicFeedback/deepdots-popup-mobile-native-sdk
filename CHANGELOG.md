@@ -2,6 +2,19 @@
 
 All notable changes to the Deepdots Popup SDK are documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- **Analytics sessions of an app left open in the foreground are no longer closed as
+  abandoned.** The backend closes a session after 60 min without batches (Run_Jobs
+  `incomplete-surveys`), but an app sitting on one screen sent nothing: a page view is
+  emitted on leaving a screen and engagement only on going to the background. The session
+  was closed with just its `deepdots_session_start`. The periodic flush now emits the
+  accumulated engagement at least every 5 minutes while the app is in the foreground.
+  Parity with Popup Web SDK 1.8.3 (`ANALYTICS_HEARTBEAT_MS`). The web session timeout for
+  hidden tabs does not apply here: going to the background already ends the session.
+
 ## 0.5.0 - 2026-08-14
 
 Parity with Popup Web SDK 1.5.0 for everything that applies to the native

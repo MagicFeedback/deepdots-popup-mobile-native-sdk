@@ -76,6 +76,14 @@ import kotlin.math.roundToInt
 
 private const val ANALYTICS_MAX_BATCH_SIZE = 20
 private const val ANALYTICS_FLUSH_INTERVAL_MS = 30_000L
+/**
+ * Latido: con la app en foreground, el flush periódico manda el engagement acumulado al menos
+ * cada ANALYTICS_HEARTBEAT_MS. Sin él, una app abierta en una sola pantalla no enviaba nada
+ * (el page_view sale al salir de la pantalla y el engagement al ir a background) y el backend
+ * (Run_Jobs `incomplete-surveys`, 60 min sin lotes) daba la sesión por abandonada con solo su
+ * session_start. Paridad con Web (`ANALYTICS_HEARTBEAT_MS` en deepdots-popups.ts).
+ */
+private const val ANALYTICS_HEARTBEAT_MS = 5 * 60_000L
 
 class DeepdotsPopups {
 
@@ -196,6 +204,8 @@ class DeepdotsPopups {
      * el cierre (dos `onBackground()` seguidos no duplican el `session_end`).
      */
     private var sessionOpen = false
+    /** Último `user_engagement` emitido (ms epoch): marca el latido. */
+    private var lastEngagementAt = 0L
     /** userId del cliente en vigor (null = id anónimo del SDK). Cambia con `setUserId`. */
     private var clientUserId: String? = null
     /** Tiempo activo (engagement time, #8). */
@@ -347,11 +357,11 @@ class DeepdotsPopups {
         if (tracking?.isTrackingEnabled() == true) {
             for (rec in pendingCrashes) track("deepdots_app_crash", crashRecordToParams(rec))
         }
-        // Flush periódico: envía el lote cada 30 s mientras la app está activa.
+        // Flush periódico: envía el lote cada 30 s mientras la app está activa (+ latido).
         scope.launch {
             while (isActive) {
                 delay(ANALYTICS_FLUSH_INTERVAL_MS)
-                flushAnalytics()
+                analyticsFlushTick()
             }
         }
 
@@ -374,7 +384,7 @@ class DeepdotsPopups {
             obs.onVisit { v -> track("deepdots_page_view", mapOf("screen" to v.screen, "duration_seconds" to v.durationSeconds)) }
         }
         // Engagement time (#8): cuenta tiempo activo en primer plano (resume al arrancar).
-        engagement = com.deepdots.sdk.analytics.EngagementTracker().also { it.resume() }
+        engagement = com.deepdots.sdk.analytics.EngagementTracker(now = { nowMs() }).also { it.resume() }
 
         // Los popups se reciben SIEMPRE de la API (no se definen en init).
         val publicKey = options.popupOptions.publicKey
@@ -667,6 +677,7 @@ class DeepdotsPopups {
         if (sessionOpen) return
         if (tracking?.isTrackingEnabled() != true) return
         sessionOpen = true
+        lastEngagementAt = nowMs()
         track("deepdots_session_start", emptyMap())
     }
 
@@ -674,8 +685,23 @@ class DeepdotsPopups {
     private fun flushEngagement() {
         if (tracking?.isTrackingEnabled() != true) return
         val ms = engagement?.consume() ?: 0L
-        if (ms > 0) track("deepdots_user_engagement", mapOf("engagement_time_msec" to ms))
+        if (ms > 0) {
+            track("deepdots_user_engagement", mapOf("engagement_time_msec" to ms))
+            lastEngagementAt = nowMs()
+        }
     }
+
+    /** Tick del flush periódico: latido de engagement si toca, y envío de lo acumulado. */
+    private fun analyticsFlushTick() {
+        if (sessionOpen && engagement?.isActive() == true &&
+            nowMs() - lastEngagementAt >= ANALYTICS_HEARTBEAT_MS
+        ) {
+            flushEngagement()
+        }
+        flushAnalytics()
+    }
+
+    private fun nowMs(): Long = debugNow?.invoke() ?: currentTimeMillis()
 
     /** Payload que se ENVIARÍA al endpoint de analytics (no envía ni vacía el buffer). */
     fun previewAnalytics(): AnalyticsEnvelope =
@@ -881,6 +907,12 @@ class DeepdotsPopups {
 
     /** Solo test: carga definiciones directamente (los popups vienen de la API en producción). */
     internal fun debugLoadPopups(defs: List<PopupDefinition>) = loadPopupDefinitions(defs)
+
+    /** Solo test: reloj del latido y del engagement (null = reloj real). */
+    internal var debugNow: (() -> Long)? = null
+
+    /** Solo test: un tick del flush periódico, sin esperar a los 30 s del bucle. */
+    internal fun debugAnalyticsFlushTick() = analyticsFlushTick()
 
     /** Solo test: observa cada lote de analytics (envelope + meta) antes de que salga por el sink. */
     internal var debugAnalyticsFlushListener: ((AnalyticsEnvelope, AnalyticsFlushMeta) -> Unit)? = null
