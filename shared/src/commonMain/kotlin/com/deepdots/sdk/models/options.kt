@@ -32,7 +32,7 @@ data class InitOptions(
     val trackingEnabled: Boolean? = true,
     /**
      * Claves de la integración de analytics creada en la plataforma. Sin ellas el canal queda
-     * en dry-run (solo imprime el payload); con ellas hace `POST /sdk/feedback` de verdad.
+     * en dry-run (no envía nada; el payload solo se imprime con `debug`); con ellas hace `POST /sdk/feedback` de verdad.
      */
     val analytics: AnalyticsKeys? = null,
     /**
