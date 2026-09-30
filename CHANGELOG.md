@@ -4,6 +4,15 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- **The analytics dry-run log only appears with `debug = true`.** Without
+  `InitOptions.analytics` the SDK sends nothing and used to print the would-be
+  payload of every batch (`[DeepdotsAnalytics] (dry-run · NOT sent · no
+  init.analytics) …`) to the host app's log, even in production. It now goes
+  through the same `debug` gate as the rest of the SDK logs. Parity with Popup
+  Web SDK 1.8.4.
+
 ### Fixed
 
 - **Analytics sessions of an app left open in the foreground are no longer closed as

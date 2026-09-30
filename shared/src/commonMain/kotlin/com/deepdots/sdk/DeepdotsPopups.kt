@@ -270,7 +270,8 @@ class DeepdotsPopups {
         }
 
         // Analytics: se envía como Feedback a la integración (POST /sdk/feedback) si se
-        // pasan claves en options.analytics; si no, queda en dry-run (solo println).
+        // pasan claves en options.analytics; si no, queda en dry-run: no envía nada y el payload
+        // solo se imprime con `debug`, para no ensuciar la consola de la app host en producción.
         val analyticsKeys = options.analytics
         val analyticsSink: com.deepdots.sdk.analytics.AnalyticsSink? = if (analyticsKeys != null) {
             { envelope, meta, requeue ->
@@ -321,7 +322,9 @@ class DeepdotsPopups {
         val device = com.deepdots.sdk.analytics.collectDeviceInfo()
         messageGuard.reset()
         // Seam de test: deja observar cada lote (envelope + meta) sin tocar el transporte.
-        val baseSink = analyticsSink ?: com.deepdots.sdk.analytics.dryRunSink
+        val baseSink = analyticsSink ?: com.deepdots.sdk.analytics.createDryRunSink { line ->
+            if (isDebug()) (debugDryRunLog ?: { println(it) })(line)
+        }
         val instrumentedSink: com.deepdots.sdk.analytics.AnalyticsSink = { envelope, meta, requeue ->
             debugAnalyticsFlushListener?.invoke(envelope, meta)
             baseSink(envelope, meta, requeue)
@@ -916,6 +919,9 @@ class DeepdotsPopups {
 
     /** Solo test: observa cada lote de analytics (envelope + meta) antes de que salga por el sink. */
     internal var debugAnalyticsFlushListener: ((AnalyticsEnvelope, AnalyticsFlushMeta) -> Unit)? = null
+
+    /** Seam de test: recibe las líneas del dry-run en vez de `println` (solo se llama con `debug`). */
+    internal var debugDryRunLog: ((String) -> Unit)? = null
 
     /** Solo test: sustituye el cliente HTTP por un doble (para observar los bodies enviados). */
     internal fun debugSetPopupsService(service: PopupsService) {
