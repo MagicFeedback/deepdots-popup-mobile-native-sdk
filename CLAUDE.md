@@ -216,6 +216,27 @@ popup mezclaba el color de la marca con el `#5d7bad` por defecto del paquete.
 - El botón de Material3 (píldora) es ahora el canónico: web y RN se han alineado con él.
 - Verificado en el simulador: los chips pasan del gris azulado al azul de la marca.
 
+## Feature: el survey no acepta toques mientras carga (2026-09-23)
+
+Reportado por el cliente en React Native y arreglado en las tres rutas. Durante la
+transición entre páginas se podía seguir marcando opciones, y la respuesta de esa página
+ya se había enviado (el rating numérico **auto-avanza** al marcar), así que el cambio no
+viajaba con ella: el usuario creía haber corregido su respuesta y no era así.
+
+- `ui/SurveyBusy.kt` (espejo de `src/ui/busy.ts` en Web) lleva el JS que corre dentro del
+  WebView: `pointer-events:none` + `aria-busy` + `inert` donde el motor lo soporte.
+- ⚠️ Aquí se bloquea el **`<body>` entero**, no un wrapper: el chrome (cabecera, progreso,
+  footer) es nativo y vive FUERA del WebView, dentro solo está el survey.
+- ⚠️ **El velo de Compose no protege al survey**: el `CircularProgressIndicator` se pinta
+  sobre el popup, pero el WebView es una vista de interop que se dibuja por encima del
+  canvas y recibe sus propios toques. Por eso el bloqueo tiene que ir dentro del HTML.
+- Se bloquea en `beforeSubmitEvent` y se suelta en `afterSubmitEvent` y `onBackEvent`,
+  incluido el camino del error de validación: si no, la pantalla se quedaría muerta.
+- Tests: `PopupRevealTest` +1 → 210 JVM + 198 en el simulador iOS.
+- ⚠️ Verificado con toques reales en la ruta equivalente (el WebView de RN, con Playwright
+  y hit-testing de verdad), **no** en el simulador: el mecanismo es el mismo HTML.
+  Ojo al comprobarlo, `element.click()` es sintético e **ignora `pointer-events`**.
+
 ## Ramas
 
 - `main` — base.
