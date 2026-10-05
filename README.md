@@ -224,6 +224,7 @@ The workflow checks that the tag matches `PUBLISHING_VERSION`, that the commit i
 - Android to Maven Central (`com.deepdots.sdk:shared-android:X.Y.Z`), signed. Skipped with a warning when the Maven Central or signing secrets are missing.
 - iOS: the XCFramework zip on the `X.Y.Z` release of `MagicFeedback/DeepdotsSDK-SPM`, plus its `Package.swift`, and checks that SPM resolves it.
 - The `vX.Y.Z` GitHub Release of this repo, with the AAR and the CHANGELOG notes.
+- Merges the tagged commit into `main` and redeploys the docs. On a conflict it opens a PR instead.
 
 Nothing already published is overwritten: an existing version is skipped. Required secrets and optional variables are listed at the top of the workflow file.
 

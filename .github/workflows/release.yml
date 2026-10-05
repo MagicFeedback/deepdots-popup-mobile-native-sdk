@@ -13,6 +13,7 @@ name: Release
 #     Se SALTA con un aviso si faltan los secrets de Maven Central o de firma.
 #   - iOS: XCFramework en la release `X.Y.Z` de MagicFeedback/DeepdotsSDK-SPM + Package.swift.
 #   - GitHub Release `vX.Y.Z` en este repo con el AAR y las notas del CHANGELOG.
+#   - Merge del commit del tag en `main` (+ redeploy de la doc). Con conflicto, abre una PR.
 # Ningun paso sobrescribe algo ya publicado: si la version existe, se salta.
 #
 # Secrets (Settings > Secrets and variables > Actions):
@@ -33,6 +34,8 @@ on:
 
 permissions:
   contents: write
+  actions: write # lanzar docs-pages.yml tras fusionar en main
+  pull-requests: write # PR de respaldo si el merge en main da conflicto
 
 concurrency:
   group: release
@@ -272,3 +275,40 @@ jobs:
           } >> "$NOTES"
           gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP/out/DeepdotsSDK-$VERSION.aar" \
             --title "$GITHUB_REF_NAME" --notes-file "$NOTES" --verify-tag --latest
+
+      # Politica: tras cada release, `main` recibe lo publicado. Se fusiona el commit del TAG
+      # (no la punta de dev, que puede ir por delante). Si hay conflicto, no se fuerza nada:
+      # se abre una PR para resolverlo a mano.
+      - name: Merge release into main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --no-tags origin main
+          git checkout -f -B main origin/main
+          if git merge-base --is-ancestor "$GITHUB_SHA" HEAD; then
+            echo "::notice::main ya contiene $GITHUB_REF_NAME."
+            exit 0
+          fi
+          if git merge --no-ff "$GITHUB_SHA" -m "merge: release $GITHUB_REF_NAME de dev a main"; then
+            git push origin main
+            echo "::notice::$GITHUB_REF_NAME fusionada en main."
+            # Un push hecho con GITHUB_TOKEN no dispara otros workflows: la doc se lanza a mano.
+            gh workflow run docs-pages.yml --ref main
+          else
+            git merge --abort
+            BRANCH="release-to-main/$GITHUB_REF_NAME"
+            git push -f origin "$GITHUB_SHA:refs/heads/$BRANCH"
+            # Abrir la PR exige "Allow GitHub Actions to create and approve pull requests" en
+            # Settings > Actions > General. Sin esa opcion, la rama queda subida y se avisa.
+            if gh pr create --base main --head "$BRANCH" \
+              --title "Release $GITHUB_REF_NAME: dev a main" \
+              --body "El merge automatico de $GITHUB_REF_NAME en main ha dado conflicto. Resuelvelo en esta PR."; then
+              echo "::warning::Conflicto al fusionar $GITHUB_REF_NAME en main: abierta una PR para resolverlo."
+            else
+              echo "::error::Conflicto al fusionar $GITHUB_REF_NAME en main. Abre a mano una PR de $BRANCH a main."
+              exit 1
+            fi
+          fi
