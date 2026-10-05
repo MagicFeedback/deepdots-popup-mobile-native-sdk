@@ -1,6 +1,7 @@
 package com.deepdots.sdk.ui
 
 import com.deepdots.sdk.SdkRuntime
+import com.deepdots.sdk.analytics.resolveLanguage
 import com.deepdots.sdk.models.PopupFont
 import com.deepdots.sdk.tracking.buildSurveyIdentity
 
@@ -37,8 +38,16 @@ internal fun buildMagicFeedbackHtml(
     bridgeEmitCall: String, // JS snippet to emit an event string (e.g. DeepdotsBridge.emit or window.webkit?.messageHandlers?.DeepdotsBridge?.postMessage)
     timeoutMs: Int = 6000,
     isIOS: Boolean,
-    font: PopupFont? = null
+    font: PopupFont? = null,
+    // Surveys multi-idioma: idioma que se pide a @magicfeedback/native. Por defecto el del host
+    // (`InitOptions.provideLang`) o, si no, el del dispositivo. Si el survey no lo tiene, la API
+    // sirve su idioma por defecto.
+    lang: String? = resolveLanguage(SdkRuntime.provideLang?.invoke())
 ): String {
+    // Solo letras, '-' y '_': va dentro de un literal JS.
+    val langLiteral = lang?.trim()
+        ?.takeIf { it.isNotEmpty() && it.all { c -> c.isLetter() || c == '-' || c == '_' } }
+        ?.let { "'$it'" } ?: "undefined"
     val localSrcLiteral = localAssetUrl?.let { "'${it}'" } ?: "null"
     val assetSizeLiteral = assetSize?.toString() ?: "-1"
     // Default per-platform stack kept as-is when no custom font is set (existing behaviour).
@@ -286,6 +295,7 @@ ${PopupReveal.REVEAL_JS}
                       // plataforma (HTML con imagen) no se vería, y su fallback es un literal
                       // genérico que ignora style.successMessage. Paridad con Web/RN.
                       addSuccessScreen:false,
+                      lang: $langLiteral,
                       onLoadedEvent: function(args){
                         mfReady = true; var s=document.getElementById('mf-status'); if(s) s.textContent='';
                         try {
@@ -296,11 +306,12 @@ ${PopupReveal.REVEAL_JS}
                           // gris azulado por defecto del paquete.
                           ddApplySurveyPrimaryColor(document.documentElement, style);
                           if (style && style.successMessage) { successMessageHtml = style.successMessage; }
-                          // Idioma del survey: lo configura la plataforma en la integración y solo
-                          // se conoce aquí dentro, pero los botones los pinta la capa nativa, así
-                          // que se lo reenviamos para que traduzca su chrome (paridad con Web,
-                          // donde `renderPopup` lee el mismo `formData.lang` al cargar).
-                          var langs = (args && args.formData && args.formData.lang) ? args.formData.lang : null;
+                          // Idioma en el que native muestra el survey: solo se conoce aquí dentro,
+                          // pero los botones los pinta la capa nativa, así que se lo reenviamos
+                          // para que traduzca su chrome (paridad con Web). Native < 2.3 no envía
+                          // `lang`: entonces el primero de formData.lang (el idioma por defecto).
+                          var shownLang = (args && typeof args.lang === 'string' && args.lang.trim()) ? args.lang : null;
+                          var langs = shownLang ? [shownLang] : ((args && args.formData && args.formData.lang) ? args.formData.lang : null);
                           var surveyLang = '';
                           if (langs && langs.length) {
                             for (var li = 0; li < langs.length; li++) {
