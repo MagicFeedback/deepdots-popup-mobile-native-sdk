@@ -15,12 +15,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,9 +34,7 @@ import com.deepdots.sdk.i18n.DefaultLabels
 import com.deepdots.sdk.models.*
 import com.deepdots.sdk.util.HtmlParagraph
 import com.deepdots.sdk.util.parsePopupHtml
-
-private fun defaultLabel(slot: DefaultLabels.Slot): String =
-    DefaultLabels.resolve(slot, SdkRuntime.provideLang?.invoke())
+import kotlinx.coroutines.delay
 
 // Top-level enum to avoid local enum compile restriction
 private enum class ViewState { Loading, Start, InProgressFirst, InProgressNext, Completed, Error }
@@ -40,7 +43,13 @@ private enum class ViewState { Loading, Start, InProgressFirst, InProgressNext, 
 fun PopupView(
     popup: PopupDefinition,
     onAction: (Action) -> Unit,
-    onSurveyEvent: (name: String, payload: String?) -> Unit = { _, _ -> }
+    onSurveyEvent: (name: String, payload: String?) -> Unit = { _, _ -> },
+    /**
+     * Se llama una sola vez, cuando el popup ya se puede enseñar (survey pintado o techo de
+     * espera vencido). La capa de plataforma lo usa para sacar de la pantalla su contenedor
+     * mientras tanto, que es lo que evita además comerse los toques del usuario.
+     */
+    onReady: () -> Unit = {}
 ) {
     val primaryColorDefault = Color(0xFF1E293B)
     var primaryColor by remember { mutableStateOf(primaryColorDefault) }
@@ -54,10 +63,59 @@ fun PopupView(
     val textColor = if (popup.style.theme == Theme.Light) Color.Black else Color.White
     val paragraphs = remember(popup.message) { parsePopupHtml(popup.message) }
 
+    // Apertura diferida (paridad con Web): el popup se monta invisible y se enseña cuando el
+    // WebView avisa de que el survey está pintado, en vez de enseñar el spinner girando. El techo
+    // lo abre igualmente si el survey tarda de más, así que una red mala retrasa la apertura pero
+    // nunca la impide.
+    var revealed by remember { mutableStateOf(false) }
+    fun reveal() {
+        if (revealed) return
+        revealed = true
+        onReady()
+    }
+    LaunchedEffect(Unit) {
+        delay(PopupReveal.REVEAL_TIMEOUT_MS)
+        reveal()
+    }
+
     // Initialize in first-page state so spinner doesn’t cover content until survey explicitly signals loading
     var viewState by remember { mutableStateOf(ViewState.Loading) }
     var errorHint by remember { mutableStateOf<String?>(null) }
+
+    // Idioma del chrome. Arranca con el del host (`InitOptions.provideLang`) y pasa al del
+    // survey en cuanto el WebView lo reenvía en el `loaded`: un survey en danés debe traer
+    // también sus botones en danés aunque el móvil esté en inglés. Espejo del SDK Web.
+    var surveyLang by remember { mutableStateOf<String?>(null) }
+    val chromeLang = surveyLang ?: SdkRuntime.provideLang?.invoke()
+    val labels = DefaultLabels.labels(chromeLang)
+    // Desde @magicfeedback/native 2.2.22 el survey del WebView se voltea solo para los idiomas
+    // RTL; sin esto el chrome de Compose se quedaría mirando al otro lado.
+    val layoutDirection = popupLayoutDirection(chromeLang)
+    /** Etiqueta de la API si la plataforma la configuró; si no, la traducción del SDK. */
+    fun actionLabel(apiLabel: String?, slot: DefaultLabels.Slot): String =
+        apiLabel?.takeIf { it.isNotBlank() } ?: labels.get(slot)
     var surveyController: SurveyController? by remember { mutableStateOf(null) }
+
+    // Lo que el WebView dice que ocupa el survey (px CSS = dp). El WebView no tiene tamaño
+    // propio, así que sin este dato se estira hasta el máximo y una sola pregunta deja un hueco
+    // enorme entre la última opción y el footer.
+    var surveyContentHeightDp by remember { mutableStateOf<Int?>(null) }
+
+    // Profundidad de navegación DENTRO del survey: +1 por página avanzada, -1 al volver.
+    // Sustituye a `total > 1 && progress in 1 until total`, que escondía el Back siempre que la
+    // siguiente pantalla era una follow-up dinámica: las follow-up no entran en el grafo (suman
+    // +0.5 al progress y no tocan el total), así que un survey de una pregunta con follow-up
+    // tenía total=1 y nunca cumplía `total > 1`. Paridad con el fix de Web/RN.
+    var pageDepth by remember { mutableStateOf(0) }
+
+    // Estado de la barra de progreso. `enabled` lo decide el host (InitOptions.showProgressBar)
+    // y, si no se pronuncia, la plataforma (style.showProgressBar del survey).
+    var progressValue by remember { mutableStateOf(0.0) }
+    var progressTotal by remember { mutableStateOf(0) }
+    var platformShowProgressBar by remember { mutableStateOf(false) }
+    var progressShowUnit by remember { mutableStateOf(true) }
+    var progressUnit by remember { mutableStateOf(ProgressUnit.Fraction) }
+    var progressBarColor by remember { mutableStateOf(Color(0xFF22C55E)) }
 
     var customFontFamily by remember { mutableStateOf<FontFamily?>(null) }
     LaunchedEffect(popup.style.font) {
@@ -71,29 +129,48 @@ fun PopupView(
     var popupMaxWidth by remember { mutableStateOf(420.dp) }
     var popupMaxHeightFraction by remember { mutableStateOf(0.9f) }
 
+    // renderChrome=false (InitOptions): sin scrim ni tarjeta; el host controla el marco visual.
+    // El survey (header cerrar + footer) sigue funcional. Paridad con Web/RN.
+    val chrome = SdkRuntime.renderChrome
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0x66000000)),
+            // Invisible, no "no compuesto": el WebView tiene que estar montado para cargar el
+            // survey. El velo del scrim también desaparece, si no se vería el fondo oscuro
+            // varios cientos de ms antes que la tarjeta.
+            .alpha(if (revealed) 1f else 0f)
+            .background(if (chrome) Color(0x66000000) else Color.Transparent),
         contentAlignment = mapPosition(popup.style.position)
     ) {
         Surface(
-            modifier = Modifier
-                .padding(16.dp)
-                .widthIn(max = popupMaxWidth)
-                .wrapContentHeight(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-            color = bgColor,
-            tonalElevation = 6.dp,
-            shadowElevation = 8.dp
+            modifier = if (chrome) {
+                Modifier
+                    .padding(16.dp)
+                    .widthIn(max = popupMaxWidth)
+                    .wrapContentHeight()
+            } else {
+                Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+            },
+            shape = if (chrome) androidx.compose.foundation.shape.RoundedCornerShape(16.dp) else androidx.compose.ui.graphics.RectangleShape,
+            color = if (chrome) bgColor else Color.Transparent,
+            tonalElevation = if (chrome) 6.dp else 0.dp,
+            shadowElevation = if (chrome) 8.dp else 0.dp
         ) {
             MaterialTheme(typography = MaterialTheme.typography.withFontFamily(customFontFamily)) {
                 CompositionLocalProvider(
-                    LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = customFontFamily)
+                    LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = customFontFamily),
+                    LocalLayoutDirection provides layoutDirection,
                 ) {
                     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val maxPopupHeight = maxHeight * popupMaxHeightFraction
                 val minSurveyHeight = (maxPopupHeight * 0.35f).coerceAtLeast(280.dp)
+                // Espacio que le queda al survey dentro de la tarjeta: el resto se lo llevan
+                // cabecera, logo, barra de progreso y footer. Por encima de esto el WebView hace
+                // su propio scroll vertical.
+                val maxSurveyHeight = maxPopupHeight * 0.72f
                 val scrollState = rememberScrollState()
                 Box(modifier = Modifier.fillMaxWidth()) {
                     // Wrap-content column with a hard max-height. If the total intrinsic size
@@ -123,13 +200,19 @@ fun PopupView(
                             IconButton(
                                 onClick = {
                                     val decline = popup.actions.decline
-                                    if (decline != null) onAction(decline) else onAction(Action.Decline(label = "Close", cooldownDays = 0))
+                                    if (decline != null) onAction(decline)
+                                    else onAction(Action.Decline(label = labels.decline, cooldownDays = 0))
                                 },
+                                // La X no tiene texto: sin descripción el lector de pantalla solo
+                                // anuncia "botón". Paridad con el aria-label del popup web.
                                 modifier = Modifier.size(32.dp)
+                                    .semantics { contentDescription = labels.closeAria },
                             ) { Text("✕", color = textColor, fontSize = 18.sp) }
                         }
 
-                        // Optional image placeholder (supports runtime override via loaded style)
+                        // Optional image placeholder (supports runtime override via loaded style).
+                        // Va ANTES de la barra de progreso: la marca abre la tarjeta y la barra
+                        // queda pegada a la pregunta (paridad con el popup web, ui/logo.ts).
                         val finalImageUrl = imageUrlOverride ?: popup.style.imageUrl
                         if (finalImageUrl != null) {
                             Row(modifier = Modifier.fillMaxWidth()) {
@@ -151,6 +234,43 @@ fun PopupView(
                             }
                         }
 
+                        // Barra de progreso: "Question X of Y" + barra. El host manda si se
+                        // pronunció en init; si no, la plataforma vía style.showProgressBar.
+                        val progressBar = progressBarState(
+                            enabled = SdkRuntime.showProgressBar ?: platformShowProgressBar,
+                            progress = progressValue,
+                            total = progressTotal,
+                            completed = viewState == ViewState.Completed,
+                            onStartPage = viewState == ViewState.Start,
+                            showUnit = progressShowUnit,
+                            unit = progressUnit,
+                            labels = labels,
+                        )
+                        if (progressBar.visible) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (progressBar.label.isNotEmpty()) {
+                                    Text(
+                                        text = progressBar.label,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = textColor
+                                    )
+                                }
+                                LinearProgressIndicator(
+                                    progress = { progressBar.fraction },
+                                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                                    color = progressBarColor,
+                                    trackColor = Color(0xFFE5E7EB),
+                                    strokeCap = StrokeCap.Round,
+                                    gapSize = 0.dp,
+                                    drawStopIndicator = {}
+                                )
+                            }
+                        }
+
                         // Message HTML
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -158,15 +278,22 @@ fun PopupView(
                             }
                         }
 
-                        // Survey render area — wrap-content height with a sensible floor so
-                        // common scale surveys fit. The WebView handles its own internal
-                        // vertical scroll if the rendered form is taller; horizontal overflow
-                        // is suppressed via CSS in MagicFeedbackHtml.
+                        // Área del survey: se dimensiona con lo que el WebView dice que ocupa su
+                        // contenido, no llenando el espacio disponible. Un WebView no tiene
+                        // tamaño propio, así que antes se estiraba hasta el máximo y una sola
+                        // pregunta dejaba un hueco enorme hasta el footer. Mientras no llega el
+                        // dato se usa el suelo de siempre, y por encima del techo el WebView hace
+                        // su propio scroll vertical (el horizontal lo corta el CSS).
                         Row(modifier = Modifier.fillMaxWidth()) {
+                            val surveyHeight = PopupReveal.resolveSurveyHeightDp(
+                                reportedDp = surveyContentHeightDp,
+                                floorDp = minSurveyHeight.value.toInt(),
+                                ceilingDp = maxSurveyHeight.value.toInt(),
+                            ).dp
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(min = minSurveyHeight)
+                                    .height(surveyHeight)
                             ) {
                                 SurveyView(
                                     popup.surveyId,
@@ -216,7 +343,23 @@ fun PopupView(
                                             val m = Regex("\"$key\"\\s*:\\s*\"(.*?)\"").find(payload)
                                             return m?.groupValues?.get(1)
                                         }
+                                        // `payloadValue` solo lee strings entrecomillados; los flags y
+                                        // los números del bridge llegan sin comillas.
+                                        fun payloadBool(key: String): Boolean? =
+                                            Regex("\"$key\"\\s*:\\s*(true|false)").find(payload ?: "")
+                                                ?.groupValues?.get(1)?.toBooleanStrictOrNull()
+                                        fun payloadNumber(key: String): Double? =
+                                            Regex("\"$key\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)").find(payload ?: "")
+                                                ?.groupValues?.get(1)?.toDoubleOrNull()
+                                        /** Estado de navegación según la profundidad recorrida, no según `total`. */
+                                        fun navState(): ViewState =
+                                            if (pageDepth > 0) ViewState.InProgressNext else ViewState.InProgressFirst
                                         when (name) {
+                                            PopupReveal.READY_EVENT -> reveal()
+                                            PopupReveal.CONTENT_HEIGHT_EVENT ->
+                                                payloadNumber("height")?.let { h ->
+                                                    surveyContentHeightDp = h.toInt()
+                                                }
                                             "popup_clicked", "loaded" -> {
                                                 // Apply runtime style overrides if provided
                                                 val primaryHex = Regex("\"buttonPrimaryColor\"\\s*:\\s*\"(#[0-9A-Fa-f]{3,8})\"").find(payload ?: "")?.groupValues?.get(1)
@@ -252,21 +395,38 @@ fun PopupView(
                                                 // Optional popup sizing overrides
                                                 payloadValue("popupMaxWidth")?.toFloatOrNull()?.let { w -> popupMaxWidth = w.dp }
                                                 payloadValue("popupMaxHeightFraction")?.toFloatOrNull()?.let { f -> popupMaxHeightFraction = f.coerceIn(0.5f, 0.98f) }
+                                                // Barra de progreso: el total solo se conoce con el form montado.
+                                                payloadBool("showProgressBar")?.let { platformShowProgressBar = it }
+                                                payloadBool("showProgressUnit")?.let { progressShowUnit = it }
+                                                if (payloadValue("progressUnit") == "percentage") progressUnit = ProgressUnit.Percentage
+                                                parseHexColor(Regex("\"loadingBarColor\"\\s*:\\s*\"(#[0-9A-Fa-f]{3,8})\"").find(payload ?: "")?.groupValues?.get(1))
+                                                    ?.let { progressBarColor = it }
+                                                payloadNumber("total")?.let { progressTotal = it.toInt() }
+                                                payloadNumber("progress")?.let { progressValue = it }
+                                                // Idioma del survey (`formData.lang[0]`), que el
+                                                // WebView reenvía al cargar: manda sobre el del host.
+                                                payloadValue("surveyLang")?.takeIf { it.isNotBlank() }
+                                                    ?.let { surveyLang = it }
                                             }
                                             "before_submit" -> { viewState = ViewState.Loading }
                                             // Broaden validation match
                                             "validation_error_required" -> {
-                                                errorHint = "Please answer the required question to continue."
-                                                viewState = ViewState.InProgressNext
+                                                // La página no ha cambiado: el estado de navegación se queda como estaba.
+                                                errorHint = labels.errorRequired
+                                                viewState = navState()
                                             }
                                             else -> {
                                                 if (name.startsWith("validation_error")) {
-                                                    errorHint = payloadValue("message") ?: "Please check your answers and try again."
-                                                    viewState = ViewState.InProgressNext
+                                                    // Rama defensiva: hoy el WebView solo emite
+                                                    // `validation_error_required`. Sin mensaje del
+                                                    // bridge se usa el mismo aviso traducido, en
+                                                    // vez de un literal inglés suelto.
+                                                    errorHint = payloadValue("message") ?: labels.errorRequired
+                                                    viewState = navState()
                                                 } else if (name == "submit_error") {
                                                     // Treat submit error as inline banner so user can correct and retry
-                                                    errorHint = payloadValue("message") ?: "An error occurred while submitting. Please try again."
-                                                    viewState = ViewState.InProgressNext
+                                                    errorHint = payloadValue("message") ?: labels.errorSubmit
+                                                    viewState = navState()
                                                 } else if (name == "survey_completed") {
                                                     // Move to completed state and show final message; don't auto-close
                                                     viewState = ViewState.Completed
@@ -275,13 +435,15 @@ fun PopupView(
                                                     errorHint = null
                                                     // Previously we called onAction(complete/decline) here, which closed the popup before user could read the message.
                                                 } else if (name == "after_submit") {
-                                                    val progress = Regex("\"progress\"\\s*:\\s*(\\d+)").find(payload ?: "")?.groupValues?.get(1)?.toIntOrNull() ?: 0
-                                                    val total = Regex("\"total\"\\s*:\\s*(\\d+)").find(payload ?: "")?.groupValues?.get(1)?.toIntOrNull() ?: 0
-                                                    viewState = if (total > 1 && progress in 1 until total) ViewState.InProgressNext else ViewState.InProgressFirst
+                                                    pageDepth += 1
+                                                    payloadNumber("progress")?.let { progressValue = it }
+                                                    payloadNumber("total")?.let { if (it > 0) progressTotal = it.toInt() }
+                                                    viewState = navState()
                                                     errorHint = null
                                                 } else if (name == "back") {
-                                                    val progress = Regex("\"progress\"\\s*:\\s*(\\d+)").find(payload ?: "")?.groupValues?.get(1)?.toIntOrNull() ?: 0
-                                                    viewState = if (progress == 0) ViewState.InProgressFirst else ViewState.InProgressNext
+                                                    if (pageDepth > 0) pageDepth -= 1
+                                                    payloadNumber("progress")?.let { progressValue = it }
+                                                    viewState = navState()
                                                     errorHint = null
                                                 } else if (name == "popup_close") {
                                                     popup.actions.decline?.let { onAction(it) }
@@ -329,26 +491,26 @@ fun PopupView(
                                             errorHint = null
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.start?.label ?: defaultLabel(DefaultLabels.Slot.START), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.start?.label, DefaultLabels.Slot.START), color = Color.White) }
                                 }
                                 ViewState.InProgressFirst -> {
                                     Spacer(modifier = Modifier.weight(1f))
                                     Button(
                                         onClick = { surveyController?.send() },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.accept?.label ?: defaultLabel(DefaultLabels.Slot.ACCEPT), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.accept?.label, DefaultLabels.Slot.ACCEPT), color = Color.White) }
                                 }
                                 ViewState.InProgressNext -> {
                                     OutlinedButton(
                                         onClick = { surveyController?.back() },
                                         colors = ButtonDefaults.outlinedButtonColors(contentColor = primaryColor),
                                         border = BorderStroke(1.dp, primaryColor)
-                                    ) { Text(popup.actions.back?.label ?: defaultLabel(DefaultLabels.Slot.BACK)) }
+                                    ) { Text(actionLabel(popup.actions.back?.label, DefaultLabels.Slot.BACK)) }
                                     Spacer(modifier = Modifier.weight(1f))
                                     Button(
                                         onClick = { surveyController?.send() },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.accept?.label ?: defaultLabel(DefaultLabels.Slot.ACCEPT), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.accept?.label, DefaultLabels.Slot.ACCEPT), color = Color.White) }
                                 }
                                 ViewState.Completed -> {
                                     Button(
@@ -358,13 +520,13 @@ fun PopupView(
                                             if (complete != null) onAction(complete) else onAction(Action.Complete(label = "" ))
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.complete?.label ?: defaultLabel(DefaultLabels.Slot.COMPLETE), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.complete?.label, DefaultLabels.Slot.COMPLETE), color = Color.White) }
                                 }
                                 ViewState.Error -> {
                                     Button(
                                         onClick = { popup.actions.decline?.let { onAction(it) } },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(popup.actions.decline?.label ?: defaultLabel(DefaultLabels.Slot.DECLINE), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.decline?.label, DefaultLabels.Slot.DECLINE), color = Color.White) }
                                 }
                             }
                         }
@@ -386,7 +548,10 @@ fun PopupView(
                                 .background(Color.White.copy(alpha = 0.65f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(color = primaryColor)
+                            CircularProgressIndicator(
+                                color = primaryColor,
+                                modifier = Modifier.semantics { contentDescription = labels.loadingAria },
+                            )
                         }
                     }
                 }

@@ -2,6 +2,205 @@
 
 All notable changes to the Deepdots Popup SDK are documented in this file.
 
+## Unreleased
+
+## 0.6.0 - 2026-10-05
+
+Parity with Popup Web SDK 1.6.0 to 1.8.4 for everything that applies to the
+native (Compose) chrome.
+
+### Added
+
+- **The popup chrome follows the survey's language.** Buttons, the progress
+  label (`Question X of Y`), the follow-up label, the error notices and the
+  accessibility labels of the close button and the spinner are translated into
+  the 11 languages the platform offers for a survey (en, es, da, fi, no, sv, ar,
+  bn, de, pt, fr) plus zh-CN. Priority: `actions.*.label` from the API > the
+  survey's language > the device language (`provideLang`) > English. A survey in
+  Danish on a phone set to English now shows a Danish footer.
+- **Right-to-left chrome for Arabic surveys.** The chrome's `LayoutDirection`
+  follows the same language that picks the texts, so header, footer and progress
+  bar mirror together with the survey content.
+- **`segments.excludedPaths`.** Paths where a popup must not be shown, next to
+  `segments.path`. An exclusion wins over an inclusion and also applies without
+  `path`. Exit popups are checked against the excluded paths both when they are
+  queued and when they are shown.
+- **`InitOptions.geolocation`** (default `true`). With `false` the SDK neither
+  looks up the country/city by IP nor uses a cached value.
+
+### Changed
+
+- **The popup opens already painted.** The card is mounted invisible while the
+  survey loads and is revealed once the question (and its images) are on
+  screen, with a 1.2 s ceiling after which it opens with the spinner as before.
+  On iOS the popup is now presented full screen over the app (scrim + card, as
+  on Android and web) instead of as a sheet.
+- **The card fits the survey.** The survey area takes the height of its content
+  (between 120 dp and 72% of the card, scrolling above that), and its content is
+  aligned with the logo and the progress bar instead of being indented ~38 px.
+- **The survey uses the brand colour.** When the integration does not set
+  `primaryColor`, rating chips, borders, focus and selection use
+  `buttonPrimaryColor` instead of the package's default blue-grey.
+- **The logo sits above the progress bar** (header, logo, bar, question).
+- **Surveys SDK `@magicfeedback/native` 2.2.22 in the WebView**, and the survey
+  stylesheet is pinned to `@magicfeedback/popup-sdk@1.7.0`. It used to be
+  loaded without a version, so every web release changed the CSS of apps
+  already shipped.
+- **The analytics dry-run log only appears with `debug = true`.** Without
+  `InitOptions.analytics` the SDK sends nothing and used to print the would-be
+  payload of every batch (`[DeepdotsAnalytics] (dry-run · NOT sent · no
+  init.analytics) …`) to the host app's log, even in production. It now goes
+  through the same `debug` gate as the rest of the SDK logs.
+- **IP geolocation only when it will be sent.** The lookup to ipapi.co /
+  ipwho.is / ipinfo.io ran on every `init()`, also without `analytics`
+  configured, with tracking disabled and with a fresh 30-day cache. It now runs
+  only with `analytics` configured, tracking enabled and the cache missing or
+  expired, at most once per instance (or on `setTrackingEnabled(true)` if
+  consent comes later).
+
+### Fixed
+
+- **The survey no longer accepts taps while a page is being sent.** During the
+  transition between pages the spinner was shown but options could still be
+  changed. The answer for that page had already been sent, so the change was
+  lost while the user believed it had been recorded.
+- **Analytics sessions of an app left open in the foreground are no longer closed as
+  abandoned.** The backend closes a session after 60 min without batches (Run_Jobs
+  `incomplete-surveys`), but an app sitting on one screen sent nothing: a page view is
+  emitted on leaving a screen and engagement only on going to the background. The session
+  was closed with just its `deepdots_session_start`. The periodic flush now emits the
+  accumulated engagement at least every 5 minutes while the app is in the foreground.
+  The web session timeout for hidden tabs does not apply here: going to the background
+  already ends the session.
+- **iOS demo app** passes the `InitOptions` parameters it was missing.
+
+### Not included
+
+- Page views carrying the real path next to the normalized screen (Popup Web
+  SDK 1.8.5) is not ported yet.
+
+## 0.5.0 - 2026-08-14
+
+Parity with Popup Web SDK 1.5.0 for everything that applies to the native
+(Compose) chrome.
+
+### Added
+
+- **`InitOptions.showProgressBar`** — a `Question X of Y` label with a progress
+  bar under the popup header. `null` (default) follows the `showProgressBar`
+  configured for the survey in the platform; `true` / `false` force it. It also
+  respects the survey's `progressUnit` (question count or percentage),
+  `showProgressUnit` and `loadingBarColor`, and stays hidden on the start
+  screen, on the completion screen, and when the survey has a single page.
+  - Logic lives in `ui/ProgressBarState.kt` as pure functions so it is unit
+    tested the same way as on Web.
+
+### Fixed
+
+- **The Back button never appeared when the next screen was a dynamic
+  follow-up question.** The previous check was `total > 1 && progress in 1
+  until total`, and follow-ups are not part of the page graph: they add 0.5 to
+  `progress` and leave `total` untouched, so a single-question survey with a
+  follow-up never satisfied it. Navigation state is now driven by how many
+  pages the user has actually advanced. A validation or submit error no longer
+  forces the "next" state either — it recalculates from that depth.
+- **The survey's completion screen showed a generic message instead of the one
+  configured in the platform.** The survey WebView now passes
+  `addSuccessScreen:false` and renders `style.successMessage` itself, so the
+  thank-you screen appears as designed, image included. Previously it was drawn
+  by `renderSuccess` in `@magicfeedback/native`, which uses `textContent` (so
+  HTML from the platform's editor could never render) and falls back to a
+  literal that ignores the survey's style.
+
+### Not included
+
+- **`surveyCss`** (host-supplied CSS for the survey), added in Popup Web 1.5.0,
+  is not ported: the native chrome is Compose rather than HTML, so there is no
+  popup stylesheet to inject into. Use the popup style from the platform
+  (`theme`, `position`, `font`) for native.
+
+### Distribution
+
+- The Android **AAR is no longer versioned in the repository**. It had been
+  frozen at 0.2.2 while 0.3.0, 0.4.0 and 0.5.0 shipped, so anyone taking it
+  from the repo got stale code. It is now published as a GitHub Release asset,
+  with Maven Central remaining the primary channel
+  (`scripts/prepare_maven_upload_zip.sh`).
+
+### Release follow-ups
+
+- Upload the signed Android bundle to Sonatype Central Portal.
+- Build `DeepdotsSDK-0.5.0.xcframework.zip`, attach it to the `0.5.0` release of
+  `MagicFeedback/DeepdotsSDK-SPM`, and bump `spm/Package.swift` — it still
+  points at **0.3.0**.
+
+## 0.4.0 - 2026-08-05
+
+### Migration
+
+- **Analytics events generated by the SDK are now prefixed `deepdots_`**
+  (`deepdots_page_view`, `deepdots_session_start`, `deepdots_message`, …).
+  Anything consuming these events downstream — dashboards, BigQuery queries,
+  warehouse models — must be updated to the new names. Events you send with
+  `track(name, params)` are unaffected.
+- **`onBackground()` is now the end of an analytics session**, not just a flush.
+  Call it from `Activity.onStop` / `applicationDidEnterBackground` only. Do
+  **not** call it from `onPause` / `willResignActive`: on iOS the `inactive`
+  state is transient (an incoming call, the app switcher) and would split one
+  session in two. `onForeground()` opens a new session.
+
+### Added
+
+- **Custom font for the native chrome and the survey.** `PopupStyle.font`
+  (`family` plus an optional `url`) now applies to the popup title, buttons and
+  form controls as well as to the survey inside the WebView. Fonts are fetched
+  once and cached per session; `family` is sanitized and a `url` is only
+  accepted over `http(s)` / `data:`.
+- **`InitOptions.renderChrome`** — default `true`. With `false` the popup
+  renders without the scrim and the card so the host controls the visual frame.
+  The survey stays fully functional. Note that on native the SDK still mounts
+  the full-screen overlay itself; the flag removes the scrim and card, it does
+  not hand the container over.
+- **Crash reporting.** `reportError()` plus managed handlers
+  (`UncaughtExceptionHandler` on Android, `NSSetUncaughtExceptionHandler` on
+  iOS). Crashes are queued and replayed on the next launch. The iOS handler
+  deliberately does not chain to a previously installed handler; the limitation
+  is documented in the source.
+- **Messaging metrics.** `trackMessage()` emits `deepdots_message` for push and
+  in-app funnels, guarded by `MessageGuard`: it drops unknown channels,
+  duplicate `(message_id, stage)` pairs, and the same `message_id` appearing on
+  two channels, which otherwise produced impossible conversion rates. A rejected
+  call always logs why.
+- **`trackMeaningfulInteraction()`** for Product Effectiveness metrics.
+- **Session lifecycle and identity.** `endSession()`, `setUserId(id)` (closes
+  the previous user's session before switching), and a final batch sent with
+  `completed:true` so the backend can tell a session actually ended.
+- **`setMetric(key, value)`** for host-measured values, sent in a dedicated
+  `metrics` field.
+- **Persistent storage by default.** `user_id` now survives app restarts with
+  no host configuration (`SharedPreferences` on Android via an auto-captured
+  application context, `NSUserDefaults` on iOS). Without it every launch
+  counted as a new user. Hosts can still inject their own `KeyValueStorage`.
+- **Device, language and geo context** in the analytics envelope, and
+  `setContactAttributes()` for host-known user attributes.
+- **Concurrent mini-services** — `exitMiniService(name)` closes the right one.
+
+### Changed
+
+- SDK console output is now in English throughout, matching the Web SDK.
+- Delivery reliability for the analytics channel: `5xx`/`408`/`429` re-queue the
+  batch, `4xx` is logged with status and body and discarded, and batches are
+  serialized until the backend has assigned a `sessionId` (two parallel posts
+  created two records). Delivery is therefore **at-least-once**, so the backend
+  must deduplicate by `(user_id, event name, timestamp)`.
+
+### Fixed
+
+- **iOS simulator test and framework builds failed to link.** Inside
+  `binaries.all` the `name` is the binary's (`debugTest`, `releaseFramework`),
+  not the target's, so the "not simulator" guard never matched and
+  `-mios-version-min` leaked into the simulator link, which `ld` rejects.
+
 ## 0.3.0 - 2026-06-01
 
 ### Migration

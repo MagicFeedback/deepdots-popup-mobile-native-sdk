@@ -111,6 +111,32 @@ class DeepdotsPopupsAnalyticsTest {
     }
 
     @Test
+    fun track_meaningful_interaction_emits_event_with_interaction_type_and_params() {
+        val s = sdk()
+        s.trackMeaningfulInteraction("get_help", mapOf("source" to "navbar"))
+        val e = s.previewAnalytics().events.first { it.name == "deepdots_meaningful_interaction" }
+        assertEquals("get_help", e.params?.get("interaction_type")?.jsonPrimitive?.content)
+        assertEquals("navbar", e.params?.get("source")?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun track_meaningful_interaction_discards_blank_interaction_type() {
+        val s = sdk()
+        s.flushAnalytics() // clear session_start emitted at init
+        s.trackMeaningfulInteraction("   ")
+        assertEquals(0, s.previewAnalytics().events.size)
+    }
+
+    @Test
+    fun track_meaningful_interaction_respects_kill_switch() {
+        val s = sdk()
+        s.flushAnalytics() // clear session_start emitted at init
+        s.setTrackingEnabled(false)
+        s.trackMeaningfulInteraction("get_help")
+        assertEquals(0, s.previewAnalytics().events.size)
+    }
+
+    @Test
     fun navigation_via_setPath_emits_page_view() {
         val s = sdk()
         s.setPath("/home")          // begin (no emite)
@@ -201,5 +227,37 @@ class DeepdotsPopupsAnalyticsTest {
         assertEquals("summer_sale", msgs[0].params?.get("campaign")?.jsonPrimitive?.content)
         assertEquals("converted", msgs[2].params?.get("stage")?.jsonPrimitive?.content)
         assertEquals("EUR", msgs[2].params?.get("currency")?.jsonPrimitive?.content)
+    }
+
+    /**
+     * Protecciones del funnel de Messaging: el SDK no puede emitir las formas imposibles que
+     * producían CTR > 100% en BQ (stage duplicado, dos canales para el mismo message_id).
+     */
+    @Test
+    fun track_message_discards_invalid_channel_duplicate_stage_and_channel_switch() {
+        val s = sdk()
+        s.trackMessage("delivered", "msg-1", "Rebajas", "PUSH") // inválido
+        s.trackMessage("delivered", "msg-1", "Rebajas", "push") // ok
+        s.trackMessage("clicked", "msg-1", "Rebajas", "push") // ok
+        s.trackMessage("clicked", "msg-1", "Rebajas", "push") // duplicado
+        s.trackMessage("clicked", "msg-1", "Rebajas", "in_app") // conflicto de canal
+
+        val msgs = s.previewAnalytics().events.filter { it.name == "deepdots_message" }
+        assertEquals(
+            listOf("delivered", "clicked"),
+            msgs.map { it.params?.get("stage")?.jsonPrimitive?.content },
+        )
+        assertTrue(msgs.all { it.params?.get("channel")?.jsonPrimitive?.content == "push" })
+    }
+
+    @Test
+    fun message_guard_scope_is_the_session() {
+        val a = sdk()
+        a.trackMessage("clicked", "msg-1", "Rebajas", "push")
+
+        val b = sdk()
+        b.trackMessage("clicked", "msg-1", "Rebajas", "push")
+
+        assertEquals(1, b.previewAnalytics().events.count { it.name == "deepdots_message" })
     }
 }

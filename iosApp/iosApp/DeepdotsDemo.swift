@@ -76,6 +76,13 @@ struct DeepdotsDemoView: View {
             provideLang: provideLang,
             autoLaunch: true,
             storage: nil,
+            // Kotlin no expone los valores por defecto a Swift: hay que pasar todos los
+            // parámetros de `InitOptions`, también los añadidos después de escribir este demo.
+            trackingEnabled: true,
+            analytics: nil,
+            contactAttributes: nil,
+            renderChrome: true,
+            showProgressBar: nil,
             metadata: ["userId": uid]
         )
         let instance = DeepdotsSDK.DeepdotsPopups()

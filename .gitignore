@@ -19,6 +19,11 @@ local.properties
 .DS_Store
 .kotlin/
 build_ios.log
+# El AAR de Android es un artefacto de build, no fuente. Se distribuye por GitHub
+# Releases (y por Maven Central con scripts/prepare_maven_upload_zip.sh), no desde
+# el repo: versionado se quedaba congelado en una versión vieja y confundía a quien
+# lo tomaba de aquí creyendo que era el actual.
+dist/android/*.aar
 dist/spm-local/
 dist/spm/*.zip
 dist/spm/*.zip.checksum

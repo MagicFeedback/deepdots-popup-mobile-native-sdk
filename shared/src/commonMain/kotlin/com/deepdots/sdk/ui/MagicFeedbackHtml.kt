@@ -2,9 +2,26 @@ package com.deepdots.sdk.ui
 
 import com.deepdots.sdk.SdkRuntime
 import com.deepdots.sdk.models.PopupFont
+import com.deepdots.sdk.tracking.buildSurveyIdentity
 
 // Centralized MagicFeedback package version used for all CDN URLs
-private const val MAGICFEEDBACK_VERSION: String = "2.2.4"
+private const val MAGICFEEDBACK_VERSION: String = "2.2.22"
+
+/**
+ * Version de `@magicfeedback/popup-sdk` de la que se sirve la hoja de estilos del survey.
+ *
+ * ⚠️ Va PINEADA a proposito. Sin version, jsDelivr sirve la ultima publicada, de modo que una
+ * app ya distribuida -- con su [MAGICFEEDBACK_VERSION] compilado dentro -- empezaria a
+ * combinar su JS con el CSS de una release posterior en cuanto alguien publique el popup-sdk.
+ * El salto 2.2.8 -> 2.2.22 lo deja claro: la hoja cambia a propiedades logicas y anade RTL.
+ *
+ * Esta hoja es la copia vendorizada de `magicfeedback-default.css` (no la del paquete de
+ * surveys), con los 5 deltas locales del SDK, asi que el pin es a la version del popup-sdk y
+ * NO a [MAGICFEEDBACK_VERSION]. Al subir [MAGICFEEDBACK_VERSION] hay que publicar el popup-sdk
+ * con su CSS re-vendorizado y apuntar aqui a esa version; mientras ese npm no este publicado,
+ * el WebView pedira una URL que no existe y el survey saldra sin estilos.
+ */
+internal const val POPUP_SDK_CSS_VERSION: String = "1.7.0"
 
 /**
  * Common HTML builder for MagicFeedback survey popup used by Android/iOS WebViews.
@@ -45,7 +62,7 @@ internal fun buildMagicFeedbackHtml(
     val urlBrowserUnpkg = "$unpkgBase/magicfeedback-sdk.browser.js"
     val urlEsmModule = "$cdnBase/index.js"
     val urlStyleDefault =
-        "https://cdn.jsdelivr.net/npm/@magicfeedback/popup-sdk/dist/assets/assets/style.css"
+        "https://cdn.jsdelivr.net/npm/@magicfeedback/popup-sdk@$POPUP_SDK_CSS_VERSION/dist/assets/assets/style.css"
 
     val pubKeyJs = (SdkRuntime.publicKey ?: "")
     val envJs = (SdkRuntime.env.ifBlank { "prod" })
@@ -86,6 +103,19 @@ internal fun buildMagicFeedbackHtml(
             }
         }
     }
+    // Identidad del tracking (contrato §5): mismas claves que Web (buildSurveyIdentity) para que
+    // las respuestas del survey se puedan coser con la analítica: session_id, user_id y el
+    // mini_service activo (#33, CSAT por mini-service).
+    val identity = buildSurveyIdentity(
+        userId = SdkRuntime.userId,
+        sessionId = SdkRuntime.sessionId,
+        miniService = SdkRuntime.miniService,
+        analyticsFeedbackSessionId = SdkRuntime.analyticsFeedbackSessionId,
+    )
+    identity.metadata.forEach { answer ->
+        meta[answer.key] = answer.value.toMutableList()
+    }
+
     // Now serialize into JS array of objects { key, value: [...] }
     val customMetaJsArray = buildString {
         append("[")
@@ -103,6 +133,18 @@ internal fun buildMagicFeedbackHtml(
                 append(escapedVals)
                 append("] }")
             }
+        }
+        append("]")
+    }
+
+    // `profile` del survey: el external-user-id, 3er argumento de form() (igual que Web).
+    val profileJsArray = buildString {
+        append("[")
+        identity.profile.forEachIndexed { index, answer ->
+            if (index > 0) append(",")
+            val values = answer.value.filter { it.isNotBlank() }
+                .joinToString(",") { "'" + it.replace("'", "\\'") + "'" }
+            append("{ key: '").append(answer.key.replace("'", "\\'")).append("', value: [").append(values).append("] }")
         }
         append("]")
     }
@@ -129,11 +171,30 @@ internal fun buildMagicFeedbackHtml(
             #mf-form .magicfeedback-title,#mf-form h1,#mf-form h2,#mf-form h3,#mf-form legend{font-size:16px;line-height:1.35;margin:0 0 8px 0;}
             #mf-form label,#mf-form .magicfeedback-label{line-height:1.35;}
             #mf-status{color:#666;font-size:12px;padding:4px;}
+            /* Pantalla final: HTML del editor de la plataforma (imagen + texto), centrado. */
+            .deepdots-success{display:none;width:100%;text-align:center;padding:24px 0;}
+            .deepdots-success img{max-width:100%;height:auto;margin:0 auto 16px auto;display:block;}
+            .deepdots-success p{margin:0;font-size:16px;font-weight:600;line-height:1.4;}
           </style>
           <link rel="stylesheet" href="$urlStyleDefault" />
+          <style>
+            /* El margen lateral del popup lo pone el chrome nativo (la tarjeta de Compose), así
+               que el survey no debe añadir el suyo: con el padding del paquete (12px del
+               container + 14px del form en el breakpoint móvil) el enunciado y las opciones
+               quedaban ~26px más adentro que el logo y la barra de progreso, que sí se alinean
+               con el borde de la tarjeta. El padding vertical se conserva: es el que separa las
+               preguntas del borde. Va después del <link> porque el CSS del paquete se carga
+               ahí y, a igualdad de especificidad, gana el último. */
+            .magicfeedback-container{padding-left:0;padding-right:0;}
+            .magicfeedback-form{padding-left:0;padding-right:0;}
+            /* Cada pregunta va en un bloque con 12px más de padding y fondo blanco sobre la
+               tarjeta (también blanca), así que ese sangrado no se ve: solo desalinea. */
+            .magicfeedback-div{padding-left:0;padding-right:0;}
+          </style>
         </head>
         <body class="deepdots-popup">
           <div id='mf-form'></div>
+          <div id='mf-success' class='deepdots-success'></div>
           <script>
             (function(){
               var LOCAL_SRC = $localSrcLiteral;
@@ -141,18 +202,75 @@ internal fun buildMagicFeedbackHtml(
               $emitWrapper
               var initialized = false;
               var mfReady = false; // becomes true when form onLoadedEvent fires
+${SurveyPalette.PRIMARY_COLOR_JS}
+${SurveyBusy.BUSY_JS}
+${PopupReveal.REVEAL_JS}
+              // Apertura diferida: la capa nativa mantiene el popup invisible hasta este aviso,
+              // para que el usuario vea la tarjeta ya pintada en vez del spinner. Se manda
+              // cuando el survey está montado y sus imágenes han llegado, o al vencer el techo
+              // (survey que no carga: el popup se abre igual, con el spinner de siempre).
+              var ddReveal = ddCreateReveal(document, function(){
+                ddReportHeight();
+                emit('${PopupReveal.READY_EVENT}');
+              }, ${PopupReveal.REVEAL_TIMEOUT_MS});
+              // Mensaje final configurado en la plataforma (style.successMessage). Va por
+              // innerHTML porque es HTML del editor (imagen + texto), igual que hace
+              // renderStartMessage de @magicfeedback/native con el mensaje de inicio.
+              var successMessageHtml = '';
+              function showSuccessScreen(){
+                try {
+                  var form = document.getElementById('mf-form'); if (form) { form.style.display = 'none'; }
+                  var done = document.getElementById('mf-success'); if (!done) return;
+                  done.innerHTML = successMessageHtml || '<p>Thank you for your feedback!</p>';
+                  done.style.display = 'block';
+                } catch(e){ console.error('[MagicFeedback] success screen error', e); }
+              }
               var PUBLIC_KEY = ${if (pubKeyJs.isNotEmpty()) "'${pubKeyJs}'" else "null"};
               var ENV = ${if (envJs.isNotEmpty()) "'${envJs}'" else "'prod'"};
             
               function emitJSON(name, payload){
                 try { emit(JSON.stringify({ name: name, payload: payload || {} })); } catch(err){ console.error('[MagicFeedback] emitJSON error', err); }
               }
+              // Altura real del survey. El WebView no tiene tamaño propio, así que sin esto la
+              // capa nativa lo estira hasta el máximo y una sola pregunta deja un hueco enorme
+              // entre la última opción y el footer. Se mide `#mf-form` (no el body, que va a
+              // height:100% y siempre devuelve el alto del WebView).
+              var ddLastHeight = -1;
+              function ddReportHeight(){
+                try {
+                  var host = document.getElementById('mf-form');
+                  if(!host) { return; }
+                  var h = Math.ceil(host.getBoundingClientRect().height);
+                  if(h > 0 && Math.abs(h - ddLastHeight) > 1){
+                    ddLastHeight = h;
+                    emitJSON('${PopupReveal.CONTENT_HEIGHT_EVENT}', { height: h });
+                  }
+                } catch(e){ console.error('[MagicFeedback] height report error', e); }
+              }
+              try {
+                if (window.ResizeObserver) {
+                  // Cubre la carga, el cambio de página, las follow-up y los avisos de validación
+                  // sin tener que acordarse de llamarlo en cada evento.
+                  new ResizeObserver(function(){ ddReportHeight(); }).observe(document.getElementById('mf-form'));
+                }
+              } catch(e){ console.error('[MagicFeedback] ResizeObserver error', e); }
               function initMF(){
                 try {
                   if (window.magicfeedback && !initialized) {
                     initialized = true;
                     window.magicfeedback.init({debug:true, env: ENV, publicKey: PUBLIC_KEY});
-                    var form = ${if (hasProduct) "window.magicfeedback.form('$surveyId', '$productId')" else "window.magicfeedback.form('$surveyId')"};
+                    var form = ${
+        if (hasProduct) {
+            // 3er argumento = profile (external-user-id), como en Web.
+            if (identity.profile.isNotEmpty()) {
+                "window.magicfeedback.form('$surveyId', '$productId', $profileJsArray)"
+            } else {
+                "window.magicfeedback.form('$surveyId', '$productId')"
+            }
+        } else {
+            "window.magicfeedback.form('$surveyId')"
+        }
+    };
                     window.DeepdotsForm = form;
                     window.DeepdotsActions = {
                       send: function(){ try { form.send(); } catch(e){ console.error('[DeepdotsActions] send error', e); } },
@@ -163,17 +281,52 @@ internal fun buildMagicFeedbackHtml(
                  
                     form.generate('mf-form', {
                       addButton:false,
+                      // La pantalla final la pinta este HTML: renderSuccess de
+                      // @magicfeedback/native usa textContent, así que el mensaje de la
+                      // plataforma (HTML con imagen) no se vería, y su fallback es un literal
+                      // genérico que ignora style.successMessage. Paridad con Web/RN.
+                      addSuccessScreen:false,
                       onLoadedEvent: function(args){
                         mfReady = true; var s=document.getElementById('mf-status'); if(s) s.textContent='';
                         try {
                           var style = (args && args.formData && args.formData.style) ? args.formData.style : null;
-                          emitJSON('popup_clicked', { style: style });
+                          // El survey pinta sus controles con --mf-primary, que sale de
+                          // primaryColor; si la integracion solo configura el del boton, el popup
+                          // mezclaria el color de la marca (que el chrome nativo si usa) con el
+                          // gris azulado por defecto del paquete.
+                          ddApplySurveyPrimaryColor(document.documentElement, style);
+                          if (style && style.successMessage) { successMessageHtml = style.successMessage; }
+                          // Idioma del survey: lo configura la plataforma en la integración y solo
+                          // se conoce aquí dentro, pero los botones los pinta la capa nativa, así
+                          // que se lo reenviamos para que traduzca su chrome (paridad con Web,
+                          // donde `renderPopup` lee el mismo `formData.lang` al cargar).
+                          var langs = (args && args.formData && args.formData.lang) ? args.formData.lang : null;
+                          var surveyLang = '';
+                          if (langs && langs.length) {
+                            for (var li = 0; li < langs.length; li++) {
+                              if (typeof langs[li] === 'string' && langs[li].trim()) { surveyLang = langs[li]; break; }
+                            }
+                          }
+                          // El total solo se conoce con el form ya montado: lo necesita la barra
+                          // de progreso que pinta la capa nativa.
+                          emitJSON('popup_clicked', { style: style, surveyLang: surveyLang, progress: form.progress || 0, total: form.total || 0 });
                           emit('loaded'); // explicit loaded for Kotlin UI state
+                          ddReportHeight(); // por si el WebView no trae ResizeObserver
+                          ddReveal.whenPainted();
                         } catch(e){ console.error('[MagicFeedback] onLoadedEvent emit error', e); }
                       },
-                      beforeSubmitEvent: function(){ try { emitJSON('before_submit'); } catch(e){ console.error('[MagicFeedback] before_submit emit error', e); } },
+                      beforeSubmitEvent: function(){
+                        try {
+                          // El spinner lo pinta Compose FUERA del WebView, asi que no protege al
+                          // survey: sin esto el usuario sigue cambiando de opcion mientras se
+                          // envia la pagina, y ese cambio ya no viaja con ella.
+                          ddSetSurveyBusy(document.body, true);
+                          emitJSON('before_submit');
+                        } catch(e){ console.error('[MagicFeedback] before_submit emit error', e); }
+                      },
                       afterSubmitEvent: function(payload){
                         try {
+                          ddSetSurveyBusy(document.body, false);
                           var err = payload && payload.error ? String(payload.error) : '';
                           var completed = !!(payload && payload.completed);
                           var progress = (payload && payload.progress) || 0;
@@ -183,12 +336,13 @@ internal fun buildMagicFeedbackHtml(
                              if (lower.indexOf('no response') !== -1) { emitJSON('validation_error_required'); }
                              else { emitJSON('submit_error', { error: err }); }
                           }
-                          if (completed) { emitJSON('survey_completed'); }
+                          if (completed) { showSuccessScreen(); emitJSON('survey_completed'); }
                           else { emitJSON('after_submit', { error: err, completed: completed, progress: progress, total: total }); }
                         } catch(e){ console.error('[MagicFeedback] afterSubmit exception', e); }
                       },
                       onBackEvent: function(args){
                         try {
+                          ddSetSurveyBusy(document.body, false);
                           var progress = (args && args.progress) || 0;
                           var total = (args && args.total) || 0;
                           emitJSON('back', { progress: progress, total: total });

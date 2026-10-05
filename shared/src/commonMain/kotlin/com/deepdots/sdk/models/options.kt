@@ -1,6 +1,6 @@
 package com.deepdots.sdk.models
 
-import com.deepdots.sdk.storage.InMemoryStorage
+import com.deepdots.sdk.analytics.AnalyticsKeys
 import com.deepdots.sdk.storage.KeyValueStorage
 
 enum class Mode { Client, Server }
@@ -21,7 +21,51 @@ data class InitOptions(
     val popupOptions: PopupOptions = PopupOptions(),
     val provideLang: () -> String? = { null }, // resolver for the current UI language
     val autoLaunch: Boolean? = false, // when true, triggers start evaluating immediately after init
-    val storage: KeyValueStorage? = InMemoryStorage(), // internal: within-session cooldown cache
+    /**
+     * Storage del host. Si es null, el SDK usa el PERSISTENTE por defecto
+     * (SharedPreferences/NSUserDefaults): el `user_id` tiene que sobrevivir entre sesiones o
+     * cada arranque contaría como usuario nuevo. Inyecta el tuyo solo para controlar dónde se
+     * guarda (o `InMemoryStorage()` en tests).
+     */
+    val storage: KeyValueStorage? = null,
+    /** Arranca el tracking activado (default) o desactivado, a la espera de consentimiento. */
+    val trackingEnabled: Boolean? = true,
+    /**
+     * Claves de la integración de analytics creada en la plataforma. Sin ellas el canal queda
+     * en dry-run (no envía nada; el payload solo se imprime con `debug`); con ellas hace `POST /sdk/feedback` de verdad.
+     */
+    val analytics: AnalyticsKeys? = null,
+    /**
+     * Geolocalización por IP (país/ciudad) añadida a analytics. Default `true`. El lookup llama
+     * a servicios de terceros (ipapi.co, luego ipwho.is y luego ipinfo.io como fallback, 3 s de
+     * timeout cada uno) y solo se hace con `analytics` configurado, el tracking activo y la
+     * caché de 30 días ausente o caducada. Con `false` no se llama nunca ni se adjunta
+     * país/ciudad. Paridad con Web `DeepdotsInitParams.geolocation`.
+     */
+    val geolocation: Boolean? = true,
+    /**
+     * Info interna del usuario (plan, edad, idioma preferido…) que se persiste en el Contact del
+     * backend para segmentar/targetear popups. Requiere `metadata["userId"]` (usuario
+     * identificado). También se puede llamar después con `setContactAttributes`.
+     */
+    val contactAttributes: Map<String, Any?>? = null,
+    /**
+     * Si el SDK pinta el "modal" del popup (scrim + tarjeta con sombra/bordes redondeados en
+     * `PopupView`). Default `true`. Con `false` el popup se pinta sin scrim ni tarjeta
+     * (transparente, a pantalla completa), para que el host controle el marco visual. El survey
+     * sigue funcional (header con cerrar + footer con back/start/complete/send). Paridad con
+     * Web/RN `DeepdotsInitParams.renderChrome`.
+     * ⚠️ En KMP el SDK sigue auto-montando el overlay a pantalla completa; el flag solo quita el
+     * scrim + la tarjeta, no cede el montaje del contenedor al host.
+     */
+    val renderChrome: Boolean? = true,
+    /**
+     * Barra de progreso ("Question X of Y" + barra) bajo la cabecera del popup. `null` respeta
+     * el `showProgressBar` que la plataforma configure en el estilo del survey; `true`/`false`
+     * lo fuerzan desde el host. Solo se pinta con más de una página, fuera de la pantalla de
+     * inicio y antes de completar. Paridad con Web/RN `DeepdotsInitParams.showProgressBar`.
+     */
+    val showProgressBar: Boolean? = null,
     val metadata: Map<String, Any>? = null // arbitrary host-supplied metadata forwarded to the backend
 )
 

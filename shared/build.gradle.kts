@@ -60,11 +60,15 @@ kotlin {
 
     // Apply ObjC generics and minimum iOS deployment target to all iOS native binaries
     targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().configureEach {
-        if (name.startsWith("ios")) {
+        val targetName = name
+        if (targetName.startsWith("ios")) {
             binaries.all {
                 freeCompilerArgs += listOf("-Xobjc-generics")
-                // Solo agregar linkerOpts a targets físicos, no simulador
-                if (!name.contains("Simulator", ignoreCase = true)) {
+                // Solo agregar linkerOpts a targets físicos, no simulador. Ojo: dentro de
+                // `binaries.all` el `name` es el del BINARIO (debugTest, releaseFramework…), así
+                // que hay que mirar el del target o el flag se cuela en el simulador y `ld` falla
+                // con "unknown options: -mios-version-min".
+                if (!targetName.contains("Simulator", ignoreCase = true)) {
                     linkerOpts("-mios-version-min=13.0")
                 }
             }
@@ -162,6 +166,15 @@ tasks.register("buildSdkDist") {
     group = "distribution"
     description = "Builds Android AAR and iOS frameworks and copies them to dist/"
     dependsOn(copyAarToDist, copyIosFrameworksToDist)
+}
+
+// Simulador de los tests de iOS: `-PiosTestDevice=<nombre o UDID>`. Sin la propiedad decide el
+// plugin de Kotlin; en CI se pasa el UDID de un iPhone que exista en el runner, para que el
+// release no dependa de qué modelos trae cada imagen de macOS.
+providers.gradleProperty("iosTestDevice").orNull?.takeIf { it.isNotBlank() }?.let { testDevice ->
+    tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
+        device.set(testDevice)
+    }
 }
 
 // Eliminar tareas automáticas de descarga; usaremos vendorización manual mediante scripts
