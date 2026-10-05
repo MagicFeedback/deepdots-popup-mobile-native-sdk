@@ -36,6 +36,14 @@ data class InitOptions(
      */
     val analytics: AnalyticsKeys? = null,
     /**
+     * Geolocalización por IP (país/ciudad) añadida a analytics. Default `true`. El lookup llama
+     * a servicios de terceros (ipapi.co, luego ipwho.is y luego ipinfo.io como fallback, 3 s de
+     * timeout cada uno) y solo se hace con `analytics` configurado, el tracking activo y la
+     * caché de 30 días ausente o caducada. Con `false` no se llama nunca ni se adjunta
+     * país/ciudad. Paridad con Web `DeepdotsInitParams.geolocation`.
+     */
+    val geolocation: Boolean? = true,
+    /**
      * Info interna del usuario (plan, edad, idioma preferido…) que se persiste en el Contact del
      * backend para segmentar/targetear popups. Requiere `metadata["userId"]` (usuario
      * identificado). También se puede llamar después con `setContactAttributes`.

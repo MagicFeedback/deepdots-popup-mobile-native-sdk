@@ -212,6 +212,12 @@ class DeepdotsPopups {
     private var engagement: com.deepdots.sdk.analytics.EngagementTracker? = null
     /** Storage resuelto internamente: el del host si lo pasa, si no el persistente por defecto. */
     private var resolvedStorage: KeyValueStorage? = null
+    /** `geolocation` de InitOptions: si es false no se usa ni la caché ni el lookup. */
+    private var geoEnabled = true
+    /** Solo se consulta a terceros si el país/ciudad se va a enviar (analytics configurado). */
+    private var geoWanted = false
+    /** Evita más de un lookup por instancia (el consentimiento puede ir y venir). */
+    private var geoLookupStarted = false
     /** Crash & error reporting (#14–17). Null hasta init(). */
     private var crashReporter: CrashReporter? = null
     /** Protecciones del funnel de Messaging (#18–22). Vigencia de sesión: se reinicia en init(). */
@@ -368,18 +374,10 @@ class DeepdotsPopups {
             }
         }
 
-        // Geolocalización por IP: aplica el cache persistente de inmediato (sin gap de timing)
-        // y refresca en background (cadena de proveedores + timeout), recacheando el resultado.
-        readCachedGeo(storage, currentTimeMillis())?.let { analytics?.updateDevice(it) }
-        scope.launch {
-            try {
-                val geo = collectGeoInfo()
-                if (geo != null) {
-                    analytics?.updateDevice(geo)
-                    writeCachedGeo(storage, geo, currentTimeMillis())
-                }
-            } catch (_: Throwable) {}
-        }
+        // Geolocalización por IP: ver `resolveGeo()` para cuándo se consulta a terceros.
+        geoEnabled = options.geolocation ?: true
+        geoWanted = geoEnabled && analyticsKeys != null
+        resolveGeo()
 
         // Fase 2: navegación → eventos page_view por el canal de analytics.
         // En KMP la navegación entra por setPath() (manual); ahí se alimenta el observador.
@@ -426,6 +424,40 @@ class DeepdotsPopups {
         if (!enabled) closeSession(SessionEndReason.TRACKING_DISABLED)
         tracking?.setTrackingEnabled(enabled)
         if (enabled) openSession()
+        // El lookup de geo se aplaza hasta que haya consentimiento.
+        if (enabled) resolveGeo()
+    }
+
+    /**
+     * Geolocalización por IP (país/ciudad para analytics). La caché persistente es local y se
+     * aplica siempre que `geolocation` no esté desactivado. El lookup a terceros (ipapi.co →
+     * ipwho.is → ipinfo.io, fallback con timeout) solo se hace si el dato se va a ENVIAR:
+     * analytics configurado + tracking activo + caché ausente o caducada. Una vez por instancia.
+     * Paridad con Web `resolveGeo()`.
+     */
+    private fun resolveGeo() {
+        val storage = resolvedStorage ?: return
+        val manager = analytics ?: return
+        if (!geoEnabled) return
+        val cached = readCachedGeo(storage, currentTimeMillis())
+        if (cached != null) {
+            manager.updateDevice(cached)
+            return
+        }
+        if (!geoWanted || geoLookupStarted) return
+        if (tracking?.isTrackingEnabled() != true) return
+        geoLookupStarted = true
+        debugGeoLookupCount++
+        val lookup = debugGeoLookup ?: { collectGeoInfo() }
+        scope.launch {
+            try {
+                val geo = lookup()
+                if (geo != null) {
+                    analytics?.updateDevice(geo)
+                    writeCachedGeo(storage, geo, currentTimeMillis())
+                }
+            } catch (_: Throwable) {}
+        }
     }
 
     // ───────── Analytics (canal separado del feedback, vinculado por user_id) ─────────
@@ -916,6 +948,13 @@ class DeepdotsPopups {
 
     /** Solo test: un tick del flush periódico, sin esperar a los 30 s del bucle. */
     internal fun debugAnalyticsFlushTick() = analyticsFlushTick()
+
+    /** Test seam: sustituye el lookup de geo por IP (sin red). Se fija ANTES de `init()`. */
+    internal var debugGeoLookup: (suspend () -> com.deepdots.sdk.analytics.GeoInfo?)? = null
+
+    /** Test seam: lookups de geo arrancados por esta instancia (se cuenta de forma síncrona). */
+    internal var debugGeoLookupCount = 0
+        private set
 
     /** Solo test: observa cada lote de analytics (envelope + meta) antes de que salga por el sink. */
     internal var debugAnalyticsFlushListener: ((AnalyticsEnvelope, AnalyticsFlushMeta) -> Unit)? = null
