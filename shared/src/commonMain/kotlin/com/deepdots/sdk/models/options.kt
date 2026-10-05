@@ -32,9 +32,17 @@ data class InitOptions(
     val trackingEnabled: Boolean? = true,
     /**
      * Claves de la integración de analytics creada en la plataforma. Sin ellas el canal queda
-     * en dry-run (solo imprime el payload); con ellas hace `POST /sdk/feedback` de verdad.
+     * en dry-run (no envía nada; el payload solo se imprime con `debug`); con ellas hace `POST /sdk/feedback` de verdad.
      */
     val analytics: AnalyticsKeys? = null,
+    /**
+     * Geolocalización por IP (país/ciudad) añadida a analytics. Default `true`. El lookup llama
+     * a servicios de terceros (ipapi.co, luego ipwho.is y luego ipinfo.io como fallback, 3 s de
+     * timeout cada uno) y solo se hace con `analytics` configurado, el tracking activo y la
+     * caché de 30 días ausente o caducada. Con `false` no se llama nunca ni se adjunta
+     * país/ciudad. Paridad con Web `DeepdotsInitParams.geolocation`.
+     */
+    val geolocation: Boolean? = true,
     /**
      * Info interna del usuario (plan, edad, idioma preferido…) que se persiste en el Contact del
      * backend para segmentar/targetear popups. Requiere `metadata["userId"]` (usuario

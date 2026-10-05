@@ -203,6 +203,7 @@ internal fun buildMagicFeedbackHtml(
               var initialized = false;
               var mfReady = false; // becomes true when form onLoadedEvent fires
 ${SurveyPalette.PRIMARY_COLOR_JS}
+${SurveyBusy.BUSY_JS}
 ${PopupReveal.REVEAL_JS}
               // Apertura diferida: la capa nativa mantiene el popup invisible hasta este aviso,
               // para que el usuario vea la tarjeta ya pintada en vez del spinner. Se manda
@@ -314,9 +315,18 @@ ${PopupReveal.REVEAL_JS}
                           ddReveal.whenPainted();
                         } catch(e){ console.error('[MagicFeedback] onLoadedEvent emit error', e); }
                       },
-                      beforeSubmitEvent: function(){ try { emitJSON('before_submit'); } catch(e){ console.error('[MagicFeedback] before_submit emit error', e); } },
+                      beforeSubmitEvent: function(){
+                        try {
+                          // El spinner lo pinta Compose FUERA del WebView, asi que no protege al
+                          // survey: sin esto el usuario sigue cambiando de opcion mientras se
+                          // envia la pagina, y ese cambio ya no viaja con ella.
+                          ddSetSurveyBusy(document.body, true);
+                          emitJSON('before_submit');
+                        } catch(e){ console.error('[MagicFeedback] before_submit emit error', e); }
+                      },
                       afterSubmitEvent: function(payload){
                         try {
+                          ddSetSurveyBusy(document.body, false);
                           var err = payload && payload.error ? String(payload.error) : '';
                           var completed = !!(payload && payload.completed);
                           var progress = (payload && payload.progress) || 0;
@@ -332,6 +342,7 @@ ${PopupReveal.REVEAL_JS}
                       },
                       onBackEvent: function(args){
                         try {
+                          ddSetSurveyBusy(document.body, false);
                           var progress = (args && args.progress) || 0;
                           var total = (args && args.total) || 0;
                           emitJSON('back', { progress: progress, total: total });
