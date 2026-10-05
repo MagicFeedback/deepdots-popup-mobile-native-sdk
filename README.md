@@ -213,6 +213,22 @@ See `scripts/update_magicfeedback_asset.sh`.
 
 ## 15. Publishing (Maintainers)
 
+### Automated release (GitHub Actions)
+Releases are published by `.github/workflows/release.yml` when a `vX.Y.Z` tag is pushed:
+1. On `dev`: `./scripts/bump_version.sh X.Y.Z`, add a `## X.Y.Z` section to `CHANGELOG.md`, commit `chore(release): X.Y.Z` and merge it.
+2. Tag the merge commit and push the tag:
+```bash
+git tag -a vX.Y.Z <merge-commit> -m vX.Y.Z && git push origin vX.Y.Z
+```
+The workflow checks that the tag matches `PUBLISHING_VERSION`, that the commit is on `dev` and that the CHANGELOG has the section; runs the JVM and iOS simulator tests; and then publishes, in order:
+- Android to Maven Central (`com.deepdots.sdk:shared-android:X.Y.Z`), signed. Skipped with a warning when the Maven Central or signing secrets are missing.
+- iOS: the XCFramework zip on the `X.Y.Z` release of `MagicFeedback/DeepdotsSDK-SPM`, plus its `Package.swift`, and checks that SPM resolves it.
+- The `vX.Y.Z` GitHub Release of this repo, with the AAR and the CHANGELOG notes.
+
+Nothing already published is overwritten: an existing version is skipped. Required secrets and optional variables are listed at the top of the workflow file.
+
+The scripts below are the manual fallback.
+
 ### Unified release prep
 - Choose the version either by updating `PUBLISHING_VERSION` in `gradle.properties` or by passing it as the first argument.
 - Prepare both release bundles in one shot:
