@@ -168,6 +168,15 @@ tasks.register("buildSdkDist") {
     dependsOn(copyAarToDist, copyIosFrameworksToDist)
 }
 
+// Simulador de los tests de iOS: `-PiosTestDevice=<nombre o UDID>`. Sin la propiedad decide el
+// plugin de Kotlin; en CI se pasa el UDID de un iPhone que exista en el runner, para que el
+// release no dependa de qué modelos trae cada imagen de macOS.
+providers.gradleProperty("iosTestDevice").orNull?.takeIf { it.isNotBlank() }?.let { testDevice ->
+    tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
+        device.set(testDevice)
+    }
+}
+
 // Eliminar tareas automáticas de descarga; usaremos vendorización manual mediante scripts
 
 publishing {

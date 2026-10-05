@@ -1,0 +1,274 @@
+name: Release
+
+# Release completo del SDK al subir un tag `vX.Y.Z`. Sustituye a `scripts/deploy_sdk_release.sh`
+# (rutas locales, subida manual al portal de Sonatype y un update_version.sh que recreaba tags).
+#
+# Flujo de release:
+#   1. En `dev`: `scripts/bump_version.sh X.Y.Z` + seccion `## X.Y.Z` en CHANGELOG.md,
+#      commit `chore(release): X.Y.Z` (PR a dev como siempre).
+#   2. Tras el merge: `git tag -a vX.Y.Z <merge> -m vX.Y.Z && git push origin vX.Y.Z`
+#
+# Que publica, por orden (si un paso falla, los siguientes no corren):
+#   - Android en Maven Central (`com.deepdots.sdk:shared-android:X.Y.Z`), firmado.
+#     Se SALTA con un aviso si faltan los secrets de Maven Central o de firma.
+#   - iOS: XCFramework en la release `X.Y.Z` de MagicFeedback/DeepdotsSDK-SPM + Package.swift.
+#   - GitHub Release `vX.Y.Z` en este repo con el AAR y las notas del CHANGELOG.
+# Ningun paso sobrescribe algo ya publicado: si la version existe, se salta.
+#
+# Secrets (Settings > Secrets and variables > Actions):
+#   SPM_REPO_TOKEN          PAT fine-grained con Contents: read/write en DeepdotsSDK-SPM.
+#   MAVEN_CENTRAL_USERNAME  usuario del user token de central.sonatype.com (Account > Generate User Token).
+#   MAVEN_CENTRAL_PASSWORD  password de ese user token.
+#   SIGNING_KEY             clave GPG privada en ASCII armor (`gpg --armor --export-secret-keys <id>`).
+#   SIGNING_PASSWORD        passphrase de esa clave.
+#   SIGNING_KEY_ID          (opcional) id corto de la clave.
+# Variables (opcionales):
+#   MAVEN_CENTRAL_NAMESPACE        namespace verificado en central.sonatype.com (default com.deepdots).
+#   MAVEN_CENTRAL_PUBLISHING_TYPE  automatic (default: publica sin pasar por el portal) o user_managed
+#                                  (deja el deployment en el portal para darle a Publish a mano).
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  JAVA_VERSION: "21"
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
+  SPM_REPO: MagicFeedback/DeepdotsSDK-SPM
+  ARTIFACT_GROUP_PATH: com/deepdots/sdk/shared-android
+
+jobs:
+  release:
+    name: Build & publish
+    # Hace falta macOS: Kotlin/Native, xcodebuild y el simulador de iOS.
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag, version and changelog
+        id: meta
+        run: |
+          set -euo pipefail
+          TAG="$GITHUB_REF_NAME"
+          VERSION="${TAG#v}"
+          GRADLE_VERSION="$(grep '^PUBLISHING_VERSION=' gradle.properties | cut -d'=' -f2-)"
+          if [ "$VERSION" != "$GRADLE_VERSION" ]; then
+            echo "::error::El tag $TAG no coincide con PUBLISHING_VERSION ($GRADLE_VERSION). Usa scripts/bump_version.sh."
+            exit 1
+          fi
+          git fetch --no-tags origin dev
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/dev; then
+            echo "::error::El commit del tag $TAG no esta en origin/dev."
+            exit 1
+          fi
+          scripts/extract_changelog_section.sh "$VERSION" CHANGELOG.md > "$RUNNER_TEMP/changelog.md" || {
+            echo "::error::CHANGELOG.md no tiene seccion '## $VERSION'."
+            exit 1
+          }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check what is already published
+        id: state
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          HAS_MAVEN_CREDS: ${{ secrets.MAVEN_CENTRAL_USERNAME != '' && secrets.MAVEN_CENTRAL_PASSWORD != '' && secrets.SIGNING_KEY != '' && secrets.SIGNING_PASSWORD != '' }}
+        run: |
+          set -euo pipefail
+          CODE="$(curl -s -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/$ARTIFACT_GROUP_PATH/$VERSION/shared-android-$VERSION.pom")"
+          if [ "$CODE" = "200" ]; then
+            echo "maven=skip" >> "$GITHUB_OUTPUT"
+            echo "::notice::shared-android $VERSION ya esta en Maven Central."
+          elif [ "$HAS_MAVEN_CREDS" != "true" ]; then
+            echo "maven=skip" >> "$GITHUB_OUTPUT"
+            echo "::warning::Faltan secrets de Maven Central o de firma: Android NO se publica en Maven Central (solo AAR en la GitHub Release)."
+          else
+            echo "maven=publish" >> "$GITHUB_OUTPUT"
+          fi
+          if git ls-remote --exit-code --tags "https://github.com/$SPM_REPO.git" "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "spm=skip" >> "$GITHUB_OUTPUT"
+            echo "::notice::$SPM_REPO ya tiene el tag $VERSION; no se toca (cambiar un binario publicado rompe el checksum de quien ya lo resolvio)."
+          else
+            echo "spm=publish" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Cache Kotlin/Native toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Unit tests (JVM)
+        run: ./gradlew :shared:testDebugUnitTest
+
+      - name: Unit tests (iOS simulator)
+        run: |
+          set -euo pipefail
+          # El plugin de Kotlin elige un modelo de iPhone que no tiene por que existir en esta
+          # imagen de macOS; se le pasa uno que si.
+          UDID="$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          phones = [d for runtime, ds in devices.items() if "iOS" in runtime for d in ds if d["name"].startswith("iPhone")]
+          print(phones[-1]["udid"] if phones else "")
+          ')"
+          if [ -z "$UDID" ]; then echo "::error::No hay ningun simulador de iPhone disponible."; exit 1; fi
+          ./gradlew :shared:iosSimulatorArm64Test "-PiosTestDevice=$UDID"
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: shared/build/reports/tests/
+          retention-days: 7
+
+      - name: Build Android AAR
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          ./gradlew :shared:assembleRelease
+          mkdir -p "$RUNNER_TEMP/out"
+          cp shared/build/outputs/aar/shared-release.aar "$RUNNER_TEMP/out/DeepdotsSDK-$VERSION.aar"
+
+      - name: Build iOS XCFramework
+        if: steps.state.outputs.spm == 'publish'
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          scripts/prepare_spm_release.sh "$VERSION" "https://github.com/$SPM_REPO/releases/download/$VERSION"
+          echo "checksum=$(cat dist/spm/DeepdotsSDK-$VERSION.xcframework.zip.checksum)" >> "$GITHUB_ENV"
+
+      # Subida + aviso al portal en el MISMO job: el portal exige que el POST de
+      # /manual/upload venga de la misma IP que subio los ficheros.
+      - name: Publish to Maven Central
+        if: steps.state.outputs.maven == 'publish'
+        env:
+          OSSRH_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+          NAMESPACE: ${{ vars.MAVEN_CENTRAL_NAMESPACE || 'com.deepdots' }}
+          PUBLISHING_TYPE: ${{ vars.MAVEN_CENTRAL_PUBLISHING_TYPE || 'automatic' }}
+        run: |
+          set -euo pipefail
+          ./gradlew :shared:publishAndroidReleasePublicationToOSSRHRepository
+          AUTH="$(printf '%s:%s' "$OSSRH_USERNAME" "$OSSRH_PASSWORD" | base64 | tr -d '\n')"
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer $AUTH" \
+            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/$NAMESPACE?publishing_type=$PUBLISHING_TYPE"
+          echo
+          echo "::notice::Deployment enviado a Maven Central ($PUBLISHING_TYPE). Tarda unos minutos en aparecer en repo1.maven.org."
+
+      - name: Checkout SPM repo
+        if: steps.state.outputs.spm == 'publish'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SPM_REPO }}
+          token: ${{ secrets.SPM_REPO_TOKEN }}
+          path: spm-repo
+
+      - name: Publish SPM release
+        if: steps.state.outputs.spm == 'publish'
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          GH_TOKEN: ${{ secrets.SPM_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          ZIP="$GITHUB_WORKSPACE/dist/spm/DeepdotsSDK-$VERSION.xcframework.zip"
+          URL="https://github.com/$SPM_REPO/releases/download/$VERSION/DeepdotsSDK-$VERSION.xcframework.zip"
+          cd spm-repo
+          sed -i '' \
+            -e "s|url: \".*\"|url: \"$URL\"|" \
+            -e "s|checksum: \".*\"|checksum: \"$checksum\"|" \
+            Package.swift
+          grep -E 'url:|checksum:' Package.swift
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Package.swift
+          git commit -m "Release $VERSION"
+          git tag -a "$VERSION" -m "Release $VERSION"
+          # Release en borrador con el binario ANTES de empujar el tag: asi el Package.swift del
+          # tag nunca apunta a una URL que aun da 404.
+          gh release create "$VERSION" "$ZIP" --repo "$SPM_REPO" --title "$VERSION" \
+            --notes-file "$RUNNER_TEMP/changelog.md" --target main --draft
+          git push origin HEAD:main "refs/tags/$VERSION"
+          gh release edit "$VERSION" --repo "$SPM_REPO" --draft=false --latest --verify-tag
+
+      - name: Verify SPM resolves
+        if: steps.state.outputs.spm == 'publish'
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          CHECK="$RUNNER_TEMP/spm-check"
+          mkdir -p "$CHECK/Sources/Check"
+          echo "" > "$CHECK/Sources/Check/Check.swift"
+          cat > "$CHECK/Package.swift" <<EOF
+          // swift-tools-version: 5.7
+          import PackageDescription
+          let package = Package(
+            name: "Check",
+            platforms: [.iOS(.v13)],
+            dependencies: [.package(url: "https://github.com/$SPM_REPO", exact: "$VERSION")],
+            targets: [.target(name: "Check", dependencies: [.product(name: "DeepdotsSDK", package: "DeepdotsSDK-SPM")])]
+          )
+          EOF
+          cd "$CHECK" && swift package resolve
+
+      - name: GitHub Release
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+          MAVEN: ${{ steps.state.outputs.maven }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "::notice::La GitHub Release $GITHUB_REF_NAME ya existe."
+            exit 0
+          fi
+          CODE="$(curl -s -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/$ARTIFACT_GROUP_PATH/$VERSION/shared-android-$VERSION.pom")"
+          NOTES="$RUNNER_TEMP/notes.md"
+          cp "$RUNNER_TEMP/changelog.md" "$NOTES"
+          {
+            echo
+            echo "## Install"
+            echo
+            echo "iOS: Swift Package Manager, from [DeepdotsSDK-SPM](https://github.com/$SPM_REPO), version \`$VERSION\`."
+            echo
+            if [ "$MAVEN" = "publish" ] || [ "$CODE" = "200" ]; then
+              echo "Android: Maven Central (it can take a few minutes to show up after the release)."
+              echo
+              echo '```kotlin'
+              echo "implementation(\"com.deepdots.sdk:shared-android:$VERSION\")"
+              echo '```'
+            else
+              echo "Android: attach the AAR below. This version is not on Maven Central; a bare AAR has no POM, so the host app has to declare the SDK's dependencies itself."
+            fi
+          } >> "$NOTES"
+          gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP/out/DeepdotsSDK-$VERSION.aar" \
+            --title "$GITHUB_REF_NAME" --notes-file "$NOTES" --verify-tag --latest

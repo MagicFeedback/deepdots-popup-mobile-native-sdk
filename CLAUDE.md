@@ -253,3 +253,12 @@ viajaba con ella: el usuario creía haber corregido su respuesta y no era así.
 - **Cuidado con `binaries.all { name }`** en `shared/build.gradle.kts`: ahí `name` es el del
   BINARIO, no el del target. Por eso `-mios-version-min` se colaba en el simulador y `ld` fallaba
   (arreglado en `3ba8377`).
+
+## Release
+
+Por CI desde 2026-10-05: `.github/workflows/release.yml` corre al subir un tag `vX.Y.Z` (sobre el
+merge en `dev`) y publica Maven Central + `DeepdotsSDK-SPM` + la GitHub Release con el AAR. Los
+pasos y los secrets están en la cabecera del workflow y en el README (§15). Maven Central se queda
+en 0.3.0 hasta que existan los secrets de Sonatype y de firma GPG: sin ellos el workflow se salta
+ese paso con un aviso. Los scripts de `scripts/` son el fallback manual y tienen rutas locales
+viejas (`deploy_sdk_release.sh` y el `update_version.sh` del repo SPM).
