@@ -27,6 +27,11 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   order once the definitions arrive, through the normal evaluation, so segments,
   cooldowns and conditions apply as usual. If the fetch fails, the buffer is
   discarded. Triggers fired after loading behave as before.
+- **iOS: `close()` / `Deepdots.dismiss()` only close the SDK popup.** They used to
+  dismiss whatever view controller was presented over the context, so calling them
+  while the host had its own modal open (a picker, a share sheet) closed the host's
+  modal instead. The popup view controller is now tagged (`restorationIdentifier`,
+  the iOS twin of the Android container tag) and only that one is dismissed.
 
 ## 0.6.0 - 2026-10-05
 
