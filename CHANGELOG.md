@@ -19,6 +19,14 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   identical; it no longer reaches the host (a Flutter host used to finish the
   whole Activity). Before the popup is revealed and after it closes, Back goes
   to the host as usual. iOS has no system Back, nothing changes there.
+- **Triggers fired before the popups load are no longer lost.** `init()` fetches
+  the popup definitions asynchronously, and a `triggerEvent` (or `triggerClick`,
+  a screen exit or a scroll) fired in that window was dropped with
+  `No eligible event popup`, even when the matching popup arrived milliseconds
+  later. They are now buffered (up to 20, oldest dropped first) and replayed in
+  order once the definitions arrive, through the normal evaluation, so segments,
+  cooldowns and conditions apply as usual. If the fetch fails, the buffer is
+  discarded. Triggers fired after loading behave as before.
 
 ## 0.6.0 - 2026-10-05
 
