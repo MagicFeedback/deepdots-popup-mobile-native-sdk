@@ -4,6 +4,17 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **Triggers fired before the popups load are no longer lost.** `init()` fetches
+  the popup definitions asynchronously, and a `triggerEvent` (or `triggerClick`,
+  a screen exit or a scroll) fired in that window was dropped with
+  `No eligible event popup`, even when the matching popup arrived milliseconds
+  later. They are now buffered (up to 20, oldest dropped first) and replayed in
+  order once the definitions arrive, through the normal evaluation, so segments,
+  cooldowns and conditions apply as usual. If the fetch fails, the buffer is
+  discarded. Triggers fired after loading behave as before.
+
 ## 0.6.0 - 2026-10-05
 
 Parity with Popup Web SDK 1.6.0 to 1.8.4 for everything that applies to the
