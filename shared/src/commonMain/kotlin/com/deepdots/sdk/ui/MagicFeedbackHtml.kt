@@ -193,8 +193,12 @@ internal fun buildMagicFeedbackHtml(
           </style>
         </head>
         <body class="deepdots-popup">
-          <div id='mf-form'></div>
-          <div id='mf-success' class='deepdots-success'></div>
+          <!-- `generate('mf-form')` de @magicfeedback/native RENOMBRA ese div a
+               `magicfeedback-container-<id>`, así que tras cargar no se puede volver a buscar
+               por 'mf-form'. El JS se apoya en estos dos wrappers, que el Surveys SDK no toca:
+               dd-form-wrapper se oculta al completar y dd-content (formulario o mensaje final)
+               es lo que se mide para dimensionar el WebView. Mismo patrón que el HTML de RN. -->
+          <div id='dd-content'><div id='dd-form-wrapper'><div id='mf-form'></div></div><div id='mf-success' class='deepdots-success'></div></div>
           <script>
             (function(){
               var LOCAL_SRC = $localSrcLiteral;
@@ -219,10 +223,14 @@ ${PopupReveal.REVEAL_JS}
               var successMessageHtml = '';
               function showSuccessScreen(){
                 try {
-                  var form = document.getElementById('mf-form'); if (form) { form.style.display = 'none'; }
+                  var form = document.getElementById('dd-form-wrapper'); if (form) { form.style.display = 'none'; }
                   var done = document.getElementById('mf-success'); if (!done) return;
                   done.innerHTML = successMessageHtml || '<p>Thank you for your feedback!</p>';
                   done.style.display = 'block';
+                  // Si el usuario había hecho scroll en la última pregunta, el mensaje quedaría
+                  // fuera de la vista: el WebView encoge a su alto y el scroll se queda abajo.
+                  window.scrollTo(0, 0);
+                  ddReportHeight();
                 } catch(e){ console.error('[MagicFeedback] success screen error', e); }
               }
               var PUBLIC_KEY = ${if (pubKeyJs.isNotEmpty()) "'${pubKeyJs}'" else "null"};
@@ -233,12 +241,13 @@ ${PopupReveal.REVEAL_JS}
               }
               // Altura real del survey. El WebView no tiene tamaño propio, así que sin esto la
               // capa nativa lo estira hasta el máximo y una sola pregunta deja un hueco enorme
-              // entre la última opción y el footer. Se mide `#mf-form` (no el body, que va a
-              // height:100% y siempre devuelve el alto del WebView).
+              // entre la última opción y el footer. Se mide `#dd-content` (no el body, que va a
+              // height:100% y siempre devuelve el alto del WebView), que contiene tanto el
+              // formulario como el mensaje final.
               var ddLastHeight = -1;
               function ddReportHeight(){
                 try {
-                  var host = document.getElementById('mf-form');
+                  var host = document.getElementById('dd-content');
                   if(!host) { return; }
                   var h = Math.ceil(host.getBoundingClientRect().height);
                   if(h > 0 && Math.abs(h - ddLastHeight) > 1){
@@ -251,7 +260,7 @@ ${PopupReveal.REVEAL_JS}
                 if (window.ResizeObserver) {
                   // Cubre la carga, el cambio de página, las follow-up y los avisos de validación
                   // sin tener que acordarse de llamarlo en cada evento.
-                  new ResizeObserver(function(){ ddReportHeight(); }).observe(document.getElementById('mf-form'));
+                  new ResizeObserver(function(){ ddReportHeight(); }).observe(document.getElementById('dd-content'));
                 }
               } catch(e){ console.error('[MagicFeedback] ResizeObserver error', e); }
               function initMF(){

@@ -89,7 +89,8 @@ class PopupRevealTest {
         // una sola pregunta deja un hueco enorme hasta el footer.
         val h = html()
         assertTrue(h.contains("emitJSON('${PopupReveal.CONTENT_HEIGHT_EVENT}'"), "debe reportar la altura")
-        assertTrue(h.contains("getElementById('mf-form')"), "debe medir el form, no el body")
+        // `dd-content`, no `mf-form`: el Surveys SDK renombra ese div al cargar (ver MagicFeedbackHtmlTest).
+        assertTrue(h.contains("getElementById('dd-content')"), "debe medir el contenido del survey, no el body")
         assertTrue(h.contains("ResizeObserver"), "debe reaccionar a los cambios de página y follow-ups")
         assertTrue(
             Regex("ddReportHeight\\(\\);\\s*emit\\('${PopupReveal.READY_EVENT}'\\)").containsMatchIn(h),
