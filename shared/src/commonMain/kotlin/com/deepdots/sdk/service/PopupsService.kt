@@ -45,7 +45,10 @@ interface PopupsService {
      *
      * @return the `sessionId` of the record, or null when the response carries none
      * @throws RetryableFeedbackException on transient failures (5xx, 408, 429) so the caller
-     *   can re-queue the batch; non-retryable 4xx are logged and swallowed (batch dropped).
+     *   can re-queue the batch.
+     * @throws RejectedFeedbackException on non-retryable 4xx: logged here, and the caller drops
+     *   the batch. It must not be mistaken for an accepted batch without `sessionId` (the
+     *   closing batch is only reported as closed when the API accepts it).
      */
     suspend fun postFeedback(body: AnalyticsFeedbackBody): String?
 
@@ -58,9 +61,15 @@ interface PopupsService {
 
 /**
  * Fallo TRANSITORIO enviando un lote de analytics: merece reintento en el flush siguiente.
- * Un 4xx (p. ej. 406 Contact) no usa esta excepción — se descarta el lote.
+ * Un 4xx (p. ej. 406 Contact) usa [RejectedFeedbackException] — se descarta el lote.
  */
 class RetryableFeedbackException(message: String) : Exception(message)
+
+/**
+ * El backend RECHAZÓ el lote (4xx, p. ej. 406 Contact): no se reintenta, se descarta. Se
+ * distingue de un lote aceptado sin `sessionId` en la respuesta, que también devolvería null.
+ */
+class RejectedFeedbackException(message: String) : Exception(message)
 
 class DefaultPopupsService(
     private val httpClient: HttpClient = HttpClient {
@@ -126,7 +135,7 @@ class DefaultPopupsService(
             }
             // 4xx (p. ej. 406 Contact not found): visible y descartado, nunca en silencio.
             println("[DeepdotsAnalytics] POST /sdk/feedback rejected with $status; batch DISCARDED: ${text.take(500)}")
-            return null
+            throw RejectedFeedbackException("POST /sdk/feedback $status: ${text.take(500)}")
         }
         return parseSessionId(text)
     }

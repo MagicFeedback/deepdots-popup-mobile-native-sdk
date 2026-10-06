@@ -1,10 +1,18 @@
 package com.deepdots.sdk
 
+import com.deepdots.sdk.analytics.AnalyticsFeedbackBody
+import com.deepdots.sdk.analytics.AnalyticsKeys
 import com.deepdots.sdk.analytics.CrashReporter
 import com.deepdots.sdk.analytics.DeviceSnapshot
+import com.deepdots.sdk.contact.ContactBody
+import com.deepdots.sdk.models.FeedbackSession
+import com.deepdots.sdk.models.FeedbackSessionStatus
 import com.deepdots.sdk.models.InitOptions
 import com.deepdots.sdk.models.PopupOptions
+import com.deepdots.sdk.service.PopupsService
 import com.deepdots.sdk.storage.InMemoryStorage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlin.test.Test
@@ -259,5 +267,89 @@ class DeepdotsPopupsAnalyticsTest {
         b.trackMessage("clicked", "msg-1", "Rebajas", "push")
 
         assertEquals(1, b.previewAnalytics().events.count { it.name == "deepdots_message" })
+    }
+
+    // ── Id del registro de analytics (getFeedbackSessionId / onFeedbackSession) ──────────────
+
+    /** Doble del servicio: acepta todos los lotes y responde siempre con el mismo sessionId. */
+    private class AcceptingService(private val sessionId: String?) : PopupsService {
+        val bodies = mutableListOf<AnalyticsFeedbackBody>()
+        override suspend fun fetchPopups(publicKey: String, filter: String?): String = "[]"
+        override suspend fun postPopupEvent(publicKey: String, status: String, popupId: String, userId: String?): String? = null
+        override suspend fun postFeedback(body: AnalyticsFeedbackBody): String? {
+            bodies += body
+            return sessionId
+        }
+        override suspend fun postContact(body: ContactBody) = Unit
+    }
+
+    /**
+     * SDK con analytics real contra el doble. El transporte corre en `Dispatchers.Unconfined`,
+     * así que cada `flushAnalytics()` ha terminado de enviar cuando vuelve.
+     */
+    private fun sdkWithTransport(
+        service: PopupsService,
+        onFeedbackSession: ((FeedbackSession) -> Unit)? = null,
+    ): DeepdotsPopups = DeepdotsPopups().apply {
+        debugTransportScope = CoroutineScope(Dispatchers.Unconfined)
+        init(
+            InitOptions(
+                debug = true,
+                popupOptions = PopupOptions(),
+                storage = InMemoryStorage(),
+                analytics = AnalyticsKeys(publicKey = "pub-k", integration = "int-1"),
+                onFeedbackSession = onFeedbackSession,
+            ),
+        )
+        debugSetPopupsService(service)
+    }
+
+    @Test
+    fun get_feedback_session_id_exposes_the_open_record_and_forgets_it_on_close() {
+        val s = sdkWithTransport(AcceptingService("fbk-42"))
+        assertNull(s.getFeedbackSessionId())
+
+        s.track("cta_click")
+        s.flushAnalytics()
+        assertEquals("fbk-42", s.getFeedbackSessionId())
+
+        s.endSession()
+        assertNull(s.getFeedbackSessionId())
+    }
+
+    @Test
+    fun on_feedback_session_reports_open_then_closed_with_the_same_session_id() {
+        val calls = mutableListOf<FeedbackSession>()
+        val s = sdkWithTransport(AcceptingService("fbk-42")) { calls += it }
+
+        s.track("cta_click")
+        s.flushAnalytics()
+        assertEquals(listOf(FeedbackSession("fbk-42", FeedbackSessionStatus.Open)), calls)
+
+        s.endSession()
+        assertEquals(
+            listOf(
+                FeedbackSession("fbk-42", FeedbackSessionStatus.Open),
+                FeedbackSession("fbk-42", FeedbackSessionStatus.Closed),
+            ),
+            calls,
+        )
+    }
+
+    @Test
+    fun a_throwing_on_feedback_session_does_not_stop_sending() {
+        val service = AcceptingService("fbk-42")
+        val s = sdkWithTransport(service) { throw IllegalStateException("bug del host") }
+
+        s.track("a")
+        s.flushAnalytics()
+        assertEquals("fbk-42", s.getFeedbackSessionId())
+        // El lote se entregó: no puede volver al buffer (se enviaría dos veces).
+        assertTrue(s.previewAnalytics().events.none { it.name == "a" })
+
+        s.track("b")
+        s.flushAnalytics()
+        assertEquals(2, service.bodies.size)
+        assertEquals("fbk-42", service.bodies[1].sessionId)
     }
 }
