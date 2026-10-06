@@ -4,6 +4,31 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+Parity with Popup Web SDK [PR #14](https://github.com/MagicFeedback/deepdots-popup-sdk/pull/14).
+
+### Added
+
+- **The id of the feedback a session becomes is readable.**
+  `DeepdotsPopups.getFeedbackSessionId()` returns the `sessionId` that
+  `POST /sdk/feedback` returned for the open analytics session, which the API
+  stores as `sdkSessionId` on its feedback, and
+  `InitOptions.onFeedbackSession` reports it as a `FeedbackSession` with
+  status `Open` when the session's first batch is accepted and `Closed` when
+  the closing one is. A host can hand it to its backend to find that feedback
+  and add data to it. Until now the SDK kept it internal.
+
+### Fixed
+
+- **A session closed while its first batch was still in flight no longer comes
+  back.** The closing batch (`onBackground()`) does not wait for the first one,
+  and when the first one's response arrived afterwards the SDK cached its
+  `sessionId` again: the closed session looked open, and the next session wrote
+  into that old record. That response is now ignored.
+- **A 4xx on `POST /sdk/feedback` is no longer mistaken for an accepted batch.**
+  `DefaultPopupsService.postFeedback` now throws `RejectedFeedbackException`
+  (after logging it, as before) instead of returning `null`; the batch is still
+  dropped, not retried.
+
 ## 0.6.0 - 2026-10-05
 
 Parity with Popup Web SDK 1.6.0 to 1.8.4 for everything that applies to the

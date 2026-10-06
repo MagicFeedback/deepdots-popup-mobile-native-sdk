@@ -8,6 +8,8 @@ import com.deepdots.sdk.models.CooldownCondition
 import com.deepdots.sdk.models.Event
 import com.deepdots.sdk.models.Environment
 import com.deepdots.sdk.models.EventData
+import com.deepdots.sdk.models.FeedbackSession
+import com.deepdots.sdk.models.FeedbackSessionStatus
 import com.deepdots.sdk.models.InitOptions
 import com.deepdots.sdk.models.LegacyCondition
 import com.deepdots.sdk.models.PopupDefinition
@@ -27,7 +29,7 @@ import com.deepdots.sdk.analytics.AnalyticsEnvelope
 import com.deepdots.sdk.analytics.AnalyticsContext
 import com.deepdots.sdk.analytics.AnalyticsFlushMeta
 import com.deepdots.sdk.analytics.AnalyticsIdentity
-import com.deepdots.sdk.analytics.BuildBodyOptions
+import com.deepdots.sdk.analytics.FeedbackSink
 import com.deepdots.sdk.analytics.collectGeoInfo
 import com.deepdots.sdk.analytics.readCachedGeo
 import com.deepdots.sdk.analytics.resolveLanguage
@@ -192,10 +194,13 @@ class DeepdotsPopups {
     private var tracking: TrackingManager? = null
     /** Capa de analytics (canal separado del feedback). Null hasta init(). */
     private var analytics: AnalyticsManager? = null
-    /** feedbackSessionId cacheado del canal de analytics (devuelto por POST /sdk/feedback). */
-    private var analyticsFeedbackSessionId: String? = null
-    /** Primer POST de feedback en vuelo (aún sin sessionId): los lotes siguientes lo esperan. */
-    private var firstFeedbackPost: Job? = null
+    /**
+     * Transporte real de analytics (POST /sdk/feedback): dueño del feedbackSessionId cacheado.
+     * Null en dry-run (sin `InitOptions.analytics`).
+     */
+    private var feedbackSink: FeedbackSink? = null
+    /** `InitOptions.onFeedbackSession`: avisa al host al abrir y cerrar cada registro. */
+    private var onFeedbackSession: ((FeedbackSession) -> Unit)? = null
     /** Observador de navegación (Fase 2): emite page_view por el canal de analytics. */
     private var navObserver: NavigationObserver? = null
     private var navStarted = false
@@ -279,52 +284,20 @@ class DeepdotsPopups {
         // pasan claves en options.analytics; si no, queda en dry-run: no envía nada y el payload
         // solo se imprime con `debug`, para no ensuciar la consola de la app host en producción.
         val analyticsKeys = options.analytics
-        val analyticsSink: com.deepdots.sdk.analytics.AnalyticsSink? = if (analyticsKeys != null) {
-            { envelope, meta, requeue ->
-                val closing = meta.sessionEnd
-                // El lote de cierre SÍ lleva el sessionId (es el registro que se cierra); es el
-                // siguiente el que lo omite para que el backend abra uno nuevo.
-                val sessionIdOfClosedRecord = analyticsFeedbackSessionId
-                if (closing) {
-                    analyticsFeedbackSessionId = null
-                    SdkRuntime.analyticsFeedbackSessionId = null
-                }
-                // Mientras no se conozca el sessionId, los lotes se SERIALIZAN: dos POST a la vez
-                // sin sessionId crearían dos registros y partirían los datos. En el lote de cierre
-                // no se espera (la app se está yendo): mejor partido que perdido.
-                val waitFor = if (!closing && !meta.final && analyticsFeedbackSessionId == null) {
-                    firstFeedbackPost
-                } else {
-                    null
-                }
-                val job = scope.launch {
-                    runCatching { waitFor?.join() }
-                    val body = com.deepdots.sdk.analytics.buildAnalyticsFeedbackBody(
-                        envelope,
-                        analyticsKeys,
-                        if (closing) sessionIdOfClosedRecord else analyticsFeedbackSessionId,
-                        BuildBodyOptions(sessionEnd = closing),
-                    )
-                    try {
-                        val returnedSessionId = popupsService.postFeedback(body)
-                        // El POST de cierre devuelve el id del registro que acabamos de cerrar:
-                        // no se re-cachea (apuntaría a un registro ya cerrado).
-                        if (!closing && returnedSessionId != null && returnedSessionId != analyticsFeedbackSessionId) {
-                            analyticsFeedbackSessionId = returnedSessionId
-                            SdkRuntime.analyticsFeedbackSessionId = returnedSessionId
-                            log("analytics · feedbackSessionId cached: $analyticsFeedbackSessionId")
-                        }
-                    } catch (t: Throwable) {
-                        // Fallo transitorio (red/5xx/408/429): devolver el lote al buffer.
-                        log("analytics · transient failure sending feedback, batch requeued:", t.message)
-                        requeue()
-                    }
-                }
-                firstFeedbackPost = if (closing || analyticsFeedbackSessionId != null) null else job
-            }
-        } else {
-            null
+        onFeedbackSession = options.onFeedbackSession
+        feedbackSink = analyticsKeys?.let { keys ->
+            FeedbackSink(
+                keys = keys,
+                scope = debugTransportScope ?: scope,
+                post = { body -> popupsService.postFeedback(body) },
+                log = { line -> log(line) },
+                onSessionId = { id -> notifyFeedbackSession(id, FeedbackSessionStatus.Open) },
+                onSessionClosed = { id -> notifyFeedbackSession(id, FeedbackSessionStatus.Closed) },
+                // Espejo para el HTML del survey (correlación survey ↔ analytics).
+                onCachedSessionIdChanged = { id -> SdkRuntime.analyticsFeedbackSessionId = id },
+            )
         }
+        val analyticsSink: com.deepdots.sdk.analytics.AnalyticsSink? = feedbackSink?.sink
         val device = com.deepdots.sdk.analytics.collectDeviceInfo()
         messageGuard.reset()
         // Seam de test: deja observar cada lote (envelope + meta) sin tocar el transporte.
@@ -414,6 +387,24 @@ class DeepdotsPopups {
 
     /** Session id de navegación actual. Null si tracking off. */
     fun getSessionId(): String? = tracking?.getSessionId()
+
+    /**
+     * Id del registro de analytics abierto: el `sessionId` que devolvió `POST /sdk/feedback`, que
+     * la API guarda como `sdkSessionId` en el Feedback en que se convierte la sesión. No es
+     * [getSessionId]. Null hasta que el backend acepta el primer lote, de nuevo al cerrar la
+     * sesión, y siempre en dry-run (sin `InitOptions.analytics`): para saber también qué registro
+     * se cerró, usa `InitOptions.onFeedbackSession`. Paridad con Web `getFeedbackSessionId()`.
+     */
+    fun getFeedbackSessionId(): String? = feedbackSink?.currentSessionId()
+
+    /** Avisa al host del registro abierto o cerrado; un fallo del host no corta el envío. */
+    private fun notifyFeedbackSession(sessionId: String, status: FeedbackSessionStatus) {
+        try {
+            onFeedbackSession?.invoke(FeedbackSession(sessionId, status))
+        } catch (t: Throwable) {
+            log("analytics · onFeedbackSession threw", t.message)
+        }
+    }
 
     /**
      * Activa/desactiva el tracking (identidad + sesión). Kill-switch del contrato §7bis.
@@ -694,10 +685,9 @@ class DeepdotsPopups {
         SdkRuntime.miniService = analytics?.getMiniService()
         flushEngagement() // → user_engagement con el tiempo activo
         track("deepdots_session_end", mapOf("reason" to reason.wire))
+        // El lote de cierre hace que el transporte olvide el feedbackSessionId (FeedbackSink).
         flushAnalytics(AnalyticsFlushMeta(final = true, sessionEnd = true))
-        // Los session_id (popups y analytics) pertenecían a la sesión que se acaba de cerrar.
-        analyticsFeedbackSessionId = null
-        SdkRuntime.analyticsFeedbackSessionId = null
+        // El session_id de popups pertenecía a la sesión que se acaba de cerrar.
         tracking?.setSessionId(null)
         SdkRuntime.sessionId = null
         log("tracking · session_end:", reason.wire)
@@ -961,6 +951,12 @@ class DeepdotsPopups {
 
     /** Seam de test: recibe las líneas del dry-run en vez de `println` (solo se llama con `debug`). */
     internal var debugDryRunLog: ((String) -> Unit)? = null
+
+    /**
+     * Solo test: scope del transporte de analytics (p. ej. `Dispatchers.Unconfined` para que cada
+     * flush termine de enviar antes de volver). Se fija ANTES de `init()`.
+     */
+    internal var debugTransportScope: CoroutineScope? = null
 
     /** Solo test: sustituye el cliente HTTP por un doble (para observar los bodies enviados). */
     internal fun debugSetPopupsService(service: PopupsService) {

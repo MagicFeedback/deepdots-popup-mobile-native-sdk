@@ -143,7 +143,49 @@ sdk.show(ShowOptions(surveyId = "survey-123", productId = "product-xyz"), Platfo
 
 ## 8. Public API (entry points)
 - `DeepdotsPopups` with `initialize(options)`, `autoLaunch()`, `setPath`, `onScroll(percentage)`, `onExit()`, `triggerEvent(name)`, `triggerClick(targetId)`, `show(...)`, `showByPopupId(...)`, `on(...)`, `off(...)`, `attachContext(...)`.
-- Types: `InitOptions`, `PopupOptions`, `ShowOptions`, `PopupDefinition`, `Trigger`, `CooldownCondition`, `LegacyCondition`, `Segments`, `Events`.
+- Types: `InitOptions`, `PopupOptions`, `ShowOptions`, `PopupDefinition`, `Trigger`, `CooldownCondition`, `LegacyCondition`, `Segments`, `Events`, `FeedbackSession`.
+- Analytics session: `getFeedbackSessionId()` and `InitOptions.onFeedbackSession` give the id of the feedback the current analytics session becomes (see below).
+
+### Linking your backend to a session
+
+Every analytics session (with `InitOptions.analytics` set) becomes one feedback in Deepdots, and
+the API stores the session's id on it as `sdkSessionId`. Send that id to your backend and it can
+find the feedback (`GET /feedbacks?filter={"where":{"sdkSessionId":"<id>"}}`) and add data to it
+later, such as the push deliveries the app never sees. The lookup can return more than one
+feedback: a session can be completed twice (the API closes it for inactivity and the app posts
+to it again later), and both feedbacks carry the same id. Sort by `createdAt` and take the latest.
+
+```kotlin
+val options = InitOptions(
+    popupOptions = PopupOptions(publicKey = "<your-key>"),
+    analytics = AnalyticsKeys(publicKey = "<your-key>", integration = "<integration-id>"),
+    onFeedbackSession = { session ->
+        // Open: first batch accepted. Closed: the feedback exists within seconds.
+        // Called on a background thread.
+        myBackend.reportSession(session.sessionId, session.status)
+    },
+)
+```
+
+- `Open` comes when the API accepts the session's first batch, `Closed` when it accepts the
+  closing one (`completed: true`). A session whose only batch is the closing one reports just
+  `Closed`.
+- On mobile the session ends with `onBackground()` (also `endSession()`, `setUserId(...)` and
+  `setTrackingEnabled(false)`). `Closed` does not come when the app is killed or suspended
+  before the closing request returns, nor when the closing request fails (network error, 5xx):
+  its events are re-sent with the next session and the API closes the old record itself, later.
+  In both cases the id already came with `Open`.
+- Key what you store by `sessionId`, not by arrival order: the closing request and the next
+  session's first one can be in flight at the same time, so the new session's `Open` can arrive
+  before the previous one's `Closed`.
+- The callback runs on a background thread; a callback that throws is caught and logged and
+  never affects delivery.
+- `getFeedbackSessionId()` returns the open session's id, or `null` before its first batch is
+  accepted, after it closes, and always without `InitOptions.analytics`.
+- This is not `getSessionId()`, the SDK's own session id. That one travels in the metadata as
+  `deepdots_session_id`, and the feedback can't be looked up by it.
+- iOS (Swift): Kotlin default arguments are not exported, so pass `onFeedbackSession: nil` (or a
+  closure taking a `FeedbackSession`) when you build `InitOptions`.
 
 ## 9. Full Examples (Android / iOS)
 - Android: `example-android/MainActivity.kt` shows Server mode init, path updates, event logging, and a fourth demo screen that fires `custom-event`.
