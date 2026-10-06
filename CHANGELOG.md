@@ -4,6 +4,14 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **iOS: `close()` / `Deepdots.dismiss()` only close the SDK popup.** They used to
+  dismiss whatever view controller was presented over the context, so calling them
+  while the host had its own modal open (a picker, a share sheet) closed the host's
+  modal instead. The popup view controller is now tagged (`restorationIdentifier`,
+  the iOS twin of the Android container tag) and only that one is dismissed.
+
 ## 0.6.0 - 2026-10-05
 
 Parity with Popup Web SDK 1.6.0 to 1.8.4 for everything that applies to the
