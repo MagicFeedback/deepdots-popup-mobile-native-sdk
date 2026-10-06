@@ -125,7 +125,7 @@ actual fun SurveyView(
                         if (name.startsWith("error")) {
                             loading = false
                             errorMessage = if (name.contains("timeout")) "Survey load timeout" else "Error loading survey"
-                        } else if (name == "popup_clicked" || name == "loaded") {
+                        } else if (name == PopupReveal.LOADED_EVENT) {
                             loading = false
                         } else if (name == "before_submit") {
                             loading = true

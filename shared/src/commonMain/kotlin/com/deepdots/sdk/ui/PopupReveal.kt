@@ -24,6 +24,17 @@ object PopupReveal {
     /** Nombre del mensaje con el que el WebView avisa de que el survey ya se puede enseñar. */
     const val READY_EVENT: String = "ready"
 
+    /**
+     * Aviso del WebView de que el survey ha cargado. Lleva lo que la capa nativa solo puede
+     * saber con el form montado: `style` (colores, logo, mensaje de inicio), `surveyLang` (textos
+     * y dirección RTL del chrome) y `progress`/`total` (barra de progreso).
+     *
+     * NO es una interacción del usuario: no se reenvía al host como `PopupClicked` ni marca
+     * PARTIAL. Antes viajaba con el nombre `popup_clicked` y el host recibía un click falso en
+     * cada apertura (también cuando el survey fallaba al cargar).
+     */
+    const val LOADED_EVENT: String = "loaded"
+
     /** Mensaje con el que el WebView informa de lo que mide su contenido, en px CSS = dp. */
     const val CONTENT_HEIGHT_EVENT: String = "content_height"
 

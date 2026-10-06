@@ -360,7 +360,7 @@ fun PopupView(
                                                 payloadNumber("height")?.let { h ->
                                                     surveyContentHeightDp = h.toInt()
                                                 }
-                                            "popup_clicked", "loaded" -> {
+                                            PopupReveal.LOADED_EVENT -> {
                                                 // Apply runtime style overrides if provided
                                                 val primaryHex = Regex("\"buttonPrimaryColor\"\\s*:\\s*\"(#[0-9A-Fa-f]{3,8})\"").find(payload ?: "")?.groupValues?.get(1)
                                                 val bgHex = Regex("\"boxBackgroundColor\"\\s*:\\s*\"(#[0-9A-Fa-f]{3,8})\"").find(payload ?: "")?.groupValues?.get(1)
