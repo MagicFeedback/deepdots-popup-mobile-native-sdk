@@ -4,6 +4,16 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **Android: the popup now shows on any `Activity`, not only on a
+  `ComponentActivity`.** With a plain `android.app.Activity` (notably Flutter's
+  default `FlutterActivity`) the popup silently never appeared. When the host
+  activity does not provide the view-tree lifecycle/saved-state owners, the SDK
+  now installs its own, scoped to the popup and destroyed when it closes.
+  `ComponentActivity` hosts (AppCompat, FragmentActivity, FlutterFragmentActivity)
+  behave exactly as before.
+
 ## 0.6.0 - 2026-10-05
 
 Parity with Popup Web SDK 1.6.0 to 1.8.4 for everything that applies to the

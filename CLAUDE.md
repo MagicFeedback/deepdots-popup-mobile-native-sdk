@@ -237,6 +237,28 @@ viajaba con ella: el usuario creía haber corregido su respuesta y no era así.
   y hit-testing de verdad), **no** en el simulador: el mecanismo es el mismo HTML.
   Ojo al comprobarlo, `element.click()` es sintético e **ignora `pointer-events`**.
 
+## Fix: el popup sale en cualquier `Activity` (2026-10-06)
+
+Antes `PopupRenderer.show` (Android) hacía `context.activity as? ComponentActivity ?: return`:
+con una `Activity` a secas (la `FlutterActivity` por defecto de Flutter) el popup no salía y no
+se logueaba nada. `dismissPopup` tenía el mismo cast.
+
+- Si el decorView ya trae `ViewTreeLifecycleOwner` + `ViewTreeSavedStateRegistryOwner`
+  (ComponentActivity tras `setContentView`) se usa lo de siempre, sin tocar nada.
+- Si no, `renderer/PopupViewTreeOwner.kt` (lifecycle + saved state + view models) se instala
+  en el CONTENEDOR del popup: `RESUMED` al engancharse a la ventana, `DESTROYED` + `ViewModelStore`
+  limpio al desengancharse. El detach cubre todas las vías de cierre (acción, `dismissPopup`,
+  Activity destruida) sin que cada una tenga que acordarse.
+- ⚠️ **No basta con los owners en el contenedor:** el Recomposer "de ventana" de Compose se
+  cuelga del decorView (el hijo de `android.R.id.content`, y el contenedor va directo al decor)
+  y busca el lifecycle desde ahí → "ViewTreeLifecycleOwner not found". Por eso el contenedor
+  lleva además su propio `compositionContext = createLifecycleAwareWindowRecomposer(lifecycle)`.
+- Sin dependencias nuevas (lifecycle/savedstate llegan por `activity-compose`). No hay
+  Robolectric: el test (`androidUnitTest/.../PopupViewTreeOwnerTest`, 5) cubre las transiciones
+  del owner; el montaje real en una `FlutterActivity` queda para verificar en dispositivo.
+- La `Activity` a secas no expone su lifecycle, así que el owner NO sigue pause/stop del host:
+  queda `RESUMED` mientras el popup está montado.
+
 ## Ramas
 
 - `main` — base.
