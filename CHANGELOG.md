@@ -13,6 +13,12 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   now installs its own, scoped to the popup and destroyed when it closes.
   `ComponentActivity` hosts (AppCompat, FragmentActivity, FlutterFragmentActivity)
   behave exactly as before.
+- **Android: the system Back closes the popup.** While the popup is visible,
+  Back (button, gesture and predictive back on API 33+) closes it through the
+  same path as the close (X) button, so status, cooldown and events are
+  identical; it no longer reaches the host (a Flutter host used to finish the
+  whole Activity). Before the popup is revealed and after it closes, Back goes
+  to the host as usual. iOS has no system Back, nothing changes there.
 
 ## 0.6.0 - 2026-10-05
 

@@ -36,7 +36,8 @@ actual object PopupRenderer {
             return
         }
         val dismissed = AtomicBoolean(false)
-        val container = FrameLayout(activity).apply {
+        // PopupContainer: FrameLayout que además se come el Back legacy (ver PopupBackHandler).
+        val container = PopupContainer(activity).apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
