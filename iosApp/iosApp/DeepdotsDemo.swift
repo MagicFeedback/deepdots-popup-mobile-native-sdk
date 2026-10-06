@@ -80,6 +80,7 @@ struct DeepdotsDemoView: View {
             // parámetros de `InitOptions`, también los añadidos después de escribir este demo.
             trackingEnabled: true,
             analytics: nil,
+            geolocation: true,
             contactAttributes: nil,
             renderChrome: true,
             showProgressBar: nil,
