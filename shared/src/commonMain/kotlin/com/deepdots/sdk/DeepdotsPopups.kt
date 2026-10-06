@@ -1286,10 +1286,18 @@ class DeepdotsPopups {
 
     private fun handleSurveyRuntimeEvent(popup: PopupDefinition, name: String, payload: String?) {
         when (name) {
+            // `loaded` (PopupReveal.LOADED_EVENT) no tiene rama a propósito: es el aviso de que
+            // el survey cargó, no una interacción, y no debe llegar al host como PopupClicked.
             "popup_clicked" -> {
                 val extra = parseEventPayload(payload)
-                emitPopupClicked(popup, extra)
                 val action = extra["action"] as? String
+                // Un click del puente siempre dice qué se pulsó. Sin `action` es la forma del
+                // aviso de carga antiguo, que el host recibía como un click falso.
+                if (action.isNullOrBlank()) {
+                    log("Ignoring bridge popup_clicked without action", payload ?: "")
+                    return
+                }
+                emitPopupClicked(popup, extra)
                 if (action == "partial") {
                     recordSurveyPartial(popup)
                 }
