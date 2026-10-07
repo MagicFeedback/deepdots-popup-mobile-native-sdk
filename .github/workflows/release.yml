@@ -113,6 +113,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Por defecto instala tambien el paquete `tools`, que Google retiro: el sdkmanager actual
+          # no lo encuentra y el paso falla. La plataforma y las build-tools las baja Gradle.
+          packages: platform-tools
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
