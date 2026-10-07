@@ -24,7 +24,6 @@ name: Release
 #   SIGNING_PASSWORD        passphrase de esa clave.
 #   SIGNING_KEY_ID          (opcional) id corto de la clave.
 # Variables (opcionales):
-#   MAVEN_CENTRAL_NAMESPACE        namespace verificado en central.sonatype.com (default com.deepdots).
 #   MAVEN_CENTRAL_PUBLISHING_TYPE  automatic (default: publica sin pasar por el portal) o user_managed
 #                                  (deja el deployment en el portal para darle a Publish a mano).
 
@@ -169,27 +168,59 @@ jobs:
           scripts/prepare_spm_release.sh "$VERSION" "https://github.com/$SPM_REPO/releases/download/$VERSION"
           echo "checksum=$(cat dist/spm/DeepdotsSDK-$VERSION.xcframework.zip.checksum)" >> "$GITHUB_ENV"
 
-      # Subida + aviso al portal en el MISMO job: el portal exige que el POST de
-      # /manual/upload venga de la misma IP que subio los ficheros.
+      # Firma en local y sube el bundle por la API del Central Portal, en UNA peticion. La via
+      # "compatible con OSSRH" (publish...ToOSSRHRepository + /manual/upload) aisla los
+      # repositorios por IP, y los runners de macOS salen por varias: la subida de v0.6.1 quedo
+      # repartida en dos repositorios y el aviso al portal llego desde una tercera IP.
       - name: Publish to Maven Central
         if: steps.state.outputs.maven == 'publish'
         env:
-          OSSRH_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
           SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
-          NAMESPACE: ${{ vars.MAVEN_CENTRAL_NAMESPACE || 'com.deepdots' }}
           PUBLISHING_TYPE: ${{ vars.MAVEN_CENTRAL_PUBLISHING_TYPE || 'automatic' }}
         run: |
           set -euo pipefail
-          ./gradlew :shared:publishAndroidReleasePublicationToOSSRHRepository
-          AUTH="$(printf '%s:%s' "$OSSRH_USERNAME" "$OSSRH_PASSWORD" | base64 | tr -d '\n')"
-          curl --fail-with-body -sS -X POST \
-            -H "Authorization: Bearer $AUTH" \
-            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/$NAMESPACE?publishing_type=$PUBLISHING_TYPE"
-          echo
-          echo "::notice::Deployment enviado a Maven Central ($PUBLISHING_TYPE). Tarda unos minutos en aparecer en repo1.maven.org."
+          rm -rf build/release-staging-repo
+          ./gradlew :shared:publishAndroidReleasePublicationToReleaseStagingRepository
+          DIR="build/release-staging-repo/$ARTIFACT_GROUP_PATH/$VERSION"
+          ls -1 "$DIR"
+          for f in "shared-android-$VERSION.aar" "shared-android-$VERSION.pom" "shared-android-$VERSION.aar.asc" "shared-android-$VERSION.pom.asc"; do
+            [ -f "$DIR/$f" ] || { echo "::error::Falta $f en el bundle (¿no se ha firmado?)."; exit 1; }
+          done
+          BUNDLE="$RUNNER_TEMP/shared-android-$VERSION-bundle.zip"
+          (cd build/release-staging-repo && zip -qr "$BUNDLE" "$ARTIFACT_GROUP_PATH/$VERSION")
+          case "$PUBLISHING_TYPE" in
+            automatic) TYPE=AUTOMATIC ;;
+            user_managed) TYPE=USER_MANAGED ;;
+            *) echo "::error::MAVEN_CENTRAL_PUBLISHING_TYPE no valido: $PUBLISHING_TYPE"; exit 1 ;;
+          esac
+          AUTH="$(printf '%s:%s' "$MAVEN_CENTRAL_USERNAME" "$MAVEN_CENTRAL_PASSWORD" | base64 | tr -d '\n')"
+          API=https://central.sonatype.com/api/v1/publisher
+          ID="$(curl --fail-with-body -sS -X POST -H "Authorization: Bearer $AUTH" \
+            -F "bundle=@$BUNDLE;type=application/octet-stream" \
+            "$API/upload?publishingType=$TYPE&name=shared-android-$VERSION")"
+          echo "Deployment $ID ($TYPE)"
+          # Esperar a que el portal valide el bundle: si lo rechaza (firma, POM, checksums), que
+          # el release falle aqui y no se publiquen SPM ni la GitHub Release.
+          for i in $(seq 1 60); do
+            sleep 10
+            STATUS="$(curl --fail-with-body -sS -X POST -H "Authorization: Bearer $AUTH" "$API/status?id=$ID")"
+            STATE="$(echo "$STATUS" | jq -r .deploymentState)"
+            echo "  $STATE"
+            case "$STATE" in
+              VALIDATED|PUBLISHING|PUBLISHED) break ;;
+              FAILED) echo "$STATUS" | jq .; echo "::error::Maven Central ha rechazado el bundle."; exit 1 ;;
+            esac
+          done
+          case "$STATE" in
+            VALIDATED) echo "::notice::shared-android $VERSION validado en Maven Central: falta darle a Publish en central.sonatype.com > Deployments." ;;
+            PUBLISHING|PUBLISHED) echo "::notice::shared-android $VERSION publicandose en Maven Central; tarda unos minutos en aparecer en repo1.maven.org." ;;
+            *) echo "::error::El deployment $ID sigue en $STATE tras 10 min."; exit 1 ;;
+          esac
 
       - name: Checkout SPM repo
         if: steps.state.outputs.spm == 'publish'
