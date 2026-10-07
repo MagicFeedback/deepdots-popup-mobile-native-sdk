@@ -13,7 +13,6 @@ import com.deepdots.sdk.models.Trigger
 import com.deepdots.sdk.models.TriggerConditionStatus
 import com.deepdots.sdk.storage.InMemoryStorage
 import com.deepdots.sdk.util.currentTimeMillis
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -108,13 +107,38 @@ class DeepdotsPopupsParityTest {
     }
 
     @Test
+    fun exit_popup_with_no_delay_is_never_lost_when_the_route_changes() {
+        // Regresion: el popup de salida sin retraso se programaba en otro hilo ANTES de que
+        // setPath() actualizase la ruta actual. Si ese hilo ganaba la carrera, veia aun la ruta
+        // de origen, daba el popup por "ruta sin cambios" y lo descartaba. En un runner con
+        // varios nucleos pasaba a menudo; una sola pasada no basta para verlo, de ahi el bucle.
+        repeat(200) { round ->
+            val sdk = createSdk(
+                popups = listOf(
+                    popup(
+                        id = "popup-game-exit",
+                        surveyId = "survey",
+                        triggers = listOf(Trigger.Exit(0.0)),
+                        segments = Segments(path = listOf("/#/game")),
+                    ),
+                ),
+            )
+            sdk.setPath("https://app.test/#/game")
+            sdk.setPath("https://app.test/#/home")
+            assertEquals(listOf("popup-game-exit"), sdk.debugQueuedPopupIds(), "ronda $round")
+        }
+    }
+
+    @Test
     fun exit_trigger_respects_delay_before_queueing_on_destination_path() = runBlocking {
         val sdk = createSdk(
             popups = listOf(
                 popup(
                     id = "popup-exit-delay",
                     surveyId = "survey-exit-delay",
-                    triggers = listOf(Trigger.Exit(0.05)),
+                    // 300 ms: deja margen para comprobar que NO esta encolado antes de tiempo
+                    // aunque el runner vaya lento.
+                    triggers = listOf(Trigger.Exit(0.3)),
                     segments = Segments(path = listOf("/#/login")),
                 ),
             ),
@@ -124,7 +148,7 @@ class DeepdotsPopupsParityTest {
         sdk.setPath("https://app.test/#/home")
 
         assertTrue(sdk.debugQueuedPopupIds().isEmpty())
-        delay(80)
+        waitUntil { sdk.debugQueuedPopupIds().isNotEmpty() }
         assertEquals(listOf("popup-exit-delay"), sdk.debugQueuedPopupIds())
     }
 

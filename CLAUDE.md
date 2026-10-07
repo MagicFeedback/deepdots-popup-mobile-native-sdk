@@ -256,8 +256,9 @@ viajaba con ella: el usuario creía haber corregido su respuesta y no era así.
 
 ## Release
 
-Por CI desde 2026-10-05: `.github/workflows/release.yml` corre al subir un tag `vX.Y.Z` (sobre el
-merge en `dev`) y publica Maven Central + `DeepdotsSDK-SPM` + la GitHub Release con el AAR. Los
+Por CI desde 2026-10-05: `node scripts/release.mjs prepare <X.Y.Z|patch|minor|major>` abre la PR
+de release y, tras fusionarla, `node scripts/release.mjs tag` sube el tag `vX.Y.Z` (sobre el merge
+en `dev`) y sigue `.github/workflows/release.yml`, que corre los tests y publica Maven Central + `DeepdotsSDK-SPM` + la GitHub Release con el AAR. Los
 pasos y los secrets están en la cabecera del workflow y en el README (§15). Maven Central se queda
 en 0.3.0 hasta que existan los secrets de Sonatype y de firma GPG: sin ellos el workflow se salta
 ese paso con un aviso. Los scripts de `scripts/` son el fallback manual y tienen rutas locales

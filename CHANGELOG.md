@@ -4,6 +4,31 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.6.1 - 2026-10-06
+
+### Fixed
+
+- **The survey's end screen replaces the last question.** On completion the
+  thank-you message used to appear below the last question, which stayed on
+  screen, and was cut off because the WebView kept the question's height. The
+  `@magicfeedback/native` survey renames the element the popup looked it up by,
+  so the popup lost track of it once the survey loaded. It now relies on its own
+  wrappers: the form is hidden, the message shows on its own, and the card
+  fits its content on every page (it did not resize between pages either).
+- **Survey options no longer look selected before the user taps them.** WebKit
+  keeps `:hover` on the last point touched inside the WebView, and the Send
+  button is native, so the option of the next page that landed on that point
+  showed the brand border and a grey fill. The survey stylesheet now comes from
+  popup-sdk 1.9.0, where hover styles only apply to devices that can hover.
+- **Exit popups with no delay are no longer lost, or queued twice.** When the
+  route changed, the popup was handed to a background thread before the SDK
+  recorded the new route. If that thread ran first, it still saw the previous
+  route, took the popup for "route did not change" and dropped it; or both
+  threads queued it at once and corrupted the popup queue. The popup queues are
+  now guarded by a lock and an exit popup with no delay is shown on the caller's
+  thread, once the new route is set. Android and iOS only: JavaScript is
+  single-threaded, so the web SDK is not affected.
+- **The iOS example app builds again** (it was missing `InitOptions.geolocation`).
 ## 0.6.0 - 2026-10-05
 
 Parity with Popup Web SDK 1.6.0 to 1.8.4 for everything that applies to the
