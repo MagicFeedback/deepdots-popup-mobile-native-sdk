@@ -238,10 +238,13 @@ async function tagRelease({ yes, watch }) {
   console.log(`✔ ${tag} subido. El workflow de release se encarga del resto.`);
   if (!watch) return;
 
+  // Por commit y posterior al push: con un tag rehecho con el mismo nombre, buscar por el nombre
+  // devolvia la ejecucion ANTERIOR (paso con v0.6.1 en el nativo).
+  const pushedAt = new Date(Date.now() - 60_000).toISOString();
   let runId = '';
   for (let i = 0; i < 20 && !runId; i++) {
     await sleep(3000);
-    runId = tryRun('gh', ['run', 'list', '--repo', REPO, '--workflow', 'release.yml', '--branch', tag, '--json', 'databaseId', '--jq', '.[0].databaseId // empty']).out;
+    runId = tryRun('gh', ['run', 'list', '--repo', REPO, '--workflow', 'release.yml', '--commit', sha, '--event', 'push', '--json', 'databaseId,createdAt', '--jq', `[.[] | select(.createdAt >= "${pushedAt}")][0].databaseId // empty`]).out;
   }
   if (!runId) fail(`No veo la ejecucion del workflow para ${tag}. Revisa: gh run list --workflow release.yml`);
   step(`siguiendo el workflow (gh run watch ${runId}); en macOS tarda ~30 min`);
