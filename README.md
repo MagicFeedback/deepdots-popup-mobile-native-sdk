@@ -214,12 +214,13 @@ See `scripts/update_magicfeedback_asset.sh`.
 ## 15. Publishing (Maintainers)
 
 ### Automated release (GitHub Actions)
-Releases are published by `.github/workflows/release.yml` when a `vX.Y.Z` tag is pushed:
-1. On `dev`: `./scripts/bump_version.sh X.Y.Z`, add a `## X.Y.Z` section to `CHANGELOG.md`, commit `chore(release): X.Y.Z` and merge it.
-2. Tag the merge commit and push the tag:
+Releases are published by `.github/workflows/release.yml` when a `vX.Y.Z` tag is pushed. `scripts/release.mjs` drives both sides of the release PR:
 ```bash
-git tag -a vX.Y.Z <merge-commit> -m vX.Y.Z && git push origin vX.Y.Z
+node scripts/release.mjs prepare <X.Y.Z|patch|minor|major>   # release/X.Y.Z branch + PR to dev
+node scripts/release.mjs tag                                  # after merging it: tag vX.Y.Z and follow the workflow
 ```
+`prepare` works from `origin/dev` in a temporary worktree: it bumps the version with `scripts/bump_version.sh`, turns `## Unreleased` into `## X.Y.Z - <date>` in the CHANGELOG, commits `chore(release): X.Y.Z` and opens the PR (`--dry-run` shows the commit without pushing). `tag` refuses if the release PR is not merged or the tag/release already exists, asks for confirmation, pushes the tag and follows the workflow. Tests: `node --test scripts/release.test.mjs`.
+
 The workflow checks that the tag matches `PUBLISHING_VERSION`, that the commit is on `dev` and that the CHANGELOG has the section; runs the JVM and iOS simulator tests; and then publishes, in order:
 - Android to Maven Central (`com.deepdots.sdk:shared-android:X.Y.Z`), signed. Skipped with a warning when the Maven Central or signing secrets are missing.
 - iOS: the XCFramework zip on the `X.Y.Z` release of `MagicFeedback/DeepdotsSDK-SPM`, plus its `Package.swift`, and checks that SPM resolves it.
