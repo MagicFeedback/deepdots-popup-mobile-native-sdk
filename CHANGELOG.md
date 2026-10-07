@@ -20,6 +20,14 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   button is native, so the option of the next page that landed on that point
   showed the brand border and a grey fill. The survey stylesheet now comes from
   popup-sdk 1.9.0, where hover styles only apply to devices that can hover.
+- **Exit popups with no delay are no longer lost, or queued twice.** When the
+  route changed, the popup was handed to a background thread before the SDK
+  recorded the new route. If that thread ran first, it still saw the previous
+  route, took the popup for "route did not change" and dropped it; or both
+  threads queued it at once and corrupted the popup queue. The popup queues are
+  now guarded by a lock and an exit popup with no delay is shown on the caller's
+  thread, once the new route is set. Android and iOS only: JavaScript is
+  single-threaded, so the web SDK is not affected.
 - **The iOS example app builds again** (it was missing `InitOptions.geolocation`).
 ## 0.6.0 - 2026-10-05
 
