@@ -48,7 +48,7 @@ Deepdots Popup SDK helps you:
 - Add Maven Central (already in demos) and depend on the published artifact:
 ```kotlin
 dependencies {
-    implementation("com.deepdots.sdk:shared-android:0.3.0")
+    implementation("com.deepdots.sdk:shared-android:0.6.1")
 }
 ```
 - Server mode uses your `publicKey` and remote popups. In the demo (`example-android/MainActivity.kt`), update `publicKey` and `metadata` (e.g., userId). Paths are set via `setPath("/home")`, `setPath("/detail/1")`, etc.
