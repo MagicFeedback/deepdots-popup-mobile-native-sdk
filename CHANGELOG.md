@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.6.2 - 2026-10-08
+
 ### Changed
 
 - **Surveys SDK `@magicfeedback/native` 2.2.31 in the WebView** (was 2.2.22). Picking an
