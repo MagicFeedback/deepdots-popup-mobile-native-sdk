@@ -10,9 +10,10 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   field (text, long text, email or number), the cursor is placed in it after
   Start, Next or Back. When the popup opens nothing is focused on touch
   devices, so the keyboard never pops up over a popup the user has not touched.
-  Same rule as the web SDK. On iOS, `WKWebView` does not open the keyboard for
-  focus set from JavaScript after a tap on a native button, so there the field
-  is focused but the keyboard does not appear on its own.
+  Same rule as the web SDK. The focus comes from `@magicfeedback/native` (its
+  `autofocus: 'navigation'` option), so it needs the native version that ships
+  it in `MAGICFEEDBACK_VERSION`; older versions ignore the option. Whether iOS
+  and Android open the keyboard for it is not verified on a device yet.
 
 ## 0.6.1 - 2026-10-06
 
