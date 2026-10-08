@@ -15,9 +15,10 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   Other survey changes since 2.2.22: a double tap no longer answers the next page (taps
   are ignored for 400 ms after a page change), an 11-point rating stacks into a column when
   the card is too narrow for 44 px options, and finishing a survey no longer logs an error.
-  The survey stylesheet stays pinned to `@magicfeedback/popup-sdk` 1.9.0 (copied from
-  2.2.22), so the narrow-card matrix layout and the MaxDiff styles added since then arrive
-  when that stylesheet is re-vendored and `POPUP_SDK_CSS_VERSION` is raised.
+  The survey stylesheet moves with it to `@magicfeedback/popup-sdk` 1.10.0 (copied from
+  2.2.31): a matrix in a narrow card shows one statement at a time with its options stacked
+  instead of a table cut off at the side, and an option no longer looks selected on touch
+  because of a leftover hover.
 - **Smoother page changes inside the survey.** Moving to the next page (also when a
   question auto-advances, such as a Yes/No or a rating) made the card jump: the footer
   disappeared while the page was sent, a white veil with a spinner covered the whole card
