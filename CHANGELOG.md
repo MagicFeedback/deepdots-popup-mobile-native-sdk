@@ -4,6 +4,17 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- **Focus on text questions.** When the first question of a page is a text
+  field (text, long text, email or number), the cursor is placed in it after
+  Start, Next or Back. When the popup opens nothing is focused on touch
+  devices, so the keyboard never pops up over a popup the user has not touched.
+  Same rule as the web SDK. The focus comes from `@magicfeedback/native` (its
+  `autofocus: 'navigation'` option), so it needs the native version that ships
+  it in `MAGICFEEDBACK_VERSION`; older versions ignore the option. Whether iOS
+  and Android open the keyboard for it is not verified on a device yet.
+
 ### Changed
 
 - **Smoother page changes inside the survey.** Moving to the next page (also when a
