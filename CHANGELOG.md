@@ -6,6 +6,18 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ### Changed
 
+- **Surveys SDK `@magicfeedback/native` 2.2.31 in the WebView** (was 2.2.22). Picking an
+  answer that moves the survey on by itself (Yes/No, a single choice, a rating) now waits
+  300 ms, so the respondent sees the option selected before the next page; tapping another
+  option inside that time sends only the last one, once. Reported by a customer on iOS with
+  0.6.1: tapping "Nej" jumped to the next question straight away. A question can also have
+  that behaviour turned off (`autoAdvance: false`), and then the respondent presses Next.
+  Other survey changes since 2.2.22: a double tap no longer answers the next page (taps
+  are ignored for 400 ms after a page change), an 11-point rating stacks into a column when
+  the card is too narrow for 44 px options, and finishing a survey no longer logs an error.
+  The survey stylesheet stays pinned to `@magicfeedback/popup-sdk` 1.9.0 (copied from
+  2.2.22), so the narrow-card matrix layout and the MaxDiff styles added since then arrive
+  when that stylesheet is re-vendored and `POPUP_SDK_CSS_VERSION` is raised.
 - **Smoother page changes inside the survey.** Moving to the next page (also when a
   question auto-advances, such as a Yes/No or a rating) made the card jump: the footer
   disappeared while the page was sent, a white veil with a spinner covered the whole card
