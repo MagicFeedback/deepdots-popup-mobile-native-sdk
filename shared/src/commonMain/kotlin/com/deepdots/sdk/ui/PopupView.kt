@@ -1,5 +1,14 @@
 package com.deepdots.sdk.ui
 
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -100,6 +109,22 @@ fun PopupView(
     // propio, así que sin este dato se estira hasta el máximo y una sola pregunta deja un hueco
     // enorme entre la última opción y el footer.
     var surveyContentHeightDp by remember { mutableStateOf<Int?>(null) }
+
+    // Transicion entre paginas (ver PageTransition): alto congelado mientras se envia, ultimo
+    // estado de navegacion para que el footer no desaparezca, y spinner con retraso.
+    var frozenSurveyHeightDp by remember { mutableStateOf<Int?>(null) }
+    var lastSettledState by remember { mutableStateOf<ViewState?>(null) }
+    var showSpinner by remember { mutableStateOf(false) }
+    LaunchedEffect(viewState) {
+        if (viewState == ViewState.Loading) {
+            delay(PageTransition.SPINNER_DELAY_MS)
+            showSpinner = true
+        } else {
+            showSpinner = false
+            frozenSurveyHeightDp = null
+            lastSettledState = viewState
+        }
+    }
 
     // Profundidad de navegación DENTRO del survey: +1 por página avanzada, -1 al volver.
     // Sustituye a `total > 1 && progress in 1 until total`, que escondía el Back siempre que la
@@ -246,7 +271,16 @@ fun PopupView(
                             unit = progressUnit,
                             labels = labels,
                         )
-                        if (progressBar.visible) {
+                        // Al llegar a la pantalla final la barra se oculta: plegandola con la
+                        // misma duracion que el alto del survey, en vez de quitarla de golpe (era
+                        // un salto de ~44 dp justo antes de que la tarjeta se ajustase).
+                        AnimatedVisibility(
+                            visible = progressBar.visible,
+                            enter = fadeIn(tween(PageTransition.HEIGHT_ANIMATION_MS)) +
+                                expandVertically(tween(PageTransition.HEIGHT_ANIMATION_MS)),
+                            exit = fadeOut(tween(PageTransition.HEIGHT_ANIMATION_MS)) +
+                                shrinkVertically(tween(PageTransition.HEIGHT_ANIMATION_MS)),
+                        ) {
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -285,15 +319,30 @@ fun PopupView(
                         // dato se usa el suelo de siempre, y por encima del techo el WebView hace
                         // su propio scroll vertical (el horizontal lo corta el CSS).
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            val surveyHeight = PopupReveal.resolveSurveyHeightDp(
-                                reportedDp = surveyContentHeightDp,
+                            val targetSurveyHeight = PopupReveal.resolveSurveyHeightDp(
+                                reportedDp = PageTransition.heightSource(
+                                    reported = surveyContentHeightDp,
+                                    frozen = frozenSurveyHeightDp,
+                                    loading = viewState == ViewState.Loading,
+                                ),
                                 floorDp = minSurveyHeight.value.toInt(),
                                 ceilingDp = maxSurveyHeight.value.toInt(),
                             ).dp
-                            Column(
+                            // Antes de enseñarse el popup el alto se aplica sin animar, para que
+                            // aparezca ya con su tamaño; despues, cada cambio de pagina se ajusta
+                            // con una transicion corta en vez de saltar.
+                            val surveyHeight by animateDpAsState(
+                                targetValue = targetSurveyHeight,
+                                animationSpec = if (revealed) tween(PageTransition.HEIGHT_ANIMATION_MS) else snap(),
+                                label = "surveyHeight",
+                            )
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(surveyHeight)
+                            ) {
+                            Column(
+                                modifier = Modifier.matchParentSize()
                             ) {
                                 SurveyView(
                                     popup.surveyId,
@@ -408,7 +457,11 @@ fun PopupView(
                                                 payloadValue("surveyLang")?.takeIf { it.isNotBlank() }
                                                     ?.let { surveyLang = it }
                                             }
-                                            "before_submit" -> { viewState = ViewState.Loading }
+                                            "before_submit" -> {
+                                                // Se conserva el alto de la pagina que se envia hasta que llega la siguiente.
+                                                frozenSurveyHeightDp = surveyContentHeightDp
+                                                viewState = ViewState.Loading
+                                            }
                                             // Broaden validation match
                                             "validation_error_required" -> {
                                                 // La página no ha cambiado: el estado de navegación se queda como estaba.
@@ -456,6 +509,22 @@ fun PopupView(
                                     onController = { controller -> surveyController = controller }
                                 )
                             }
+                            // Spinner solo sobre el survey y solo si la pagina tarda: antes era un
+                            // velo sobre toda la tarjeta que salia en cada cambio de pagina.
+                            if (showSpinner) {
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .background(bgColor.copy(alpha = 0.65f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = primaryColor,
+                                        modifier = Modifier.semantics { contentDescription = labels.loadingAria },
+                                    )
+                                }
+                            }
+                            }
                         }
 
                         // Error hint (below survey)
@@ -474,17 +543,25 @@ fun PopupView(
                             }
                         }
 
-                        // Footer buttons, driven by state
+                        // Footer buttons, driven by state. Mientras se envia una pagina se
+                        // quedan los del ultimo estado (sin responder): antes la fila desaparecia,
+                        // la tarjeta encogia unos 48 dp y volvia a crecer al llegar la pagina.
+                        val pageLoading = viewState == ViewState.Loading
+                        val footerAlpha by animateFloatAsState(
+                            targetValue = if (showSpinner) PageTransition.FOOTER_BUSY_ALPHA else 1f,
+                            label = "footerAlpha",
+                        )
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().alpha(footerAlpha),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            when (viewState) {
-                                ViewState.Loading -> { /* hide buttons while loading */ }
+                            when (if (pageLoading) lastSettledState else viewState) {
+                                null, ViewState.Loading -> { /* primera carga: aun no hay botones */ }
                                 ViewState.Start -> {
                                     Button(
                                         modifier = Modifier.fillMaxWidth(),
                                         onClick = {
+                                            if (pageLoading) return@Button
                                             surveyController?.startForm()
                                             // Move to first in-progress state so the footer shows the Send button
                                             viewState = ViewState.InProgressFirst
@@ -496,19 +573,19 @@ fun PopupView(
                                 ViewState.InProgressFirst -> {
                                     Spacer(modifier = Modifier.weight(1f))
                                     Button(
-                                        onClick = { surveyController?.send() },
+                                        onClick = { if (!pageLoading) surveyController?.send() },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
                                     ) { Text(actionLabel(popup.actions.accept?.label, DefaultLabels.Slot.ACCEPT), color = Color.White) }
                                 }
                                 ViewState.InProgressNext -> {
                                     OutlinedButton(
-                                        onClick = { surveyController?.back() },
+                                        onClick = { if (!pageLoading) surveyController?.back() },
                                         colors = ButtonDefaults.outlinedButtonColors(contentColor = primaryColor),
                                         border = BorderStroke(1.dp, primaryColor)
                                     ) { Text(actionLabel(popup.actions.back?.label, DefaultLabels.Slot.BACK)) }
                                     Spacer(modifier = Modifier.weight(1f))
                                     Button(
-                                        onClick = { surveyController?.send() },
+                                        onClick = { if (!pageLoading) surveyController?.send() },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
                                     ) { Text(actionLabel(popup.actions.accept?.label, DefaultLabels.Slot.ACCEPT), color = Color.White) }
                                 }
@@ -516,6 +593,7 @@ fun PopupView(
                                     Button(
                                         modifier = Modifier.fillMaxWidth(),
                                         onClick = {
+                                            if (pageLoading) return@Button
                                             val complete = popup.actions.complete
                                             if (complete != null) onAction(complete) else onAction(Action.Complete(label = "" ))
                                         },
@@ -524,7 +602,7 @@ fun PopupView(
                                 }
                                 ViewState.Error -> {
                                     Button(
-                                        onClick = { popup.actions.decline?.let { onAction(it) } },
+                                        onClick = { if (!pageLoading) popup.actions.decline?.let { onAction(it) } },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
                                     ) { Text(actionLabel(popup.actions.decline?.label, DefaultLabels.Slot.DECLINE), color = Color.White) }
                                 }
@@ -540,20 +618,6 @@ fun PopupView(
                         }
                     }
 
-                    // Overlay spinner centered above all content (matching popup bounds)
-                    if (viewState == ViewState.Loading) {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .background(Color.White.copy(alpha = 0.65f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                color = primaryColor,
-                                modifier = Modifier.semantics { contentDescription = labels.loadingAria },
-                            )
-                        }
-                    }
                 }
             }
                 }

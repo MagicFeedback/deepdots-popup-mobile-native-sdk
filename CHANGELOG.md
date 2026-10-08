@@ -15,6 +15,18 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   it in `MAGICFEEDBACK_VERSION`; older versions ignore the option. Whether iOS
   and Android open the keyboard for it is not verified on a device yet.
 
+### Changed
+
+- **Smoother page changes inside the survey.** Moving to the next page (also when a
+  question auto-advances, such as a Yes/No or a rating) made the card jump: the footer
+  disappeared while the page was sent, a white veil with a spinner covered the whole card
+  even when the page arrived in 200 ms, and the card snapped to every intermediate height
+  the survey reported. Now the footer stays in place (its buttons do not respond while the
+  page is sent), the card keeps its height until the new page arrives and then resizes with
+  a short transition, the progress bar folds away on the completion screen instead of
+  vanishing, and the spinner only appears, over the survey area, if the page takes longer
+  than 400 ms. Reported by a customer on iOS with 0.6.1.
+
 ## 0.6.1 - 2026-10-06
 
 ### Fixed
