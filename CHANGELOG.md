@@ -4,6 +4,16 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- **Focus on text questions.** When the first question of a page is a text
+  field (text, long text, email or number), the cursor is placed in it after
+  Start, Next or Back. When the popup opens nothing is focused on touch
+  devices, so the keyboard never pops up over a popup the user has not touched.
+  Same rule as the web SDK. On iOS, `WKWebView` does not open the keyboard for
+  focus set from JavaScript after a tap on a native button, so there the field
+  is focused but the keyboard does not appear on its own.
+
 ## 0.6.1 - 2026-10-06
 
 ### Fixed

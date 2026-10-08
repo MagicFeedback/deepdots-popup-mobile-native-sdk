@@ -208,6 +208,11 @@ internal fun buildMagicFeedbackHtml(
               var mfReady = false; // becomes true when form onLoadedEvent fires
 ${SurveyPalette.PRIMARY_COLOR_JS}
 ${SurveyBusy.BUSY_JS}
+${SurveyAutofocus.AUTOFOCUS_JS}
+              // Foco en la primera pregunta si es de escribir (ver SurveyAutofocus). Se mira el
+              // wrapper porque `generate('mf-form')` renombra el div del survey.
+              var ddSurveyLoaded = false;
+              function ddAutofocusPage(trigger){ ddAutofocusFirstTextQuestion(document.getElementById('dd-form-wrapper'), trigger); }
 ${PopupReveal.REVEAL_JS}
               // Apertura diferida: la capa nativa mantiene el popup invisible hasta este aviso,
               // para que el usuario vea la tarjeta ya pintada en vez del spinner. Se manda
@@ -322,6 +327,8 @@ ${PopupReveal.REVEAL_JS}
                           emit('loaded'); // explicit loaded for Kotlin UI state
                           ddReportHeight(); // por si el WebView no trae ResizeObserver
                           ddReveal.whenPainted();
+                          // La primera carga es la apertura; las siguientes llegan tras Start.
+                          ddAutofocusPage(ddSurveyLoaded ? 'navigation' : 'open'); ddSurveyLoaded = true;
                         } catch(e){ console.error('[MagicFeedback] onLoadedEvent emit error', e); }
                       },
                       beforeSubmitEvent: function(){
@@ -346,7 +353,7 @@ ${PopupReveal.REVEAL_JS}
                              else { emitJSON('submit_error', { error: err }); }
                           }
                           if (completed) { showSuccessScreen(); emitJSON('survey_completed'); }
-                          else { emitJSON('after_submit', { error: err, completed: completed, progress: progress, total: total }); }
+                          else { emitJSON('after_submit', { error: err, completed: completed, progress: progress, total: total }); if (!err) { ddAutofocusPage('navigation'); } }
                         } catch(e){ console.error('[MagicFeedback] afterSubmit exception', e); }
                       },
                       onBackEvent: function(args){
@@ -355,6 +362,7 @@ ${PopupReveal.REVEAL_JS}
                           var progress = (args && args.progress) || 0;
                           var total = (args && args.total) || 0;
                           emitJSON('back', { progress: progress, total: total });
+                          if (!(args && args.error)) { ddAutofocusPage('navigation'); }
                         } catch(e){ console.error('[MagicFeedback] onBackEvent emit error', e); }
                       },
                       getMetaData: true,
