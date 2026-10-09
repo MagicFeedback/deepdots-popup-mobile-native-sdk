@@ -30,6 +30,14 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   a short transition, the progress bar folds away on the completion screen instead of
   vanishing, and the spinner only appears, over the survey area, if the page takes longer
   than 400 ms. Reported by a customer on iOS with 0.6.1.
+- **`@magicfeedback/native` 2.2.31** (from 2.2.22), loaded from the CDN by the
+  survey WebView, with the stylesheet pinned to `@magicfeedback/popup-sdk@1.10.0`,
+  the release that re-vendors it from 2.2.31. Brings the MaxDiff question type,
+  a 300 ms pause before an option auto-advances (the pick is seen checked), a
+  ghost tap guard after each page change, narrow layouts for the matrix and the
+  numeric rating, and the `autofocus` option used for the focus on text
+  questions. Both versions move together: the WebView must not combine the
+  JavaScript of one release with the stylesheet of another.
 
 ## 0.6.1 - 2026-10-06
 
