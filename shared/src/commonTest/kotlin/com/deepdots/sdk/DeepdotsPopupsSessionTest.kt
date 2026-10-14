@@ -51,6 +51,34 @@ class DeepdotsPopupsSessionTest {
         .first { it.name == "deepdots_session_end" }
         .params?.get("reason")?.jsonPrimitive?.content
 
+    /** `reason` del único `deepdots_session_start` del buffer (null si falta el param). */
+    private fun startReason(envelope: AnalyticsEnvelope): String? = envelope.events
+        .single { it.name == "deepdots_session_start" }
+        .params?.get("reason")?.jsonPrimitive?.content
+
+    // ───────── apertura: por qué empieza la sesión ─────────
+
+    @Test
+    fun the_session_opened_by_init_is_a_cold_start() {
+        val s = sdk()
+        assertEquals("cold_start", startReason(s.previewAnalytics()))
+    }
+
+    @Test
+    fun the_session_opened_on_returning_from_background_is_a_foreground_start() {
+        val s = sdk()
+        s.onBackground()
+        s.onForeground()
+        assertEquals("foreground", startReason(s.previewAnalytics()))
+    }
+
+    @Test
+    fun foreground_without_a_previous_background_does_not_open_a_second_session() {
+        val s = sdk()
+        s.onForeground() // el host lo llama también en el primer onStart, tras init()
+        assertEquals("cold_start", startReason(s.previewAnalytics()))
+    }
+
     // ───────── cierre por lifecycle ─────────
 
     @Test
@@ -99,6 +127,7 @@ class DeepdotsPopupsSessionTest {
             listOf("deepdots_session_start"),
             s.previewAnalytics().events.map { it.name },
         )
+        assertEquals("foreground", startReason(s.previewAnalytics()))
     }
 
     @Test
@@ -134,6 +163,7 @@ class DeepdotsPopupsSessionTest {
             listOf("deepdots_session_start"),
             s.previewAnalytics().events.map { it.name },
         )
+        assertEquals("tracking_enabled", startReason(s.previewAnalytics()))
     }
 
     @Test
@@ -146,6 +176,7 @@ class DeepdotsPopupsSessionTest {
             listOf("deepdots_session_start"),
             s.previewAnalytics().events.map { it.name },
         )
+        assertEquals("tracking_enabled", startReason(s.previewAnalytics()))
     }
 
     // ───────── cambio de usuario ─────────
@@ -163,6 +194,7 @@ class DeepdotsPopupsSessionTest {
             listOf("deepdots_session_start"),
             s.previewAnalytics().events.map { it.name },
         )
+        assertEquals("user_change", startReason(s.previewAnalytics()))
     }
 
     @Test
