@@ -4,6 +4,18 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- **`deepdots_session_start` says why the session started**, in a new `reason` param.
+  The SDK closes the session when the app goes to background and opens a new one when it
+  comes back, so "sessions that started on this screen" counted every return from the
+  background as if the app had just been launched. With the reason, analytics can tell
+  them apart: `cold_start` (`init()`, the app was launched), `foreground` (`onForeground()`
+  after the previous session was closed), `tracking_enabled` (`setTrackingEnabled(true)`)
+  and `user_change` (`setUserId()`). Same values as the web SDK where the meaning is the
+  same. The event name and every other event are unchanged; consumers that ignore the
+  param keep working.
+
 ## 0.6.2 - 2026-10-08
 
 ### Changed

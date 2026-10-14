@@ -152,6 +152,8 @@ class DeepdotsPopupsAnalyticsTest {
         val s = sdk()
         val names0 = s.previewAnalytics().events.map { it.name }
         assertTrue(names0.contains("deepdots_session_start"))
+        val start = s.previewAnalytics().events.first { it.name == "deepdots_session_start" }
+        assertEquals("cold_start", start.params?.get("reason")?.jsonPrimitive?.content)
 
         s.reportError(IllegalStateException("kaboom"), severity = "error", context = mapOf("screen" to "Home"))
         val crash = s.previewAnalytics().events.first { it.name == "deepdots_app_crash" }
