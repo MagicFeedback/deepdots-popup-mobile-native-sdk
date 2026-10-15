@@ -123,4 +123,38 @@ class MagicFeedbackHtmlTest {
             "No debe quedar ninguna URL del popup-sdk sin version",
         )
     }
+    /**
+     * `generate('mf-form')` de @magicfeedback/native RENOMBRA ese div a
+     * `magicfeedback-container-<id>`, así que tras cargar el survey `getElementById('mf-form')`
+     * devuelve null. Si el HTML depende de ese id, al completar no se oculta la última pregunta
+     * (el mensaje final sale debajo) y el alto deja de medirse (el mensaje queda cortado).
+     * El HTML tiene que apoyarse en contenedores propios que el Surveys SDK no toca.
+     */
+    @Test
+    fun success_screen_and_height_do_not_depend_on_the_id_the_surveys_sdk_renames() {
+        val html = buildMagicFeedbackHtml(
+            surveyId = "survey-abc",
+            productId = "product-xyz",
+            localAssetUrl = null,
+            assetSize = null,
+            bridgeEmitCall = "DeepdotsBridge.emit",
+            isIOS = true,
+        )
+        assertTrue(
+            !html.contains("getElementById('mf-form')"),
+            "el JS no debe buscar 'mf-form' por id: el Surveys SDK lo renombra al cargar",
+        )
+        assertTrue(
+            html.contains("<div id='dd-content'><div id='dd-form-wrapper'><div id='mf-form'></div></div>"),
+            "el formulario va dentro de wrappers propios, y la pantalla final dentro de dd-content",
+        )
+        assertTrue(
+            html.contains("getElementById('dd-form-wrapper')"),
+            "la pantalla final oculta el wrapper del formulario",
+        )
+        assertTrue(
+            html.contains("getElementById('dd-content')"),
+            "el alto se mide sobre el contenedor común (formulario o mensaje final)",
+        )
+    }
 }

@@ -2,6 +2,7 @@
 
 package com.deepdots.sdk
 
+import com.deepdots.sdk.util.SdkLock
 import com.deepdots.sdk.models.Action
 import com.deepdots.sdk.models.Actions
 import com.deepdots.sdk.models.CooldownCondition
@@ -15,6 +16,7 @@ import com.deepdots.sdk.models.PopupFont
 import com.deepdots.sdk.models.Position
 import com.deepdots.sdk.models.Segments
 import com.deepdots.sdk.models.SessionEndReason
+import com.deepdots.sdk.models.SessionStartReason
 import com.deepdots.sdk.models.ShowOptions
 import com.deepdots.sdk.models.Style
 import com.deepdots.sdk.models.SurveyProgressState
@@ -47,7 +49,6 @@ import com.deepdots.sdk.platform.dismissPopup
 import com.deepdots.sdk.renderer.PopupRenderer
 import com.deepdots.sdk.service.DefaultPopupsService
 import com.deepdots.sdk.service.PopupsService
-import com.deepdots.sdk.util.SdkLock
 import com.deepdots.sdk.util.currentTimeMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -198,6 +199,13 @@ class DeepdotsPopups {
     private val triggerJobs = mutableListOf<Job>()
     private val popupQueue = ArrayDeque<String>()
     private var processingQueue = false
+    /**
+     * Protege la cola de popups y la de exits diferidos. Se tocan desde el hilo del host
+     * (`setPath`) y desde las corrutinas de `scope` (Dispatchers.Default): sin cerrojo, un exit
+     * sin retraso se perdia o se encolaba dos veces y corrompia el `ArrayDeque` (un `null` en la
+     * cola). En Web no hace falta: JS es single-thread. Reentrante en las dos plataformas.
+     */
+    private val queueLock = SdkLock()
     private val scrollTriggeredPopupIds = mutableSetOf<String>()
     private val deferredExitJobs = mutableMapOf<String, Job>()
     private var popupsService: PopupsService = DefaultPopupsService()
@@ -382,7 +390,7 @@ class DeepdotsPopups {
             installCrashHandlers(crash) { tracking?.isTrackingEnabled() == true }
         }
         // Marca de inicio de sesión (base para Crash-Free Users #14).
-        openSession()
+        openSession(SessionStartReason.COLD_START)
         // Drena SIEMPRE la cola (descarta pendientes si tracking off); solo reenvía si activo.
         val pendingCrashes = crash.drainPendingCrashes()
         if (tracking?.isTrackingEnabled() == true) {
@@ -447,7 +455,7 @@ class DeepdotsPopups {
     fun setTrackingEnabled(enabled: Boolean) {
         if (!enabled) closeSession(SessionEndReason.TRACKING_DISABLED)
         tracking?.setTrackingEnabled(enabled)
-        if (enabled) openSession()
+        if (enabled) openSession(SessionStartReason.TRACKING_ENABLED)
         // El lookup de geo se aplaza hasta que haya consentimiento.
         if (enabled) resolveGeo()
     }
@@ -658,7 +666,7 @@ class DeepdotsPopups {
      */
     fun onForeground() {
         engagement?.resume()
-        openSession()
+        openSession(SessionStartReason.FOREGROUND)
     }
 
     /**
@@ -697,7 +705,7 @@ class DeepdotsPopups {
         messageGuard.reset()
 
         log("tracking · user_change · user_id:", tm.getUserId() ?: "null")
-        openSession()
+        openSession(SessionStartReason.USER_CHANGE)
     }
 
     /**
@@ -728,16 +736,20 @@ class DeepdotsPopups {
     }
 
     /**
-     * Abre sesión (`session_start`) si no hay una abierta y el tracking está activo. Idempotente:
-     * se llama en init(), al volver a foreground, al conceder el consentimiento y tras un cambio
-     * de usuario.
+     * Abre sesión (`session_start`) si no hay una abierta y el tracking está activo. Idempotente.
+     * El `reason` dice por qué empieza (ver [SessionStartReason]):
+     *  - `cold_start`: init() (arranque de la app).
+     *  - `foreground`: onForeground() tras un cierre (onBackground() o endSession()).
+     *  - `tracking_enabled`: setTrackingEnabled(true) (consentimiento concedido).
+     *  - `user_change`: setUserId(), tras cerrar la sesión del usuario anterior.
      */
-    private fun openSession() {
+    private fun openSession(reason: SessionStartReason) {
         if (sessionOpen) return
         if (tracking?.isTrackingEnabled() != true) return
         sessionOpen = true
         lastEngagementAt = nowMs()
-        track("deepdots_session_start", emptyMap())
+        track("deepdots_session_start", mapOf("reason" to reason.wire))
+        log("tracking · session_start:", reason.wire)
     }
 
     /** Emite `user_engagement` con el tiempo activo acumulado (#8). */
@@ -1005,7 +1017,7 @@ class DeepdotsPopups {
         popupsService = service
     }
 
-    internal fun debugQueuedPopupIds(): List<String> = popupQueue.toList()
+    internal fun debugQueuedPopupIds(): List<String> = queueLock.withLock { popupQueue.toList() }
 
     /** Solo test: disparos guardados a la espera de que lleguen las definiciones. */
     internal fun debugPendingTriggerCount(): Int = pendingTriggersLock.withLock { pendingTriggers.size }
@@ -1169,24 +1181,30 @@ class DeepdotsPopups {
     }
 
     private fun enqueuePopup(popupId: String) {
-        if (popupQueue.contains(popupId)) return
-        popupQueue.addLast(popupId)
-        processQueue()
+        val added = queueLock.withLock {
+            if (popupQueue.contains(popupId)) false else popupQueue.add(popupId)
+        }
+        if (added) processQueue()
     }
 
     private fun processQueue() {
         val context = initOptionsContextCache ?: return
-        if (processingQueue) return
-        processingQueue = true
+        val start = queueLock.withLock {
+            if (processingQueue) false else true.also { processingQueue = true }
+        }
+        if (!start) return
 
         scope.launch {
-            while (popupQueue.isNotEmpty()) {
-                val popupId = popupQueue.removeFirst()
+            while (true) {
+                // Sacar y apagar el flag en el mismo bloque: si no, un enqueue entre el ultimo
+                // removeFirst y `processingQueue = false` se quedaba en la cola sin procesar.
+                val popupId = queueLock.withLock {
+                    popupQueue.removeFirstOrNull().also { if (it == null) processingQueue = false }
+                } ?: break
                 val popup = popupDefinitions[popupId] ?: continue
                 showDefinition(popup, context)
                 delay(300L)
             }
-            processingQueue = false
         }
     }
 
@@ -1437,22 +1455,27 @@ class DeepdotsPopups {
     private fun queueExitPopup(popup: PopupDefinition, delaySeconds: Double, sourcePath: String) {
         if (!shouldShow(popup, pathOverride = sourcePath)) return
 
-        val dueAt = currentTimeMillis() + (delaySeconds * 1000.0).toLong().coerceAtLeast(0L)
+        val delayMs = (delaySeconds * 1000.0).toLong().coerceAtLeast(0L)
         val item = DeferredExitPopup(
             id = popup.id,
             surveyId = popup.surveyId,
-            dueAt = dueAt,
+            dueAt = currentTimeMillis() + delayMs,
             sourcePath = sourcePath,
         )
 
-        val updatedQueue = getDeferredExitQueue()
-            .filterNot { it.id == item.id && it.sourcePath == item.sourcePath } + item
-        setDeferredExitQueue(updatedQueue)
-        scheduleDeferredExit(item)
+        queueLock.withLock {
+            val updatedQueue = getDeferredExitQueue()
+                .filterNot { it.id == item.id && it.sourcePath == item.sourcePath } + item
+            setDeferredExitQueue(updatedQueue)
+        }
+        // Sin retraso NO se programa una corrutina: setPath() todavia no ha actualizado la ruta
+        // actual, y la corrutina podia ganar la carrera, ver la ruta de origen y descartar el
+        // popup. Lo muestra el processDeferredExitQueue() que setPath llama con la ruta ya nueva.
+        if (delayMs > 0) scheduleDeferredExit(item)
     }
 
     private fun processDeferredExitQueue() {
-        val queue = getDeferredExitQueue()
+        val queue = queueLock.withLock { getDeferredExitQueue() }
         if (queue.isEmpty()) return
 
         val now = currentTimeMillis()
@@ -1465,9 +1488,9 @@ class DeepdotsPopups {
         }
     }
 
-    private fun scheduleDeferredExit(item: DeferredExitPopup) {
+    private fun scheduleDeferredExit(item: DeferredExitPopup) = queueLock.withLock {
         val key = deferredExitKey(item)
-        if (deferredExitJobs[key]?.isActive == true) return
+        if (deferredExitJobs[key]?.isActive == true) return@withLock
 
         deferredExitJobs[key] = scope.launch {
             val delayMs = (item.dueAt - currentTimeMillis()).coerceAtLeast(0L)
@@ -1476,7 +1499,15 @@ class DeepdotsPopups {
         }
     }
 
-    private fun tryShowDeferredExit(item: DeferredExitPopup) {
+    private fun tryShowDeferredExit(item: DeferredExitPopup) = queueLock.withLock {
+        // Lo puede intentar a la vez la corrutina programada y processDeferredExitQueue(): solo
+        // actua quien lo encuentra aun en la cola, para no encolarlo dos veces.
+        val stillQueued = getDeferredExitQueue().any { it.id == item.id && it.sourcePath == item.sourcePath }
+        if (!stillQueued) return@withLock
+        tryShowDeferredExitLocked(item)
+    }
+
+    private fun tryShowDeferredExitLocked(item: DeferredExitPopup) {
         val popup = popupDefinitions[item.id]
         if (popup == null) {
             removeDeferredExit(item)
@@ -1499,7 +1530,7 @@ class DeepdotsPopups {
         enqueuePopup(popup.id)
     }
 
-    private fun removeDeferredExit(item: DeferredExitPopup) {
+    private fun removeDeferredExit(item: DeferredExitPopup) = queueLock.withLock {
         deferredExitJobs.remove(deferredExitKey(item))?.cancel()
         val updatedQueue = getDeferredExitQueue()
             .filterNot { it.id == item.id && it.sourcePath == item.sourcePath }
