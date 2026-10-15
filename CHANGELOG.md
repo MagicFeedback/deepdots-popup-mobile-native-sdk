@@ -6,17 +6,41 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ### Added
 
+- **`deepdots_session_start` says why the session started**, in a new `reason` param.
+  The SDK closes the session when the app goes to background and opens a new one when it
+  comes back, so "sessions that started on this screen" counted every return from the
+  background as if the app had just been launched. With the reason, analytics can tell
+  them apart: `cold_start` (`init()`, the app was launched), `foreground` (`onForeground()`
+  after the previous session was closed), `tracking_enabled` (`setTrackingEnabled(true)`)
+  and `user_change` (`setUserId()`). Same values as the web SDK where the meaning is the
+  same. The event name and every other event are unchanged; consumers that ignore the
+  param keep working.
 - **Focus on text questions.** When the first question of a page is a text
   field (text, long text, email or number), the cursor is placed in it after
   Start, Next or Back. When the popup opens nothing is focused on touch
   devices, so the keyboard never pops up over a popup the user has not touched.
-  Same rule as the web SDK. The focus comes from `@magicfeedback/native` (its
-  `autofocus: 'navigation'` option), so it needs the native version that ships
-  it in `MAGICFEEDBACK_VERSION`; older versions ignore the option. Whether iOS
-  and Android open the keyboard for it is not verified on a device yet.
+  Same rule as the web SDK. The focus comes from `@magicfeedback/native` 2.2.31
+  (its `autofocus: 'navigation'` option), which the WebView already loads.
+  Whether iOS and Android open the keyboard for it is not verified on a device
+  yet.
+
+## 0.6.2 - 2026-10-08
 
 ### Changed
 
+- **Surveys SDK `@magicfeedback/native` 2.2.31 in the WebView** (was 2.2.22). Picking an
+  answer that moves the survey on by itself (Yes/No, a single choice, a rating) now waits
+  300 ms, so the respondent sees the option selected before the next page; tapping another
+  option inside that time sends only the last one, once. Reported by a customer on iOS with
+  0.6.1: tapping "Nej" jumped to the next question straight away. A question can also have
+  that behaviour turned off (`autoAdvance: false`), and then the respondent presses Next.
+  Other survey changes since 2.2.22: a double tap no longer answers the next page (taps
+  are ignored for 400 ms after a page change), an 11-point rating stacks into a column when
+  the card is too narrow for 44 px options, and finishing a survey no longer logs an error.
+  The survey stylesheet moves with it to `@magicfeedback/popup-sdk` 1.10.0 (copied from
+  2.2.31): a matrix in a narrow card shows one statement at a time with its options stacked
+  instead of a table cut off at the side, and an option no longer looks selected on touch
+  because of a leftover hover.
 - **Smoother page changes inside the survey.** Moving to the next page (also when a
   question auto-advances, such as a Yes/No or a rating) made the card jump: the footer
   disappeared while the page was sent, a white veil with a spinner covered the whole card

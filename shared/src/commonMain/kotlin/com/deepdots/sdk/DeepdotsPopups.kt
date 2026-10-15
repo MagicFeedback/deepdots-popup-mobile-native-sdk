@@ -16,6 +16,7 @@ import com.deepdots.sdk.models.PopupFont
 import com.deepdots.sdk.models.Position
 import com.deepdots.sdk.models.Segments
 import com.deepdots.sdk.models.SessionEndReason
+import com.deepdots.sdk.models.SessionStartReason
 import com.deepdots.sdk.models.ShowOptions
 import com.deepdots.sdk.models.Style
 import com.deepdots.sdk.models.SurveyProgressState
@@ -368,7 +369,7 @@ class DeepdotsPopups {
             installCrashHandlers(crash) { tracking?.isTrackingEnabled() == true }
         }
         // Marca de inicio de sesión (base para Crash-Free Users #14).
-        openSession()
+        openSession(SessionStartReason.COLD_START)
         // Drena SIEMPRE la cola (descarta pendientes si tracking off); solo reenvía si activo.
         val pendingCrashes = crash.drainPendingCrashes()
         if (tracking?.isTrackingEnabled() == true) {
@@ -431,7 +432,7 @@ class DeepdotsPopups {
     fun setTrackingEnabled(enabled: Boolean) {
         if (!enabled) closeSession(SessionEndReason.TRACKING_DISABLED)
         tracking?.setTrackingEnabled(enabled)
-        if (enabled) openSession()
+        if (enabled) openSession(SessionStartReason.TRACKING_ENABLED)
         // El lookup de geo se aplaza hasta que haya consentimiento.
         if (enabled) resolveGeo()
     }
@@ -642,7 +643,7 @@ class DeepdotsPopups {
      */
     fun onForeground() {
         engagement?.resume()
-        openSession()
+        openSession(SessionStartReason.FOREGROUND)
     }
 
     /**
@@ -681,7 +682,7 @@ class DeepdotsPopups {
         messageGuard.reset()
 
         log("tracking · user_change · user_id:", tm.getUserId() ?: "null")
-        openSession()
+        openSession(SessionStartReason.USER_CHANGE)
     }
 
     /**
@@ -712,16 +713,20 @@ class DeepdotsPopups {
     }
 
     /**
-     * Abre sesión (`session_start`) si no hay una abierta y el tracking está activo. Idempotente:
-     * se llama en init(), al volver a foreground, al conceder el consentimiento y tras un cambio
-     * de usuario.
+     * Abre sesión (`session_start`) si no hay una abierta y el tracking está activo. Idempotente.
+     * El `reason` dice por qué empieza (ver [SessionStartReason]):
+     *  - `cold_start`: init() (arranque de la app).
+     *  - `foreground`: onForeground() tras un cierre (onBackground() o endSession()).
+     *  - `tracking_enabled`: setTrackingEnabled(true) (consentimiento concedido).
+     *  - `user_change`: setUserId(), tras cerrar la sesión del usuario anterior.
      */
-    private fun openSession() {
+    private fun openSession(reason: SessionStartReason) {
         if (sessionOpen) return
         if (tracking?.isTrackingEnabled() != true) return
         sessionOpen = true
         lastEngagementAt = nowMs()
-        track("deepdots_session_start", emptyMap())
+        track("deepdots_session_start", mapOf("reason" to reason.wire))
+        log("tracking · session_start:", reason.wire)
     }
 
     /** Emite `user_engagement` con el tiempo activo acumulado (#8). */
