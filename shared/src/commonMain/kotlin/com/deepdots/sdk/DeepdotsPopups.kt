@@ -1141,6 +1141,10 @@ class DeepdotsPopups {
                 is PendingTrigger.Scroll -> evaluateScroll(trigger.percentage)
             }
         }
+        // Una salida sin retraso no programa corrutina: la muestra processDeferredExitQueue(), que
+        // setPath() llama con la ruta ya nueva. Aquí la ruta actual ya es la de destino, pero la
+        // pasada de loadPopupDefinitions() fue ANTES de este replay, así que hay que repetirla.
+        if (triggers.any { it is PendingTrigger.Exit }) processDeferredExitQueue()
     }
 
     private fun normalizePopupDefinition(definition: PopupDefinition): PopupDefinition? {
