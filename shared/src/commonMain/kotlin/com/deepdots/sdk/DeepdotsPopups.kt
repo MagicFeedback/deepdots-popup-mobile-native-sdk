@@ -88,6 +88,9 @@ internal const val MAX_PENDING_TRIGGERS = 20
  * (el page_view sale al salir de la pantalla y el engagement al ir a background) y el backend
  * (Run_Jobs `incomplete-surveys`, 60 min sin lotes) daba la sesión por abandonada con solo su
  * session_start. Paridad con Web (`ANALYTICS_HEARTBEAT_MS` en deepdots-popups.ts).
+ *
+ * El latido lleva además la pantalla en curso (`screen`, `path`, `screen_seconds`, ver
+ * `flushEngagement`): si la app muere en foreground, es lo último que se sabe de ella.
  */
 private const val ANALYTICS_HEARTBEAT_MS = 5 * 60_000L
 
@@ -384,8 +387,15 @@ class DeepdotsPopups {
 
         // Fase 2: navegación → eventos page_view por el canal de analytics.
         // En KMP la navegación entra por setPath() (manual); ahí se alimenta el observador.
-        navObserver = NavigationObserver().also { obs ->
-            obs.onVisit { v -> track("deepdots_page_view", mapOf("screen" to v.screen, "duration_seconds" to v.durationSeconds)) }
+        // Mismo reloj que el engagement: el `screen_seconds` del latido y el `duration_seconds`
+        // del page_view se miden igual.
+        navObserver = NavigationObserver(now = { nowMs() }).also { obs ->
+            obs.onVisit { v ->
+                track(
+                    "deepdots_page_view",
+                    mapOf("screen" to v.screen, "path" to v.path, "duration_seconds" to v.durationSeconds),
+                )
+            }
         }
         // Engagement time (#8): cuenta tiempo activo en primer plano (resume al arrancar).
         engagement = com.deepdots.sdk.analytics.EngagementTracker(now = { nowMs() }).also { it.resume() }
@@ -653,7 +663,9 @@ class DeepdotsPopups {
 
     /**
      * Señal de "app a foreground" (Activity.onStart / applicationWillEnterForeground): reanuda
-     * el engagement time y abre una sesión nueva si la anterior se cerró al ir a background.
+     * el engagement time y abre una sesión nueva si la anterior se cerró al ir a background. La
+     * pantalla a la que vuelve el usuario (la última de `setPath()`) vuelve a contar desde ahora
+     * y tendrá su `page_view` al salir de ella, aunque el host no vuelva a llamar a `setPath()`.
      */
     fun onForeground() {
         engagement?.resume()
@@ -715,7 +727,9 @@ class DeepdotsPopups {
         navStarted = false
         analytics?.exitAllMiniServices() // → mini_service_exit con duración
         SdkRuntime.miniService = analytics?.getMiniService()
-        flushEngagement() // → user_engagement con el tiempo activo
+        // → user_engagement con el tiempo activo, SIN pantalla: el observador ya no tiene
+        // (acaba de emitir su page_view), así que la última pantalla no se cuenta dos veces.
+        flushEngagement()
         track("deepdots_session_end", mapOf("reason" to reason.wire))
         // El lote de cierre hace que el transporte olvide el feedbackSessionId (FeedbackSink).
         flushAnalytics(AnalyticsFlushMeta(final = true, sessionEnd = true))
@@ -740,14 +754,44 @@ class DeepdotsPopups {
         lastEngagementAt = nowMs()
         track("deepdots_session_start", mapOf("reason" to reason.wire))
         log("tracking · session_start:", reason.wire)
+        // El cierre anterior dejó sin pantalla al observador: sin esto, la pantalla en la que
+        // está el usuario al reabrir (vuelta del background, cambio de usuario) no contaba hasta
+        // el siguiente setPath(), que además la tomaba como la primera y no emitía su page_view.
+        navObserver?.let { obs ->
+            obs.restart()
+            if (obs.current() != null) navStarted = true
+        }
     }
 
-    /** Emite `user_engagement` con el tiempo activo acumulado (#8). */
+    /**
+     * Emite `user_engagement` con el tiempo activo acumulado (#8) y la pantalla en curso:
+     * `screen` y `path` (los mismos que llevará su `page_view`) y `screen_seconds` (lo que lleva
+     * en ella, medido como el `duration_seconds` del `page_view`). Los tres van juntos o ninguno.
+     *
+     * El `page_view` sale al SALIR de la pantalla; si el cierre no llega nunca (app matada en
+     * foreground: crash, OOM, cerrada desde el selector de apps en iOS sin pasar por background;
+     * o congelada por el sistema antes de que salga el lote de cierre), la última pantalla de la
+     * sesión se perdía y una visita de una sola pantalla se quedaba sin ninguna. Con la pantalla
+     * en el latido, el backend la reconstruye.
+     *
+     * En el cierre (`closeSession`) el observador ya emitió el `page_view` y no tiene pantalla,
+     * así que ese engagement va sin `screen`: nunca se cuenta dos veces. Tampoco se emite un
+     * `page_view` aquí, por lo mismo. Paridad con Web (`flushEngagement` en deepdots-popups.ts).
+     */
     private fun flushEngagement() {
         if (tracking?.isTrackingEnabled() != true) return
         val ms = engagement?.consume() ?: 0L
         if (ms > 0) {
-            track("deepdots_user_engagement", mapOf("engagement_time_msec" to ms))
+            val current = navObserver?.current()
+            val params = buildMap<String, Any?> {
+                put("engagement_time_msec", ms)
+                if (current != null) {
+                    put("screen", current.screen)
+                    put("path", current.path)
+                    put("screen_seconds", current.seconds)
+                }
+            }
+            track("deepdots_user_engagement", params)
             lastEngagementAt = nowMs()
         }
     }
