@@ -26,9 +26,11 @@ JBR embebido de Android Studio, prefijando todas las tareas:
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew <tarea>
 ```
 
-- Tests unitarios (JVM): `:shared:testDebugUnitTest` — 232 tests
-- Tests comunes en el simulador iOS: `:shared:iosSimulatorArm64Test` — 220 (los 12 que faltan
-  viven en `androidUnitTest` porque necesitan `runBlocking`)
+- Tests unitarios (JVM): `:shared:testDebugUnitTest` — 296 tests
+- Tests comunes en el simulador iOS: `:shared:iosSimulatorArm64Test` — 271 (los que faltan
+  viven en `androidUnitTest` porque necesitan `runBlocking` o APIs de Android)
+- ⚠️ En un worktree nuevo copia `local.properties` (ignorado, lleva `sdk.dir`) del checkout
+  principal; sin él Gradle falla con "SDK location not found".
 - Compilar iOS: `:shared:compileKotlinIosSimulatorArm64` · `:shared:compileKotlinIosArm64`
 - Compilar/ensamblar Android: `:shared:compileDebugKotlinAndroid` · `:shared:assembleDebug`
 
@@ -56,8 +58,9 @@ exacto** de ficheros del repo Web y cualquier cambio debe replicarse en ambos la
 single-thread; aquí el buffer de analytics se toca desde el hilo del host y desde la corrutina
 de envío); `DeviceInfo` rellena `os_version`/`device_model` con APIs nativas en vez de mandar un
 `user_agent` para que lo parsee el backend, y deja vacíos `referrer`/`entry_type`/`page_load_ms`/
-`connection_type`; no hay equivalente a `sendBeacon`; el default de fuente sin `font` es
-per-plataforma.
+`connection_type`; no hay equivalente a `sendBeacon` (en iOS el lote de cierre va dentro de una
+background task, `util/BackgroundTask.kt`, que pide `FeedbackSink`); el default de fuente sin
+`font` es per-plataforma.
 
 ## Tracking y analytics
 
@@ -78,6 +81,13 @@ nunca llegó a Git y `dev` no compilaba; ver el commit `6f93dc2`).
   ⚠️ **`onBackground()` es fin de sesión** → llámalo en `onStop`/`didEnterBackground`, NUNCA en
   `onPause`/`willResignActive` (en iOS `inactive` es transitorio y partiría la sesión en dos).
   `onForeground()` abre una nueva.
+- **Pantalla en curso en el engagement (2026-10-16, paridad con Web #28):** el latido
+  `deepdots_user_engagement` lleva `screen`, `path` y `screen_seconds` (`NavigationObserver.current()`),
+  los tres o ninguno; el engagement del cierre no (el observador ya emitió el `page_view`). El
+  `page_view` lleva `path` (ruta real sin query) y dos ítems de la misma pantalla son visitas
+  distintas. `openSession` hace `navObserver.restart()` sobre la última ruta de `setPath()`:
+  la pantalla a la que se vuelve del background vuelve a contar. Tests:
+  `DeepdotsPopupsEngagementScreenTest`, `NavigationObserverParityTest`, `FeedbackSinkBackgroundTaskTest`.
 - **Fiabilidad:** 5xx/408/429 re-encola el lote (techo 200 eventos), 4xx se loguea con status y
   cuerpo y se descarta, y los lotes se serializan mientras no se conozca el `sessionId`. Entrega
   **at-least-once** → el backend debe deduplicar por
