@@ -24,6 +24,13 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   Whether iOS and Android open the keyboard for it is not verified on a device
   yet.
 
+- **Multi-language surveys.** The survey WebView asks `@magicfeedback/native` for
+  the language the host passes in `InitOptions.provideLang` or, without it, the
+  device language (`generate({ lang })`). When the survey does not have that
+  language, the API serves the survey's default. The popup chrome (buttons,
+  progress, accessibility labels) follows the language native reports it is
+  showing. Same behaviour as the web SDK.
+
 ### Fixed
 
 - **Android: the popup now shows on any `Activity`, not only on a
