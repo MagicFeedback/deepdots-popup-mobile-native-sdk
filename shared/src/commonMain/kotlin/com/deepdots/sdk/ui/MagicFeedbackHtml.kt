@@ -331,7 +331,6 @@ ${PopupReveal.REVEAL_JS}
                           emit('loaded'); // explicit loaded for Kotlin UI state
                           ddReportHeight(); // por si el WebView no trae ResizeObserver
                           ddReveal.whenPainted();
-                          // La primera carga es la apertura; las siguientes llegan tras Start.
                           // La primera carga es la apertura; las siguientes (tras Start) las enfoca native.
                           if (!ddSurveyLoaded) { ddSurveyLoaded = true; ddAutofocusOnOpen(form); }
                         } catch(e){ console.error('[MagicFeedback] onLoadedEvent emit error', e); }
