@@ -6,7 +6,7 @@ import com.deepdots.sdk.models.PopupFont
 import com.deepdots.sdk.tracking.buildSurveyIdentity
 
 // Centralized MagicFeedback package version used for all CDN URLs
-private const val MAGICFEEDBACK_VERSION: String = "2.2.22"
+private const val MAGICFEEDBACK_VERSION: String = "2.2.31"
 
 /**
  * Version de `@magicfeedback/popup-sdk` de la que se sirve la hoja de estilos del survey.
@@ -22,7 +22,7 @@ private const val MAGICFEEDBACK_VERSION: String = "2.2.22"
  * con su CSS re-vendorizado y apuntar aqui a esa version; mientras ese npm no este publicado,
  * el WebView pedira una URL que no existe y el survey saldra sin estilos.
  */
-internal const val POPUP_SDK_CSS_VERSION: String = "1.7.0"
+internal const val POPUP_SDK_CSS_VERSION: String = "1.10.0"
 
 /**
  * Common HTML builder for MagicFeedback survey popup used by Android/iOS WebViews.
@@ -202,8 +202,12 @@ internal fun buildMagicFeedbackHtml(
           </style>
         </head>
         <body class="deepdots-popup">
-          <div id='mf-form'></div>
-          <div id='mf-success' class='deepdots-success'></div>
+          <!-- `generate('mf-form')` de @magicfeedback/native RENOMBRA ese div a
+               `magicfeedback-container-<id>`, así que tras cargar no se puede volver a buscar
+               por 'mf-form'. El JS se apoya en estos dos wrappers, que el Surveys SDK no toca:
+               dd-form-wrapper se oculta al completar y dd-content (formulario o mensaje final)
+               es lo que se mide para dimensionar el WebView. Mismo patrón que el HTML de RN. -->
+          <div id='dd-content'><div id='dd-form-wrapper'><div id='mf-form'></div></div><div id='mf-success' class='deepdots-success'></div></div>
           <script>
             (function(){
               var LOCAL_SRC = $localSrcLiteral;
@@ -213,6 +217,15 @@ internal fun buildMagicFeedbackHtml(
               var mfReady = false; // becomes true when form onLoadedEvent fires
 ${SurveyPalette.PRIMARY_COLOR_JS}
 ${SurveyBusy.BUSY_JS}
+              // Foco en la primera pregunta si es de escribir. Al navegar lo pone
+              // @magicfeedback/native (autofocus:'navigation'); al abrir lo pide el popup, y solo
+              // con raton o trackpad: en un movil sacaria el teclado sin que el usuario haya tocado
+              // nada. Paridad con el SDK Web (renderPopup.ts / surveyHtml.ts).
+              var ddSurveyLoaded = false;
+              function ddAutofocusOnOpen(form){
+                var fine = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: fine)').matches;
+                if (fine && form && typeof form.focusFirstQuestion === 'function') { form.focusFirstQuestion(); }
+              }
 ${PopupReveal.REVEAL_JS}
               // Apertura diferida: la capa nativa mantiene el popup invisible hasta este aviso,
               // para que el usuario vea la tarjeta ya pintada en vez del spinner. Se manda
@@ -228,10 +241,14 @@ ${PopupReveal.REVEAL_JS}
               var successMessageHtml = '';
               function showSuccessScreen(){
                 try {
-                  var form = document.getElementById('mf-form'); if (form) { form.style.display = 'none'; }
+                  var form = document.getElementById('dd-form-wrapper'); if (form) { form.style.display = 'none'; }
                   var done = document.getElementById('mf-success'); if (!done) return;
                   done.innerHTML = successMessageHtml || '<p>Thank you for your feedback!</p>';
                   done.style.display = 'block';
+                  // Si el usuario había hecho scroll en la última pregunta, el mensaje quedaría
+                  // fuera de la vista: el WebView encoge a su alto y el scroll se queda abajo.
+                  window.scrollTo(0, 0);
+                  ddReportHeight();
                 } catch(e){ console.error('[MagicFeedback] success screen error', e); }
               }
               var PUBLIC_KEY = ${if (pubKeyJs.isNotEmpty()) "'${pubKeyJs}'" else "null"};
@@ -242,12 +259,13 @@ ${PopupReveal.REVEAL_JS}
               }
               // Altura real del survey. El WebView no tiene tamaño propio, así que sin esto la
               // capa nativa lo estira hasta el máximo y una sola pregunta deja un hueco enorme
-              // entre la última opción y el footer. Se mide `#mf-form` (no el body, que va a
-              // height:100% y siempre devuelve el alto del WebView).
+              // entre la última opción y el footer. Se mide `#dd-content` (no el body, que va a
+              // height:100% y siempre devuelve el alto del WebView), que contiene tanto el
+              // formulario como el mensaje final.
               var ddLastHeight = -1;
               function ddReportHeight(){
                 try {
-                  var host = document.getElementById('mf-form');
+                  var host = document.getElementById('dd-content');
                   if(!host) { return; }
                   var h = Math.ceil(host.getBoundingClientRect().height);
                   if(h > 0 && Math.abs(h - ddLastHeight) > 1){
@@ -260,7 +278,7 @@ ${PopupReveal.REVEAL_JS}
                 if (window.ResizeObserver) {
                   // Cubre la carga, el cambio de página, las follow-up y los avisos de validación
                   // sin tener que acordarse de llamarlo en cada evento.
-                  new ResizeObserver(function(){ ddReportHeight(); }).observe(document.getElementById('mf-form'));
+                  new ResizeObserver(function(){ ddReportHeight(); }).observe(document.getElementById('dd-content'));
                 }
               } catch(e){ console.error('[MagicFeedback] ResizeObserver error', e); }
               function initMF(){
@@ -308,8 +326,9 @@ ${PopupReveal.REVEAL_JS}
                           if (style && style.successMessage) { successMessageHtml = style.successMessage; }
                           // Idioma en el que native muestra el survey: solo se conoce aquí dentro,
                           // pero los botones los pinta la capa nativa, así que se lo reenviamos
-                          // para que traduzca su chrome (paridad con Web). Native < 2.3 no envía
-                          // `lang`: entonces el primero de formData.lang (el idioma por defecto).
+                          // para que traduzca su chrome (paridad con Web). Native anterior a la
+                          // 2.2.25 no envía `lang`: entonces el primero de formData.lang (el
+                          // idioma por defecto).
                           var shownLang = (args && typeof args.lang === 'string' && args.lang.trim()) ? args.lang : null;
                           var langs = shownLang ? [shownLang] : ((args && args.formData && args.formData.lang) ? args.formData.lang : null);
                           var surveyLang = '';
@@ -319,11 +338,14 @@ ${PopupReveal.REVEAL_JS}
                             }
                           }
                           // El total solo se conoce con el form ya montado: lo necesita la barra
-                          // de progreso que pinta la capa nativa.
-                          emitJSON('popup_clicked', { style: style, surveyLang: surveyLang, progress: form.progress || 0, total: form.total || 0 });
-                          emit('loaded'); // explicit loaded for Kotlin UI state
+                          // de progreso que pinta la capa nativa. Es un aviso de carga, NO un
+                          // click: antes viajaba como 'popup_clicked' y el host recibía un click
+                          // falso en cada apertura.
+                          emitJSON('${PopupReveal.LOADED_EVENT}', { style: style, surveyLang: surveyLang, progress: form.progress || 0, total: form.total || 0 });
                           ddReportHeight(); // por si el WebView no trae ResizeObserver
                           ddReveal.whenPainted();
+                          // La primera carga es la apertura; las siguientes (tras Start) las enfoca native.
+                          if (!ddSurveyLoaded) { ddSurveyLoaded = true; ddAutofocusOnOpen(form); }
                         } catch(e){ console.error('[MagicFeedback] onLoadedEvent emit error', e); }
                       },
                       beforeSubmitEvent: function(){
@@ -360,6 +382,10 @@ ${PopupReveal.REVEAL_JS}
                         } catch(e){ console.error('[MagicFeedback] onBackEvent emit error', e); }
                       },
                       getMetaData: true,
+                      // Foco en la primera pregunta de escribir tras Start, Siguiente o Atras. Native
+                      // lo aplica despues de afterSubmitEvent/onBackEvent, cuando ya se ha soltado el
+                      // bloqueo de carga. Las versiones sin la opcion la ignoran.
+                      autofocus: 'navigation',
                       customMetaData: $customMetaJsArray
                     }).catch(function(e){ console.error(e); emit('error:init'); });
                     return true;

@@ -14,7 +14,7 @@ interface SurveyController {
 /**
  * Cross-platform survey rendering surface that should embed MagicFeedback Native form.
  * Android actual implementation uses a WebView bridge. iOS currently shows a placeholder.
- * onEvent receives MagicFeedback lifecycle events like: popup_clicked, survey_completed
+ * onEvent receives MagicFeedback lifecycle events like: loaded, after_submit, survey_completed
  *
  * [backgroundColor] is the popup's themed background. The survey WebView must paint this
  * as an opaque background: on iOS the Compose interop layer punches a transparent hole

@@ -152,6 +152,8 @@ class DeepdotsPopupsAnalyticsTest {
         val s = sdk()
         val names0 = s.previewAnalytics().events.map { it.name }
         assertTrue(names0.contains("deepdots_session_start"))
+        val start = s.previewAnalytics().events.first { it.name == "deepdots_session_start" }
+        assertEquals("cold_start", start.params?.get("reason")?.jsonPrimitive?.content)
 
         s.reportError(IllegalStateException("kaboom"), severity = "error", context = mapOf("screen" to "Home"))
         val crash = s.previewAnalytics().events.first { it.name == "deepdots_app_crash" }
@@ -191,6 +193,24 @@ class DeepdotsPopupsAnalyticsTest {
         val names = s.previewAnalytics().events.map { it.name }
         assertTrue(!names.contains("deepdots_session_start"))
         assertTrue(!names.contains("deepdots_app_crash"))
+    }
+
+    @Test
+    fun explicit_provide_lang_overrides_the_device_language_in_context() {
+        // Paridad con Web (src/core/deepdots-popups.rn.test.ts): el language explícito del init
+        // manda en context.language. En KMP el explicit es provideLang; debe ganar al fallback
+        // automático del locale del dispositivo (deviceLanguage()).
+        val s = DeepdotsPopups().apply {
+            init(
+                InitOptions(
+                    debug = true,
+                    popupOptions = PopupOptions(publicKey = "pk-1"),
+                    storage = InMemoryStorage(),
+                    provideLang = { "fr-CA" },
+                ),
+            )
+        }
+        assertEquals("fr-CA", s.previewAnalytics().context.language)
     }
 
     @Test

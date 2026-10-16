@@ -26,24 +26,29 @@ val localReleaseProperties = Properties().apply {
 fun localReleaseProperty(name: String): String? =
     localReleaseProperties.getProperty(name)?.takeIf { it.isNotBlank() }
 
+// GitHub Actions pasa un secret que no existe como cadena VACIA, no como ausente: sin esto
+// `SIGNING_KEY_ID=""` llegaba a useInMemoryPgpKeys como id de clave y la firma fallaba con
+// "Could not read PGP secret key" (primer release por CI, v0.6.1).
+fun String?.nonBlank(): String? = this?.takeIf { it.isNotBlank() }
+
 val ossrhUsername = providers.gradleProperty("ossrhUsername")
     .orElse(providers.environmentVariable("OSSRH_USERNAME"))
-    .orNull ?: localReleaseProperty("ossrhUsername")
+    .orNull.nonBlank() ?: localReleaseProperty("ossrhUsername")
 val ossrhPassword = providers.gradleProperty("ossrhPassword")
     .orElse(providers.environmentVariable("OSSRH_PASSWORD"))
-    .orNull ?: localReleaseProperty("ossrhPassword")
+    .orNull.nonBlank() ?: localReleaseProperty("ossrhPassword")
 val signingKeyId = providers.gradleProperty("signing.keyId")
     .orElse(providers.environmentVariable("SIGNING_KEY_ID"))
-    .orNull ?: localReleaseProperty("signing.keyId")
+    .orNull.nonBlank() ?: localReleaseProperty("signing.keyId")
 val signingPassword = providers.gradleProperty("signing.password")
     .orElse(providers.environmentVariable("SIGNING_PASSWORD"))
-    .orNull ?: localReleaseProperty("signing.password")
+    .orNull.nonBlank() ?: localReleaseProperty("signing.password")
 val signingInMemoryKey = providers.gradleProperty("signingInMemoryKey")
     .orElse(providers.environmentVariable("SIGNING_IN_MEMORY_KEY"))
     .orElse(providers.environmentVariable("SIGNING_KEY"))
-    .orNull ?: localReleaseProperty("signingInMemoryKey")
+    .orNull.nonBlank() ?: localReleaseProperty("signingInMemoryKey")
 val signingKeyRingFile = providers.gradleProperty("signing.secretKeyRingFile")
-    .orNull ?: localReleaseProperty("signing.secretKeyRingFile")
+    .orNull.nonBlank() ?: localReleaseProperty("signing.secretKeyRingFile")
 val skipGradleSigning = providers.gradleProperty("skipGradleSigning")
     .map { it.equals("true", ignoreCase = true) }
     .orElse(false)
@@ -166,6 +171,15 @@ tasks.register("buildSdkDist") {
     group = "distribution"
     description = "Builds Android AAR and iOS frameworks and copies them to dist/"
     dependsOn(copyAarToDist, copyIosFrameworksToDist)
+}
+
+// Simulador de los tests de iOS: `-PiosTestDevice=<nombre o UDID>`. Sin la propiedad decide el
+// plugin de Kotlin; en CI se pasa el UDID de un iPhone que exista en el runner, para que el
+// release no dependa de qué modelos trae cada imagen de macOS.
+providers.gradleProperty("iosTestDevice").orNull?.takeIf { it.isNotBlank() }?.let { testDevice ->
+    tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
+        device.set(testDevice)
+    }
 }
 
 // Eliminar tareas automáticas de descarga; usaremos vendorización manual mediante scripts
