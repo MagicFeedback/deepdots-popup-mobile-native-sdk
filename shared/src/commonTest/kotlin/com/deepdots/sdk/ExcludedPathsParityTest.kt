@@ -10,7 +10,6 @@ import com.deepdots.sdk.models.Style
 import com.deepdots.sdk.models.Theme
 import com.deepdots.sdk.models.Trigger
 import com.deepdots.sdk.storage.InMemoryStorage
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -138,7 +137,9 @@ class ExcludedPathsParityTest {
         sdk.setPath("https://app.test/home")
         sdk.setPath("https://app.test/cart")
 
-        delay(80)
+        // Primero que el exit diferido se haya resuelto (si no, el assert pasaria por no haber
+        // corrido aun la corrutina) y luego que no se haya encolado.
+        assertTrue(waitUntil { sdk.debugDeferredExitQueue().isEmpty() }, "el exit diferido no se resolvio")
         assertTrue(sdk.debugQueuedPopupIds().isEmpty())
     }
 
@@ -156,7 +157,7 @@ class ExcludedPathsParityTest {
         sdk.setPath("https://app.test/home")
         sdk.setPath("https://app.test/products")
 
-        delay(80)
+        waitUntil { sdk.debugQueuedPopupIds().isNotEmpty() }
         assertEquals(listOf("popup-1"), sdk.debugQueuedPopupIds())
     }
 

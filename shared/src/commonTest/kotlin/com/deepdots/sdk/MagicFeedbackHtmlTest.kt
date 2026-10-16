@@ -37,6 +37,24 @@ class MagicFeedbackHtmlTest {
         )
     }
 
+    /** Surveys multi-idioma: el idioma se pide a native en `generate({ lang })`. */
+    @Test
+    fun html_asks_native_for_the_survey_language() {
+        fun html(lang: String?) = buildMagicFeedbackHtml(
+            surveyId = "survey-abc",
+            productId = "product-xyz",
+            localAssetUrl = null,
+            assetSize = null,
+            bridgeEmitCall = "DeepdotsBridge.emit",
+            isIOS = false,
+            lang = lang,
+        )
+        assertTrue(html("es-ES").contains("lang: 'es-ES',"), "pasa el idioma a generate()")
+        assertTrue(html(null).contains("lang: undefined,"), "sin idioma no fuerza ninguno")
+        assertTrue(html("es'); alert(1); ('").contains("lang: undefined,"), "no inyecta JS")
+        assertTrue(html("es").contains("typeof args.lang === 'string'"), "el chrome sigue el idioma de native")
+    }
+
     /**
      * Identidad del tracking inyectada en el survey (contrato §5): mismas claves que Web, para
      * poder coser las respuestas con la analítica y con el mini-service activo (#33).
@@ -121,6 +139,40 @@ class MagicFeedbackHtmlTest {
         assertTrue(
             !html.contains("@magicfeedback/popup-sdk/dist"),
             "No debe quedar ninguna URL del popup-sdk sin version",
+        )
+    }
+    /**
+     * `generate('mf-form')` de @magicfeedback/native RENOMBRA ese div a
+     * `magicfeedback-container-<id>`, así que tras cargar el survey `getElementById('mf-form')`
+     * devuelve null. Si el HTML depende de ese id, al completar no se oculta la última pregunta
+     * (el mensaje final sale debajo) y el alto deja de medirse (el mensaje queda cortado).
+     * El HTML tiene que apoyarse en contenedores propios que el Surveys SDK no toca.
+     */
+    @Test
+    fun success_screen_and_height_do_not_depend_on_the_id_the_surveys_sdk_renames() {
+        val html = buildMagicFeedbackHtml(
+            surveyId = "survey-abc",
+            productId = "product-xyz",
+            localAssetUrl = null,
+            assetSize = null,
+            bridgeEmitCall = "DeepdotsBridge.emit",
+            isIOS = true,
+        )
+        assertTrue(
+            !html.contains("getElementById('mf-form')"),
+            "el JS no debe buscar 'mf-form' por id: el Surveys SDK lo renombra al cargar",
+        )
+        assertTrue(
+            html.contains("<div id='dd-content'><div id='dd-form-wrapper'><div id='mf-form'></div></div>"),
+            "el formulario va dentro de wrappers propios, y la pantalla final dentro de dd-content",
+        )
+        assertTrue(
+            html.contains("getElementById('dd-form-wrapper')"),
+            "la pantalla final oculta el wrapper del formulario",
+        )
+        assertTrue(
+            html.contains("getElementById('dd-content')"),
+            "el alto se mide sobre el contenedor común (formulario o mensaje final)",
         )
     }
 }

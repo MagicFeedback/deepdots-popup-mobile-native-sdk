@@ -48,7 +48,7 @@ Deepdots Popup SDK helps you:
 - Add Maven Central (already in demos) and depend on the published artifact:
 ```kotlin
 dependencies {
-    implementation("com.deepdots.sdk:shared-android:0.3.0")
+    implementation("com.deepdots.sdk:shared-android:0.6.2")
 }
 ```
 - Server mode uses your `publicKey` and remote popups. In the demo (`example-android/MainActivity.kt`), update `publicKey` and `metadata` (e.g., userId). Paths are set via `setPath("/home")`, `setPath("/detail/1")`, etc.
@@ -59,7 +59,7 @@ dependencies {
 ```
 
 ### iOS (Swift Package Manager - Binary) [Official]
-- Add package: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`, version `0.6.0` (requires the release with `DeepdotsSDK-0.6.0.xcframework.zip` uploaded).
+- Add package: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`, version `0.6.2` (requires the release with `DeepdotsSDK-0.6.2.xcframework.zip` uploaded).
 - **Required `Info.plist` key.** Add the following to your app's `Info.plist`. The popup is rendered with Compose Multiplatform, which requires this key on iOS — without it the app can crash on ProMotion (120 Hz) devices when the popup is shown:
   ```xml
   <key>CADisableMinimumFrameDurationOnPhone</key>
@@ -205,7 +205,7 @@ Output in `shared/build/outputs/aar/`.
 Frameworks for each iOS target are placed in `shared/build/bin/`.
 
 ## 11. Runtime Style Overrides
-Events `loaded`/`popup_clicked` may include style overrides in the payload:
+The `loaded` bridge event (survey mounted) may include style overrides in the payload:
 - Colors: `buttonPrimaryColor`, `boxBackgroundColor`.
 - Start message: `startMessage` (shows a Start button initially if present).
 - Image/Logo: `image` or `logo` URL; `imageSize`/`logoSize` (small|medium|large); `imagePosition`/`logoPosition` (left|right|center).
@@ -225,7 +225,7 @@ Events `loaded`/`popup_clicked` may include style overrides in the payload:
 ## 13. Troubleshooting
 | Issue | Common Cause | Solution |
 |-------|--------------|----------|
-| Spinner not showing | Initial state not Loading | Initial state is Loading; verify `loaded`/`popup_clicked` arrive to hide it |
+| Spinner not showing | Initial state not Loading | Initial state is Loading; verify `loaded` arrives to hide it |
 | No validation banner | Bridge not emitting or logs not forwarded | Android: check WebView logs; iOS: ensure WKUserScript is injected before load |
 | Footer hidden on Android | Survey area too tall | WebView uses fixed height; popup keeps footer visible; adjust height if needed |
 | iOS no image/logo | Asset not in bundle | Place `magicfeedback-sdk.browser.js` and ensure copy resources |
@@ -239,7 +239,7 @@ The SDK builds HTML to load the MagicFeedback bundle from a local asset (if avai
 val html = Deepdots.getSurveyHtml(surveyId = "survey-123", productId = "product-xyz")
 ```
 Emitted lifecycle events include:
-- `popup_clicked`, `survey_completed`
+- `loaded` (survey mounted; carries `style`, `surveyLang`, `progress`, `total`; not a user interaction, never forwarded to hosts as `PopupClicked`), `after_submit`, `back`, `survey_completed`
 - `error:init`, `error:timeout`, `error:module`, `error:module-load`
 - Validation/submit errors synthesized via platform logging when not bridged directly.
 
@@ -256,12 +256,13 @@ See `scripts/update_magicfeedback_asset.sh`.
 ## 15. Publishing (Maintainers)
 
 ### Automated release (GitHub Actions)
-Releases are published by `.github/workflows/release.yml` when a `vX.Y.Z` tag is pushed:
-1. On `dev`: `./scripts/bump_version.sh X.Y.Z`, add a `## X.Y.Z` section to `CHANGELOG.md`, commit `chore(release): X.Y.Z` and merge it.
-2. Tag the merge commit and push the tag:
+Releases are published by `.github/workflows/release.yml` when a `vX.Y.Z` tag is pushed. `scripts/release.mjs` drives both sides of the release PR:
 ```bash
-git tag -a vX.Y.Z <merge-commit> -m vX.Y.Z && git push origin vX.Y.Z
+node scripts/release.mjs prepare <X.Y.Z|patch|minor|major>   # release/X.Y.Z branch + PR to dev
+node scripts/release.mjs tag                                  # after merging it: tag vX.Y.Z and follow the workflow
 ```
+`prepare` works from `origin/dev` in a temporary worktree: it bumps the version with `scripts/bump_version.sh`, turns `## Unreleased` into `## X.Y.Z - <date>` in the CHANGELOG, commits `chore(release): X.Y.Z` and opens the PR (`--dry-run` shows the commit without pushing). `tag` refuses if the release PR is not merged or the tag/release already exists, asks for confirmation, pushes the tag and follows the workflow. Tests: `node --test scripts/release.test.mjs`.
+
 The workflow checks that the tag matches `PUBLISHING_VERSION`, that the commit is on `dev` and that the CHANGELOG has the section; runs the JVM and iOS simulator tests; and then publishes, in order:
 - Android to Maven Central (`com.deepdots.sdk:shared-android:X.Y.Z`), signed. Skipped with a warning when the Maven Central or signing secrets are missing.
 - iOS: the XCFramework zip on the `X.Y.Z` release of `MagicFeedback/DeepdotsSDK-SPM`, plus its `Package.swift`, and checks that SPM resolves it.

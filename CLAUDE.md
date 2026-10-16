@@ -163,8 +163,8 @@ WebView y la descarga del bundle del CDN.
 - Diferir la presentación entera no se puede: sin presentar el VC, el WebView no se monta ni
   carga, y el aviso no llegaría nunca (mismo motivo por el que en React Native no vale
   `<Modal visible={ready}>`).
-- `ready` no toca métricas: `handleSurveyRuntimeEvent` solo actúa sobre `popup_clicked`,
-  `after_submit` y `survey_completed`, así que no marca PARTIAL.
+- `ready` (ni `loaded`) no toca métricas: `handleSurveyRuntimeEvent` solo actúa sobre
+  `popup_clicked` con `action`, `after_submit` y `survey_completed`, así que no marca PARTIAL.
 - Tests: `PopupRevealTest` (5, commonTest) → 192 JVM + 180 en el simulador iOS, 0 fallos.
 - **Verificado en el simulador iOS** (iPhone 17 Pro, capturas en bucle con `xcrun simctl io …
   screenshot`): el frame anterior a la apertura muestra la pantalla de la app limpia (sin velo,
@@ -247,6 +247,49 @@ viajaba con ella: el usuario creía haber corregido su respuesta y no era así.
   y hit-testing de verdad), **no** en el simulador: el mecanismo es el mismo HTML.
   Ojo al comprobarlo, `element.click()` es sintético e **ignora `pointer-events`**.
 
+## Fix: el popup sale en cualquier `Activity` (2026-10-06)
+
+Antes `PopupRenderer.show` (Android) hacía `context.activity as? ComponentActivity ?: return`:
+con una `Activity` a secas (la `FlutterActivity` por defecto de Flutter) el popup no salía y no
+se logueaba nada. `dismissPopup` tenía el mismo cast.
+
+- Si el decorView ya trae `ViewTreeLifecycleOwner` + `ViewTreeSavedStateRegistryOwner`
+  (ComponentActivity tras `setContentView`) se usa lo de siempre, sin tocar nada.
+- Si no, `renderer/PopupViewTreeOwner.kt` (lifecycle + saved state + view models) se instala
+  en el CONTENEDOR del popup: `RESUMED` al engancharse a la ventana, `DESTROYED` + `ViewModelStore`
+  limpio al desengancharse. El detach cubre todas las vías de cierre (acción, `dismissPopup`,
+  Activity destruida) sin que cada una tenga que acordarse.
+- ⚠️ **No basta con los owners en el contenedor:** el Recomposer "de ventana" de Compose se
+  cuelga del decorView (el hijo de `android.R.id.content`, y el contenedor va directo al decor)
+  y busca el lifecycle desde ahí → "ViewTreeLifecycleOwner not found". Por eso el contenedor
+  lleva además su propio `compositionContext = createLifecycleAwareWindowRecomposer(lifecycle)`.
+- Sin dependencias nuevas (lifecycle/savedstate llegan por `activity-compose`). No hay
+  Robolectric: el test (`androidUnitTest/.../PopupViewTreeOwnerTest`, 5) cubre las transiciones
+  del owner; el montaje real en una `FlutterActivity` queda para verificar en dispositivo.
+- La `Activity` a secas no expone su lifecycle, así que el owner NO sigue pause/stop del host:
+  queda `RESUMED` mientras el popup está montado.
+## El aviso de carga del survey NO es un click (2026-10-06)
+
+Un host Flutter recibía `popup_shown` y justo después `popup_clicked` sin que el usuario tocase
+nada (también tras un 406 al cargar el survey). El `onLoadedEvent` del WebView mandaba el estilo,
+el idioma y el progreso con el nombre `popup_clicked`, y `handleSurveyRuntimeEvent` reenviaba
+todo `popup_clicked` al host como `PopupClicked`.
+
+- **Ahora el aviso viaja como `loaded`** (`PopupReveal.LOADED_EVENT`), un único mensaje con
+  `{ style, surveyLang, progress, total }`; se quitó el `emit('loaded')` desnudo que iba detrás.
+  `PopupView` lee estilo/idioma/RTL/progreso solo de ese mensaje y el `SurveyView` de Android
+  quita su spinner con él. `handleSurveyRuntimeEvent` no tiene rama para `loaded`.
+- **Defensa:** un `popup_clicked` del puente sin `action` se ignora (se loguea); un click real
+  siempre dice qué se pulsó. `action: "partial"` sigue llegando al host y marcando PARTIAL.
+- Los clicks del chrome nativo (`handleAction`: accept/decline/start/complete/back) no pasan por
+  el puente y no cambian.
+- Tests: `SurveyBridgeEventsTest` (3).
+- ⚠️ **Diferencias con Web/RN (sin tocar):** el popup DOM web también emite al host
+  `popup_clicked {action:'loaded'}` (y `before_submit`, `validation_error_required`,
+  `submit_error`), etiquetado pero igual de engañoso; y el `ReactNativePopupRenderer` convierte
+  el `loaded` del WebView en `popup_clicked {action:'partial'}`, o sea que en RN la carga marca
+  PARTIAL en backend sin interacción.
+
 ## Ramas
 
 - `main` — base.
@@ -266,8 +309,9 @@ viajaba con ella: el usuario creía haber corregido su respuesta y no era así.
 
 ## Release
 
-Por CI desde 2026-10-05: `.github/workflows/release.yml` corre al subir un tag `vX.Y.Z` (sobre el
-merge en `dev`) y publica Maven Central + `DeepdotsSDK-SPM` + la GitHub Release con el AAR. Los
+Por CI desde 2026-10-05: `node scripts/release.mjs prepare <X.Y.Z|patch|minor|major>` abre la PR
+de release y, tras fusionarla, `node scripts/release.mjs tag` sube el tag `vX.Y.Z` (sobre el merge
+en `dev`) y sigue `.github/workflows/release.yml`, que corre los tests y publica Maven Central + `DeepdotsSDK-SPM` + la GitHub Release con el AAR. Los
 pasos y los secrets están en la cabecera del workflow y en el README (§15). Maven Central se queda
 en 0.3.0 hasta que existan los secrets de Sonatype y de firma GPG: sin ellos el workflow se salta
 ese paso con un aviso. Los scripts de `scripts/` son el fallback manual y tienen rutas locales

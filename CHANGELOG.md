@@ -4,10 +4,31 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
-Parity with Popup Web SDK [PR #14](https://github.com/MagicFeedback/deepdots-popup-sdk/pull/14).
-
 ### Added
 
+- **`deepdots_session_start` says why the session started**, in a new `reason` param.
+  The SDK closes the session when the app goes to background and opens a new one when it
+  comes back, so "sessions that started on this screen" counted every return from the
+  background as if the app had just been launched. With the reason, analytics can tell
+  them apart: `cold_start` (`init()`, the app was launched), `foreground` (`onForeground()`
+  after the previous session was closed), `tracking_enabled` (`setTrackingEnabled(true)`)
+  and `user_change` (`setUserId()`). Same values as the web SDK where the meaning is the
+  same. The event name and every other event are unchanged; consumers that ignore the
+  param keep working.
+- **Focus on text questions.** When the first question of a page is a text
+  field (text, long text, email or number), the cursor is placed in it after
+  Start, Next or Back. When the popup opens nothing is focused on touch
+  devices, so the keyboard never pops up over a popup the user has not touched.
+  Same rule as the web SDK. The focus comes from `@magicfeedback/native` 2.2.31
+  (its `autofocus: 'navigation'` option), which the WebView already loads.
+  Whether iOS and Android open the keyboard for it is not verified on a device
+  yet.
+- **Multi-language surveys.** The survey WebView asks `@magicfeedback/native` for
+  the language the host passes in `InitOptions.provideLang` or, without it, the
+  device language (`generate({ lang })`). When the survey does not have that
+  language, the API serves the survey's default. The popup chrome (buttons,
+  progress, accessibility labels) follows the language native reports it is
+  showing. Same behaviour as the web SDK.
 - **The id of the feedback a session becomes is readable.**
   `DeepdotsPopups.getFeedbackSessionId()` returns the `sessionId` that
   `POST /sdk/feedback` returned for the open analytics session, which the API
@@ -15,10 +36,44 @@ Parity with Popup Web SDK [PR #14](https://github.com/MagicFeedback/deepdots-pop
   `InitOptions.onFeedbackSession` reports it as a `FeedbackSession` with
   status `Open` when the session's first batch is accepted and `Closed` when
   the closing one is. A host can hand it to its backend to find that feedback
-  and add data to it. Until now the SDK kept it internal.
+  and add data to it. Until now the SDK kept it internal. Same API as the web
+  SDK (`getFeedbackSessionId()` / `onFeedbackSession`).
 
 ### Fixed
 
+- **Android: the popup now shows on any `Activity`, not only on a
+  `ComponentActivity`.** With a plain `android.app.Activity` (notably Flutter's
+  default `FlutterActivity`) the popup silently never appeared. When the host
+  activity does not provide the view-tree lifecycle/saved-state owners, the SDK
+  now installs its own, scoped to the popup and destroyed when it closes.
+  `ComponentActivity` hosts (AppCompat, FragmentActivity, FlutterFragmentActivity)
+  behave exactly as before.
+- **Android: the system Back closes the popup.** While the popup is visible,
+  Back (button, gesture and predictive back on API 33+) closes it through the
+  same path as the close (X) button, so status, cooldown and events are
+  identical; it no longer reaches the host (a Flutter host used to finish the
+  whole Activity). Before the popup is revealed and after it closes, Back goes
+  to the host as usual. iOS has no system Back, nothing changes there.
+- **Triggers fired before the popups load are no longer lost.** `init()` fetches
+  the popup definitions asynchronously, and a `triggerEvent` (or `triggerClick`,
+  a screen exit or a scroll) fired in that window was dropped with
+  `No eligible event popup`, even when the matching popup arrived milliseconds
+  later. They are now buffered (up to 20, oldest dropped first) and replayed in
+  order once the definitions arrive, through the normal evaluation, so segments,
+  cooldowns and conditions apply as usual. If the fetch fails, the buffer is
+  discarded. Triggers fired after loading behave as before.
+- **iOS: `close()` / `Deepdots.dismiss()` only close the SDK popup.** They used to
+  dismiss whatever view controller was presented over the context, so calling them
+  while the host had its own modal open (a picker, a share sheet) closed the host's
+  modal instead. The popup view controller is now tagged (`restorationIdentifier`,
+  the iOS twin of the Android container tag) and only that one is dismissed.
+- **The survey's load notice no longer reaches the host as `popup_clicked`.** The
+  WebView sent the survey's style, language and progress under the name
+  `popup_clicked`, so every opening (even one whose survey then failed to load)
+  produced a false click in the host's `PopupClicked` listener. It now travels
+  as `loaded` and stays inside the SDK; a bridge `popup_clicked` without an
+  `action` is ignored. Real interactions still emit `PopupClicked` as before.
+  Same rule as the web SDK.
 - **A session closed while its first batch was still in flight no longer comes
   back.** The closing batch (`onBackground()`) does not wait for the first one,
   and when the first one's response arrived afterwards the SDK cached its
@@ -29,6 +84,58 @@ Parity with Popup Web SDK [PR #14](https://github.com/MagicFeedback/deepdots-pop
   (after logging it, as before) instead of returning `null`; the batch is still
   dropped, not retried.
 
+## 0.6.2 - 2026-10-08
+
+### Changed
+
+- **Surveys SDK `@magicfeedback/native` 2.2.31 in the WebView** (was 2.2.22). Picking an
+  answer that moves the survey on by itself (Yes/No, a single choice, a rating) now waits
+  300 ms, so the respondent sees the option selected before the next page; tapping another
+  option inside that time sends only the last one, once. Reported by a customer on iOS with
+  0.6.1: tapping "Nej" jumped to the next question straight away. A question can also have
+  that behaviour turned off (`autoAdvance: false`), and then the respondent presses Next.
+  Other survey changes since 2.2.22: a double tap no longer answers the next page (taps
+  are ignored for 400 ms after a page change), an 11-point rating stacks into a column when
+  the card is too narrow for 44 px options, and finishing a survey no longer logs an error.
+  The survey stylesheet moves with it to `@magicfeedback/popup-sdk` 1.10.0 (copied from
+  2.2.31): a matrix in a narrow card shows one statement at a time with its options stacked
+  instead of a table cut off at the side, and an option no longer looks selected on touch
+  because of a leftover hover.
+- **Smoother page changes inside the survey.** Moving to the next page (also when a
+  question auto-advances, such as a Yes/No or a rating) made the card jump: the footer
+  disappeared while the page was sent, a white veil with a spinner covered the whole card
+  even when the page arrived in 200 ms, and the card snapped to every intermediate height
+  the survey reported. Now the footer stays in place (its buttons do not respond while the
+  page is sent), the card keeps its height until the new page arrives and then resizes with
+  a short transition, the progress bar folds away on the completion screen instead of
+  vanishing, and the spinner only appears, over the survey area, if the page takes longer
+  than 400 ms. Reported by a customer on iOS with 0.6.1.
+
+## 0.6.1 - 2026-10-06
+
+### Fixed
+
+- **The survey's end screen replaces the last question.** On completion the
+  thank-you message used to appear below the last question, which stayed on
+  screen, and was cut off because the WebView kept the question's height. The
+  `@magicfeedback/native` survey renames the element the popup looked it up by,
+  so the popup lost track of it once the survey loaded. It now relies on its own
+  wrappers: the form is hidden, the message shows on its own, and the card
+  fits its content on every page (it did not resize between pages either).
+- **Survey options no longer look selected before the user taps them.** WebKit
+  keeps `:hover` on the last point touched inside the WebView, and the Send
+  button is native, so the option of the next page that landed on that point
+  showed the brand border and a grey fill. The survey stylesheet now comes from
+  popup-sdk 1.9.0, where hover styles only apply to devices that can hover.
+- **Exit popups with no delay are no longer lost, or queued twice.** When the
+  route changed, the popup was handed to a background thread before the SDK
+  recorded the new route. If that thread ran first, it still saw the previous
+  route, took the popup for "route did not change" and dropped it; or both
+  threads queued it at once and corrupted the popup queue. The popup queues are
+  now guarded by a lock and an exit popup with no delay is shown on the caller's
+  thread, once the new route is set. Android and iOS only: JavaScript is
+  single-threaded, so the web SDK is not affected.
+- **The iOS example app builds again** (it was missing `InitOptions.geolocation`).
 ## 0.6.0 - 2026-10-05
 
 Parity with Popup Web SDK 1.6.0 to 1.8.4 for everything that applies to the
