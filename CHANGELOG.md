@@ -16,6 +16,42 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   same. The event name and every other event are unchanged; consumers that ignore the
   param keep working.
 
+### Fixed
+
+- **Android: the popup now shows on any `Activity`, not only on a
+  `ComponentActivity`.** With a plain `android.app.Activity` (notably Flutter's
+  default `FlutterActivity`) the popup silently never appeared. When the host
+  activity does not provide the view-tree lifecycle/saved-state owners, the SDK
+  now installs its own, scoped to the popup and destroyed when it closes.
+  `ComponentActivity` hosts (AppCompat, FragmentActivity, FlutterFragmentActivity)
+  behave exactly as before.
+- **Android: the system Back closes the popup.** While the popup is visible,
+  Back (button, gesture and predictive back on API 33+) closes it through the
+  same path as the close (X) button, so status, cooldown and events are
+  identical; it no longer reaches the host (a Flutter host used to finish the
+  whole Activity). Before the popup is revealed and after it closes, Back goes
+  to the host as usual. iOS has no system Back, nothing changes there.
+- **Triggers fired before the popups load are no longer lost.** `init()` fetches
+  the popup definitions asynchronously, and a `triggerEvent` (or `triggerClick`,
+  a screen exit or a scroll) fired in that window was dropped with
+  `No eligible event popup`, even when the matching popup arrived milliseconds
+  later. They are now buffered (up to 20, oldest dropped first) and replayed in
+  order once the definitions arrive, through the normal evaluation, so segments,
+  cooldowns and conditions apply as usual. If the fetch fails, the buffer is
+  discarded. Triggers fired after loading behave as before.
+- **iOS: `close()` / `Deepdots.dismiss()` only close the SDK popup.** They used to
+  dismiss whatever view controller was presented over the context, so calling them
+  while the host had its own modal open (a picker, a share sheet) closed the host's
+  modal instead. The popup view controller is now tagged (`restorationIdentifier`,
+  the iOS twin of the Android container tag) and only that one is dismissed.
+- **The survey's load notice no longer reaches the host as `popup_clicked`.** The
+  WebView sent the survey's style, language and progress under the name
+  `popup_clicked`, so every opening (even one whose survey then failed to load)
+  produced a false click in the host's `PopupClicked` listener. It now travels
+  as `loaded` and stays inside the SDK; a bridge `popup_clicked` without an
+  `action` is ignored. Real interactions still emit `PopupClicked` as before.
+  Same rule as the web SDK.
+
 ## 0.6.2 - 2026-10-08
 
 ### Changed

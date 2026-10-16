@@ -317,9 +317,10 @@ ${PopupReveal.REVEAL_JS}
                             }
                           }
                           // El total solo se conoce con el form ya montado: lo necesita la barra
-                          // de progreso que pinta la capa nativa.
-                          emitJSON('popup_clicked', { style: style, surveyLang: surveyLang, progress: form.progress || 0, total: form.total || 0 });
-                          emit('loaded'); // explicit loaded for Kotlin UI state
+                          // de progreso que pinta la capa nativa. Es un aviso de carga, NO un
+                          // click: antes viajaba como 'popup_clicked' y el host recibía un click
+                          // falso en cada apertura.
+                          emitJSON('${PopupReveal.LOADED_EVENT}', { style: style, surveyLang: surveyLang, progress: form.progress || 0, total: form.total || 0 });
                           ddReportHeight(); // por si el WebView no trae ResizeObserver
                           ddReveal.whenPainted();
                         } catch(e){ console.error('[MagicFeedback] onLoadedEvent emit error', e); }

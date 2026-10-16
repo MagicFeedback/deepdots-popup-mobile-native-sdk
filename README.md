@@ -163,7 +163,7 @@ Output in `shared/build/outputs/aar/`.
 Frameworks for each iOS target are placed in `shared/build/bin/`.
 
 ## 11. Runtime Style Overrides
-Events `loaded`/`popup_clicked` may include style overrides in the payload:
+The `loaded` bridge event (survey mounted) may include style overrides in the payload:
 - Colors: `buttonPrimaryColor`, `boxBackgroundColor`.
 - Start message: `startMessage` (shows a Start button initially if present).
 - Image/Logo: `image` or `logo` URL; `imageSize`/`logoSize` (small|medium|large); `imagePosition`/`logoPosition` (left|right|center).
@@ -183,7 +183,7 @@ Events `loaded`/`popup_clicked` may include style overrides in the payload:
 ## 13. Troubleshooting
 | Issue | Common Cause | Solution |
 |-------|--------------|----------|
-| Spinner not showing | Initial state not Loading | Initial state is Loading; verify `loaded`/`popup_clicked` arrive to hide it |
+| Spinner not showing | Initial state not Loading | Initial state is Loading; verify `loaded` arrives to hide it |
 | No validation banner | Bridge not emitting or logs not forwarded | Android: check WebView logs; iOS: ensure WKUserScript is injected before load |
 | Footer hidden on Android | Survey area too tall | WebView uses fixed height; popup keeps footer visible; adjust height if needed |
 | iOS no image/logo | Asset not in bundle | Place `magicfeedback-sdk.browser.js` and ensure copy resources |
@@ -197,7 +197,7 @@ The SDK builds HTML to load the MagicFeedback bundle from a local asset (if avai
 val html = Deepdots.getSurveyHtml(surveyId = "survey-123", productId = "product-xyz")
 ```
 Emitted lifecycle events include:
-- `popup_clicked`, `survey_completed`
+- `loaded` (survey mounted; carries `style`, `surveyLang`, `progress`, `total`; not a user interaction, never forwarded to hosts as `PopupClicked`), `after_submit`, `back`, `survey_completed`
 - `error:init`, `error:timeout`, `error:module`, `error:module-load`
 - Validation/submit errors synthesized via platform logging when not bridged directly.
 

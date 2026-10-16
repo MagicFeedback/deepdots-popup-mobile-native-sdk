@@ -9,11 +9,13 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeUIViewController
 import com.deepdots.sdk.models.Action
 import com.deepdots.sdk.models.PopupDefinition
+import com.deepdots.sdk.platform.DEEPDOTS_POPUP_VC_ID
 import com.deepdots.sdk.platform.PlatformContext
 import com.deepdots.sdk.ui.PopupView
 import platform.UIKit.UIColor
 import platform.UIKit.UIModalPresentationOverFullScreen
 import platform.UIKit.UIViewController
+import platform.UIKit.restorationIdentifier
 
 actual object PopupRenderer {
     actual fun show(
@@ -53,6 +55,8 @@ actual object PopupRenderer {
             )
         }
         controllerRef = vc
+        // Marca para que `dismissPopup` cierre solo este VC y nunca uno del host.
+        vc.restorationIdentifier = DEEPDOTS_POPUP_VC_ID
         // Overlay a pantalla completa, no la "sheet" del sistema (el estilo por defecto en
         // iOS 13+). Con la sheet, el chrome gris que dibuja UIKit se ve SIEMPRE, aunque la vista
         // esté a alpha 0: durante la espera el usuario vería un panel gris vacío, que es peor que

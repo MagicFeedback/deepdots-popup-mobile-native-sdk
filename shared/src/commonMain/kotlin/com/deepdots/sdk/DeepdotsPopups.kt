@@ -78,6 +78,8 @@ import kotlin.math.roundToInt
 
 private const val ANALYTICS_MAX_BATCH_SIZE = 20
 private const val ANALYTICS_FLUSH_INTERVAL_MS = 30_000L
+/** Techo del buffer de disparos recibidos mientras se cargan las definiciones (descarta los más viejos). */
+internal const val MAX_PENDING_TRIGGERS = 20
 /**
  * Latido: con la app en foreground, el flush periódico manda el engagement acumulado al menos
  * cada ANALYTICS_HEARTBEAT_MS. Sin él, una app abierta en una sola pantalla no enviaba nada
@@ -160,6 +162,16 @@ class DeepdotsPopups {
         val font: ServerFontDto? = null,
     )
 
+    /** Disparo del host recibido antes de que lleguen las definiciones de popups. */
+    private sealed class PendingTrigger {
+        data class Event(val name: String) : PendingTrigger()
+        data class Click(val targetId: String) : PendingTrigger()
+        /** Salida de `sourcePath` (ya normalizada): por `setPath` o por `onExit`. */
+        data class Exit(val sourcePath: String) : PendingTrigger()
+        /** Nivel de scroll de la pantalla actual: se guarda solo el máximo. */
+        data class Scroll(val percentage: Int) : PendingTrigger()
+    }
+
     private var initOptions: InitOptions? = null
     private var initialized = false
     private var popupsLoaded = false
@@ -197,6 +209,15 @@ class DeepdotsPopups {
     private val scrollTriggeredPopupIds = mutableSetOf<String>()
     private val deferredExitJobs = mutableMapOf<String, Job>()
     private var popupsService: PopupsService = DefaultPopupsService()
+    /**
+     * `true` mientras el `GET /sdk/{publicKey}/popups` de `init()` está en vuelo. En esa ventana
+     * los disparos del host (`triggerEvent`, `triggerClick`, exit y scroll) no tienen contra qué
+     * evaluarse, así que se guardan en [pendingTriggers] y se reproducen al cargar.
+     */
+    private var awaitingPopups = false
+    private val pendingTriggers = ArrayDeque<PendingTrigger>()
+    /** La carga corre en una corrutina de `Dispatchers.Default` y el host dispara desde su hilo. */
+    private val pendingTriggersLock = SdkLock()
     /** Identidad + sesión (Fase 1 tracking). Null hasta init(). */
     private var tracking: TrackingManager? = null
     /** Capa de analytics (canal separado del feedback). Null hasta init(). */
@@ -402,6 +423,7 @@ class DeepdotsPopups {
             log("Missing publicKey; cannot fetch popups from API")
             return
         }
+        pendingTriggersLock.withLock { awaitingPopups = true }
         scope.launch {
             try {
                 val responseText = popupsService.fetchPopups(publicKey, buildFilterParam())
@@ -414,6 +436,7 @@ class DeepdotsPopups {
                 }
             } catch (t: Throwable) {
                 log("Error fetching popups", t.message ?: "unknown")
+                dropPendingTriggers()
             }
         }
     }
@@ -840,7 +863,11 @@ class DeepdotsPopups {
             log("Ignoring empty event trigger name")
             return
         }
+        if (bufferIfAwaitingPopups(PendingTrigger.Event(normalized))) return
+        evaluateEvent(normalized)
+    }
 
+    private fun evaluateEvent(normalized: String) {
         val matched = popupDefinitions.values.firstOrNull { popup ->
             popup.triggers.any { trigger ->
                 trigger is Trigger.Event && trigger.name.trim() == normalized
@@ -861,7 +888,11 @@ class DeepdotsPopups {
             log("Ignoring empty click trigger id")
             return
         }
+        if (bufferIfAwaitingPopups(PendingTrigger.Click(normalized))) return
+        evaluateClick(normalized)
+    }
 
+    private fun evaluateClick(normalized: String) {
         val matched = popupDefinitions.values.firstOrNull { popup ->
             popup.triggers.any { trigger ->
                 trigger is Trigger.Click && trigger.targetId.trim() == normalized
@@ -906,6 +937,7 @@ class DeepdotsPopups {
 
         currentPath = normalizedPath.ifBlank { null }
         scrollTriggeredPopupIds.clear()
+        forgetPendingScroll()
         log("Path updated", currentPath ?: "null")
         processDeferredExitQueue()
 
@@ -927,6 +959,11 @@ class DeepdotsPopups {
     fun onScroll(percentage: Int) {
         if (!ensureInitialized()) return
         val pct = percentage.coerceIn(0, 100)
+        if (bufferIfAwaitingPopups(PendingTrigger.Scroll(pct))) return
+        evaluateScroll(pct)
+    }
+
+    private fun evaluateScroll(pct: Int) {
         popupDefinitions.values.forEach { popup ->
             popup.triggers.forEach { trigger ->
                 if (trigger is Trigger.Scroll) {
@@ -982,6 +1019,9 @@ class DeepdotsPopups {
 
     internal fun debugQueuedPopupIds(): List<String> = queueLock.withLock { popupQueue.toList() }
 
+    /** Solo test: disparos guardados a la espera de que lleguen las definiciones. */
+    internal fun debugPendingTriggerCount(): Int = pendingTriggersLock.withLock { pendingTriggers.size }
+
     internal fun debugDeferredExitQueue(): List<String> = getDeferredExitQueue().map { "${it.id}@${it.sourcePath}" }
 
     internal fun debugProgressStatus(surveyId: String): TriggerConditionStatus? = surveyProgress[surveyId]?.status
@@ -1033,13 +1073,78 @@ class DeepdotsPopups {
     }
 
     private fun loadPopupDefinitions(definitions: List<PopupDefinition>) {
-        popupDefinitions.clear()
-        definitions.mapNotNull(::normalizePopupDefinition).forEach { popup ->
-            popupDefinitions[popup.id] = popup
+        val normalized = definitions.mapNotNull(::normalizePopupDefinition)
+        // Definiciones y fin de la espera bajo el mismo lock: un disparo concurrente o se guarda
+        // (y entra en este replay) o ya ve las definiciones. Nunca se queda en el buffer sin replay.
+        val replay = pendingTriggersLock.withLock {
+            popupDefinitions.clear()
+            normalized.forEach { popup -> popupDefinitions[popup.id] = popup }
+            awaitingPopups = false
+            pendingTriggers.toList().also { pendingTriggers.clear() }
         }
         popupsLoaded = true
         processDeferredExitQueue()
         log("Loaded popups", popupDefinitions.keys.joinToString())
+        replayPendingTriggers(replay)
+    }
+
+    /**
+     * Guarda [trigger] si las definiciones aún no han llegado. Devuelve `true` si lo guardó (el
+     * llamador no debe evaluarlo ahora) y `false` si no hay carga en vuelo (se evalúa ya, como
+     * siempre: tras cargar, o tras un fallo, o sin publicKey).
+     */
+    private fun bufferIfAwaitingPopups(trigger: PendingTrigger): Boolean {
+        var dropped: PendingTrigger? = null
+        val buffered = pendingTriggersLock.withLock {
+            if (!awaitingPopups) return@withLock false
+            if (trigger is PendingTrigger.Scroll) {
+                // El scroll es un nivel, no un suceso: basta con el máximo alcanzado en la pantalla.
+                val index = pendingTriggers.indexOfFirst { it is PendingTrigger.Scroll }
+                if (index >= 0) {
+                    val current = pendingTriggers[index] as PendingTrigger.Scroll
+                    if (trigger.percentage > current.percentage) pendingTriggers[index] = trigger
+                    return@withLock true
+                }
+            }
+            if (pendingTriggers.size >= MAX_PENDING_TRIGGERS) dropped = pendingTriggers.removeFirst()
+            pendingTriggers.addLast(trigger)
+            true
+        }
+        if (buffered) log("Popups not loaded yet; trigger buffered", trigger)
+        dropped?.let { log("Pending trigger buffer full; dropped oldest", it) }
+        return buffered
+    }
+
+    /** El nivel de scroll guardado era de la pantalla que se deja: no aplica a la nueva. */
+    private fun forgetPendingScroll() {
+        pendingTriggersLock.withLock { pendingTriggers.removeAll { it is PendingTrigger.Scroll } }
+    }
+
+    /** La carga falló: sin definiciones no habrá replay, así que se descarta y se deja de guardar. */
+    private fun dropPendingTriggers() {
+        val dropped = pendingTriggersLock.withLock {
+            awaitingPopups = false
+            pendingTriggers.size.also { pendingTriggers.clear() }
+        }
+        if (dropped > 0) log("Popups failed to load; dropped pending triggers", dropped)
+    }
+
+    /** Reproduce por la evaluación normal (segmentos, cooldowns y condiciones con el estado de AHORA). */
+    private fun replayPendingTriggers(triggers: List<PendingTrigger>) {
+        if (triggers.isEmpty()) return
+        log("Replaying triggers received before popups loaded", triggers.size)
+        triggers.forEach { trigger ->
+            when (trigger) {
+                is PendingTrigger.Event -> evaluateEvent(trigger.name)
+                is PendingTrigger.Click -> evaluateClick(trigger.targetId)
+                is PendingTrigger.Exit -> queueExitPopups(trigger.sourcePath)
+                is PendingTrigger.Scroll -> evaluateScroll(trigger.percentage)
+            }
+        }
+        // Una salida sin retraso no programa corrutina: la muestra processDeferredExitQueue(), que
+        // setPath() llama con la ruta ya nueva. Aquí la ruta actual ya es la de destino, pero la
+        // pasada de loadPopupDefinitions() fue ANTES de este replay, así que hay que repetirla.
+        if (triggers.any { it is PendingTrigger.Exit }) processDeferredExitQueue()
     }
 
     private fun normalizePopupDefinition(definition: PopupDefinition): PopupDefinition? {
@@ -1203,10 +1308,18 @@ class DeepdotsPopups {
 
     private fun handleSurveyRuntimeEvent(popup: PopupDefinition, name: String, payload: String?) {
         when (name) {
+            // `loaded` (PopupReveal.LOADED_EVENT) no tiene rama a propósito: es el aviso de que
+            // el survey cargó, no una interacción, y no debe llegar al host como PopupClicked.
             "popup_clicked" -> {
                 val extra = parseEventPayload(payload)
-                emitPopupClicked(popup, extra)
                 val action = extra["action"] as? String
+                // Un click del puente siempre dice qué se pulsó. Sin `action` es la forma del
+                // aviso de carga antiguo, que el host recibía como un click falso.
+                if (action.isNullOrBlank()) {
+                    log("Ignoring bridge popup_clicked without action", payload ?: "")
+                    return
+                }
+                emitPopupClicked(popup, extra)
                 if (action == "partial") {
                     recordSurveyPartial(popup)
                 }
@@ -1333,6 +1446,7 @@ class DeepdotsPopups {
 
     private fun queueExitPopups(sourcePath: String) {
         val normalizedSource = normalizeUrl(sourcePath)
+        if (bufferIfAwaitingPopups(PendingTrigger.Exit(normalizedSource))) return
         popupDefinitions.values.forEach { popup ->
             popup.triggers.forEach { trigger ->
                 if (trigger is Trigger.Exit) {

@@ -103,6 +103,12 @@ fun PopupView(
     /** Etiqueta de la API si la plataforma la configuró; si no, la traducción del SDK. */
     fun actionLabel(apiLabel: String?, slot: DefaultLabels.Slot): String =
         apiLabel?.takeIf { it.isNotBlank() } ?: labels.get(slot)
+
+    // Cerrar desde el chrome: la X y el Back del sistema (Android) comparten este handler, así
+    // que el Back reporta, guarda el cooldown y emite eventos igual que la X. Solo con el popup a
+    // la vista: mientras se espera la apertura diferida, el Back sigue siendo del host.
+    val requestClose: () -> Unit = { onAction(popupCloseAction(popup, labels.decline)) }
+    PopupBackHandler(enabled = revealed, onBack = requestClose)
     var surveyController: SurveyController? by remember { mutableStateOf(null) }
 
     // Lo que el WebView dice que ocupa el survey (px CSS = dp). El WebView no tiene tamaño
@@ -223,11 +229,7 @@ fun PopupView(
                                 lineHeight = 24.sp
                             )
                             IconButton(
-                                onClick = {
-                                    val decline = popup.actions.decline
-                                    if (decline != null) onAction(decline)
-                                    else onAction(Action.Decline(label = labels.decline, cooldownDays = 0))
-                                },
+                                onClick = requestClose,
                                 // La X no tiene texto: sin descripción el lector de pantalla solo
                                 // anuncia "botón". Paridad con el aria-label del popup web.
                                 modifier = Modifier.size(32.dp)
@@ -409,7 +411,7 @@ fun PopupView(
                                                 payloadNumber("height")?.let { h ->
                                                     surveyContentHeightDp = h.toInt()
                                                 }
-                                            "popup_clicked", "loaded" -> {
+                                            PopupReveal.LOADED_EVENT -> {
                                                 // Apply runtime style overrides if provided
                                                 val primaryHex = Regex("\"buttonPrimaryColor\"\\s*:\\s*\"(#[0-9A-Fa-f]{3,8})\"").find(payload ?: "")?.groupValues?.get(1)
                                                 val bgHex = Regex("\"boxBackgroundColor\"\\s*:\\s*\"(#[0-9A-Fa-f]{3,8})\"").find(payload ?: "")?.groupValues?.get(1)
