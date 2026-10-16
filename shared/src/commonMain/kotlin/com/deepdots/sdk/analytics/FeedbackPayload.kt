@@ -2,6 +2,7 @@ package com.deepdots.sdk.analytics
 
 import com.deepdots.sdk.service.RejectedFeedbackException
 import com.deepdots.sdk.util.SdkLock
+import com.deepdots.sdk.util.beginBackgroundTask
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -189,6 +190,11 @@ internal class FeedbackSink(
      * nunca para código del host.
      */
     private val onCachedSessionIdChanged: ((String?) -> Unit)? = null,
+    /**
+     * Mantiene viva la app mientras sale el lote de CIERRE (va justo en `onBackground()`):
+     * en iOS, una background task. Devuelve con qué terminarla. Seam de test.
+     */
+    private val keepAlive: (String) -> () -> Unit = ::beginBackgroundTask,
 ) {
     private val lock = SdkLock()
     private var feedbackSessionId: String? = null
@@ -231,6 +237,12 @@ internal class FeedbackSink(
                 firstPostInFlight = job
             }
             job
+        }
+        if (closing) {
+            // Divergencia con Web (allí lo cubre sendBeacon): sin esto iOS puede suspender la
+            // app con el POST de cierre en vuelo. Termina al acabar el envío, vaya como vaya.
+            val end = keepAlive("deepdots-analytics-session-end")
+            job.invokeOnCompletion { end() }
         }
         job.start()
     }
