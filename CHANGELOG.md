@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.0 - 2026-10-16
+
 ### Added
 
 - **`deepdots_session_start` says why the session started**, in a new `reason` param.
