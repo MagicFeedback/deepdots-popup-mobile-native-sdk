@@ -208,6 +208,15 @@ internal fun buildMagicFeedbackHtml(
               var mfReady = false; // becomes true when form onLoadedEvent fires
 ${SurveyPalette.PRIMARY_COLOR_JS}
 ${SurveyBusy.BUSY_JS}
+              // Foco en la primera pregunta si es de escribir. Al navegar lo pone
+              // @magicfeedback/native (autofocus:'navigation'); al abrir lo pide el popup, y solo
+              // con raton o trackpad: en un movil sacaria el teclado sin que el usuario haya tocado
+              // nada. Paridad con el SDK Web (renderPopup.ts / surveyHtml.ts).
+              var ddSurveyLoaded = false;
+              function ddAutofocusOnOpen(form){
+                var fine = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: fine)').matches;
+                if (fine && form && typeof form.focusFirstQuestion === 'function') { form.focusFirstQuestion(); }
+              }
 ${PopupReveal.REVEAL_JS}
               // Apertura diferida: la capa nativa mantiene el popup invisible hasta este aviso,
               // para que el usuario vea la tarjeta ya pintada en vez del spinner. Se manda
@@ -323,6 +332,8 @@ ${PopupReveal.REVEAL_JS}
                           emitJSON('${PopupReveal.LOADED_EVENT}', { style: style, surveyLang: surveyLang, progress: form.progress || 0, total: form.total || 0 });
                           ddReportHeight(); // por si el WebView no trae ResizeObserver
                           ddReveal.whenPainted();
+                          // La primera carga es la apertura; las siguientes (tras Start) las enfoca native.
+                          if (!ddSurveyLoaded) { ddSurveyLoaded = true; ddAutofocusOnOpen(form); }
                         } catch(e){ console.error('[MagicFeedback] onLoadedEvent emit error', e); }
                       },
                       beforeSubmitEvent: function(){
@@ -359,6 +370,10 @@ ${PopupReveal.REVEAL_JS}
                         } catch(e){ console.error('[MagicFeedback] onBackEvent emit error', e); }
                       },
                       getMetaData: true,
+                      // Foco en la primera pregunta de escribir tras Start, Siguiente o Atras. Native
+                      // lo aplica despues de afterSubmitEvent/onBackEvent, cuando ya se ha soltado el
+                      // bloqueo de carga. Las versiones sin la opcion la ignoran.
+                      autofocus: 'navigation',
                       customMetaData: $customMetaJsArray
                     }).catch(function(e){ console.error(e); emit('error:init'); });
                     return true;

@@ -15,6 +15,14 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   and `user_change` (`setUserId()`). Same values as the web SDK where the meaning is the
   same. The event name and every other event are unchanged; consumers that ignore the
   param keep working.
+- **Focus on text questions.** When the first question of a page is a text
+  field (text, long text, email or number), the cursor is placed in it after
+  Start, Next or Back. When the popup opens nothing is focused on touch
+  devices, so the keyboard never pops up over a popup the user has not touched.
+  Same rule as the web SDK. The focus comes from `@magicfeedback/native` 2.2.31
+  (its `autofocus: 'navigation'` option), which the WebView already loads.
+  Whether iOS and Android open the keyboard for it is not verified on a device
+  yet.
 
 ### Fixed
 
@@ -78,14 +86,6 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   a short transition, the progress bar folds away on the completion screen instead of
   vanishing, and the spinner only appears, over the survey area, if the page takes longer
   than 400 ms. Reported by a customer on iOS with 0.6.1.
-- **`@magicfeedback/native` 2.2.31** (from 2.2.22), loaded from the CDN by the
-  survey WebView, with the stylesheet pinned to `@magicfeedback/popup-sdk@1.10.0`,
-  the release that re-vendors it from 2.2.31. Brings the MaxDiff question type,
-  a 300 ms pause before an option auto-advances (the pick is seen checked), a
-  ghost tap guard after each page change, narrow layouts for the matrix and the
-  numeric rating, and the `autofocus` option used for the focus on text
-  questions. Both versions move together: the WebView must not combine the
-  JavaScript of one release with the stylesheet of another.
 
 ## 0.6.1 - 2026-10-06
 
