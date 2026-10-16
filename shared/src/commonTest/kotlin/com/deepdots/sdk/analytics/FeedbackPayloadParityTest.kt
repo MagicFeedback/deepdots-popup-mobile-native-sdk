@@ -1,5 +1,9 @@
 package com.deepdots.sdk.analytics
 
+import com.deepdots.sdk.service.RejectedFeedbackException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
@@ -10,7 +14,8 @@ import kotlin.test.assertTrue
 
 /**
  * Paridad con el builder Web (src/analytics/feedback-payload.test.ts):
- * envelope de analytics → body de POST /sdk/feedback.
+ * envelope de analytics → body de POST /sdk/feedback, y el transporte (`FeedbackSink`, espejo
+ * de `createFeedbackSink`).
  */
 class FeedbackPayloadParityTest {
 
@@ -171,5 +176,112 @@ class FeedbackPayloadParityTest {
         assertTrue("deepdots_device_type" !in keysMd)
         assertTrue("deepdots_platform" in keysMd)
         assertNull(body.sessionId)
+    }
+
+    // ── FeedbackSink (espejo de `describe('createFeedbackSink')`) ──────────────────────────
+    //
+    // Con `Dispatchers.Unconfined` el envío corre en el hilo del test hasta su primera
+    // suspensión, y al completar una puerta se reanuda en el acto: los tests son síncronos y
+    // corren igual en JVM que en el simulador de iOS (sin `runBlocking`).
+
+    private val unconfined = CoroutineScope(Dispatchers.Unconfined)
+
+    /** Doble del POST: devuelve `responses[i]` en la llamada i (la última se repite). */
+    private class FakePost(vararg val responses: suspend () -> String?) {
+        val bodies = mutableListOf<AnalyticsFeedbackBody>()
+        suspend fun post(body: AnalyticsFeedbackBody): String? {
+            bodies += body
+            return responses[minOf(bodies.size - 1, responses.size - 1)]()
+        }
+    }
+
+    private fun feedbackSink(
+        fake: FakePost,
+        onSessionId: ((String) -> Unit)? = null,
+        onSessionClosed: ((String) -> Unit)? = null,
+    ) = FeedbackSink(
+        keys = keys,
+        scope = unconfined,
+        post = fake::post,
+        onSessionId = onSessionId,
+        onSessionClosed = onSessionClosed,
+    )
+
+    private val closingMeta = AnalyticsFlushMeta(final = true, sessionEnd = true)
+
+    @Test
+    fun sink_reports_on_session_closed_with_the_session_id_of_the_record_it_closes() {
+        val closed = mutableListOf<String>()
+        // Respuesta de cierre sin sessionId: vale el que llevaba el lote.
+        val fake = FakePost({ "fbk-1" }, { null })
+        val sink = feedbackSink(fake, onSessionClosed = { closed += it })
+
+        sink.send(envelope(), AnalyticsFlushMeta()) {} // abre fbk-1
+        assertEquals(emptyList(), closed)
+        sink.send(envelope(), closingMeta) {}
+
+        assertEquals("fbk-1", fake.bodies[1].sessionId)
+        assertEquals(listOf("fbk-1"), closed)
+    }
+
+    @Test
+    fun sink_single_batch_session_reports_the_closing_response_id_but_no_open() {
+        val opened = mutableListOf<String>()
+        val closed = mutableListOf<String>()
+        val sink = feedbackSink(FakePost({ "fbk-9" }), onSessionId = { opened += it }, onSessionClosed = { closed += it })
+
+        sink.send(envelope(), closingMeta) {}
+
+        assertEquals(emptyList(), opened, "el cierre no se re-cachea")
+        assertEquals(listOf("fbk-9"), closed)
+        assertNull(sink.currentSessionId())
+    }
+
+    @Test
+    fun sink_ignores_the_first_response_when_the_session_closed_while_it_was_in_flight() {
+        // onBackground() con el primer POST aún sin respuesta: el cierre (final) no lo espera.
+        val gate = CompletableDeferred<String?>()
+        val opened = mutableListOf<String>()
+        val fake = FakePost({ gate.await() }, { null })
+        val sink = feedbackSink(fake, onSessionId = { opened += it })
+
+        sink.send(envelope(), AnalyticsFlushMeta()) {}
+        sink.send(envelope(), closingMeta) {}
+        gate.complete("fbk-stale")
+
+        // Ni se avisa como abierto ni se cachea: el lote siguiente (sesión nueva) va sin sessionId.
+        assertEquals(emptyList(), opened)
+        assertNull(sink.currentSessionId())
+        sink.send(envelope(), AnalyticsFlushMeta()) {}
+        assertEquals(3, fake.bodies.size)
+        assertNull(fake.bodies[2].sessionId)
+    }
+
+    @Test
+    fun sink_does_not_report_on_session_closed_when_the_backend_rejects_the_closing_batch() {
+        val closed = mutableListOf<String>()
+        var requeued = 0
+        val fake = FakePost({ "fbk-1" }, { throw RejectedFeedbackException("406 Contact not found") })
+        val sink = feedbackSink(fake, onSessionClosed = { closed += it })
+
+        sink.send(envelope(), AnalyticsFlushMeta()) {}
+        sink.send(envelope(), closingMeta) { requeued++ }
+
+        assertEquals(emptyList(), closed)
+        assertEquals(0, requeued, "un 4xx se descarta, no se reintenta")
+    }
+
+    /** Solo KMP: aquí el fallo se señaliza con `requeue()`, así que hay que blindarlo aparte. */
+    @Test
+    fun sink_a_throwing_on_session_closed_does_not_requeue_the_delivered_closing_batch() {
+        var requeued = 0
+        val fake = FakePost({ "fbk-1" })
+        val sink = feedbackSink(fake, onSessionClosed = { throw IllegalStateException("bug del host") })
+
+        sink.send(envelope(), AnalyticsFlushMeta()) {}
+        sink.send(envelope(), closingMeta) { requeued++ }
+
+        assertEquals(0, requeued, "el cierre se entregó: re-encolarlo lo enviaría dos veces")
+        assertEquals(2, fake.bodies.size)
     }
 }

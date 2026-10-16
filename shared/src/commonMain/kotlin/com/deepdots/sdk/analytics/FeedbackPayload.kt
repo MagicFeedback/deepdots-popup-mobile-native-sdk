@@ -1,5 +1,11 @@
 package com.deepdots.sdk.analytics
 
+import com.deepdots.sdk.service.RejectedFeedbackException
+import com.deepdots.sdk.util.SdkLock
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -147,4 +153,142 @@ fun buildAnalyticsFeedbackBody(
         finished = false,
         sessionId = feedbackSessionId,
     )
+}
+
+/**
+ * Transporte real del canal de analytics (`POST /sdk/feedback`). Espejo de `createFeedbackSink`
+ * (Web): cachea el `sessionId` del registro abierto y lo lleva en cada lote, y además:
+ *  - mientras no se conozca el `sessionId`, los lotes se **serializan** (esperan la primera
+ *    respuesta): dos POST a la vez sin `sessionId` crearían dos registros y partirían los datos.
+ *    En el flush final no se espera (la app se está yendo): mejor partido que perdido;
+ *  - el lote de cierre (`sessionEnd`) lleva el `sessionId` del registro que cierra y lo olvida en
+ *    el acto, para que el siguiente abra uno nuevo;
+ *  - un fallo transitorio (red, 5xx, 408, 429) llama a `requeue` (el manager re-encola el lote);
+ *    un 4xx ([RejectedFeedbackException]) se descarta.
+ *
+ * El estado se toca desde el hilo del host (`send`, llamado por el flush) y desde la corrutina de
+ * envío (la respuesta), así que va bajo [SdkLock]. Los callbacks del host se invocan FUERA del
+ * lock y blindados: un fallo suyo no puede convertir un lote entregado en uno fallido (se
+ * re-encolaría y el cierre se enviaría dos veces).
+ */
+internal class FeedbackSink(
+    private val keys: AnalyticsKeys,
+    private val scope: CoroutineScope,
+    private val post: suspend (AnalyticsFeedbackBody) -> String?,
+    private val log: (String) -> Unit = {},
+    /** El backend aceptó el primer lote de una sesión: `sessionId` nuevo cacheado. */
+    private val onSessionId: ((String) -> Unit)? = null,
+    /**
+     * El backend aceptó el lote de cierre, con el `sessionId` del registro cerrado: el que
+     * devuelve la respuesta o, si no trae, el que llevaba el lote. No se re-cachea.
+     */
+    private val onSessionClosed: ((String) -> Unit)? = null,
+    /**
+     * Espejo SÍNCRONO del `sessionId` cacheado (nuevo valor o null al cerrar). Se llama CON el
+     * lock tomado para que el espejo no pueda quedar desfasado: solo para estado interno del SDK,
+     * nunca para código del host.
+     */
+    private val onCachedSessionIdChanged: ((String?) -> Unit)? = null,
+) {
+    private val lock = SdkLock()
+    private var feedbackSessionId: String? = null
+    /** Primer POST (aún sin sessionId) en vuelo: los lotes siguientes lo esperan. */
+    private var firstPostInFlight: Job? = null
+    /**
+     * Sube cada vez que se cierra una sesión. Una respuesta que llega con otra generación es de
+     * una sesión ya cerrada (p. ej. el primer POST seguía en vuelo en el `onBackground()`, y el
+     * cierre no lo espera) y no puede volver a cachear su sessionId ni avisarlo como abierto.
+     */
+    private var generation = 0
+
+    /** `sessionId` del registro abierto; null antes del primer lote aceptado y tras cerrar. */
+    fun currentSessionId(): String? = lock.withLock { feedbackSessionId }
+
+    val sink: AnalyticsSink = { envelope, meta, requeue -> send(envelope, meta, requeue) }
+
+    fun send(envelope: AnalyticsEnvelope, meta: AnalyticsFlushMeta, requeue: () -> Unit) {
+        val closing = meta.sessionEnd
+        val job = lock.withLock {
+            // El lote de cierre SÍ lleva el sessionId (es el registro que se cierra); es el
+            // siguiente el que lo omite para que el backend abra uno nuevo.
+            val carried = feedbackSessionId
+            val waitFor = if (!closing && !meta.final && feedbackSessionId == null) firstPostInFlight else null
+            // LAZY: el Job se registra como barrera antes de arrancar, sin hueco para otro hilo.
+            val job = scope.launch(start = CoroutineStart.LAZY) {
+                runCatching { waitFor?.join() }
+                // La generación se fija junto al sessionId del body: identifica la sesión del lote.
+                val (sessionId, postGeneration) = lock.withLock {
+                    (if (closing) carried else feedbackSessionId) to generation
+                }
+                deliver(envelope, closing, sessionId, postGeneration, requeue)
+            }
+            if (closing) {
+                feedbackSessionId = null
+                firstPostInFlight = null
+                generation++
+                onCachedSessionIdChanged?.invoke(null)
+            } else if (feedbackSessionId == null) {
+                firstPostInFlight = job
+            }
+            job
+        }
+        job.start()
+    }
+
+    private suspend fun deliver(
+        envelope: AnalyticsEnvelope,
+        closing: Boolean,
+        sessionId: String?,
+        postGeneration: Int,
+        requeue: () -> Unit,
+    ) {
+        val body = buildAnalyticsFeedbackBody(envelope, keys, sessionId, BuildBodyOptions(sessionEnd = closing))
+        val returned = try {
+            post(body)
+        } catch (_: RejectedFeedbackException) {
+            return // 4xx: ya logueado por el servicio, el lote se descarta
+        } catch (t: Throwable) {
+            // Fallo transitorio (red/5xx/408/429): devolver el lote al buffer.
+            log("analytics · transient failure sending feedback, batch requeued: ${t.message}")
+            requeue()
+            return
+        }
+
+        // El POST de cierre devuelve el sessionId del registro que acabamos de cerrar: NO se
+        // re-cachea (el lote siguiente volvería a apuntar al registro cerrado), pero se avisa por
+        // onSessionClosed, porque ese registro ya va a ser un Feedback.
+        if (closing) {
+            val closedId = returned ?: sessionId
+            if (closedId != null) notifyHost("onSessionClosed") { onSessionClosed?.invoke(closedId) }
+            return
+        }
+
+        var stale = false
+        val opened = lock.withLock {
+            if (postGeneration != generation) {
+                stale = true
+                null
+            } else if (returned != null && returned != feedbackSessionId) {
+                feedbackSessionId = returned
+                onCachedSessionIdChanged?.invoke(returned)
+                returned
+            } else {
+                null
+            }
+        }
+        if (stale) {
+            log("analytics · sessionId of a closed session ignored: $returned")
+        } else if (opened != null) {
+            log("analytics · feedbackSessionId cached: $opened")
+            notifyHost("onSessionId") { onSessionId?.invoke(opened) }
+        }
+    }
+
+    private inline fun notifyHost(name: String, block: () -> Unit) {
+        try {
+            block()
+        } catch (t: Throwable) {
+            log("analytics · $name threw: ${t.message}")
+        }
+    }
 }

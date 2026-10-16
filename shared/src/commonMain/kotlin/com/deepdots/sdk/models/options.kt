@@ -36,6 +36,19 @@ data class InitOptions(
      */
     val analytics: AnalyticsKeys? = null,
     /**
+     * Called when the analytics channel opens or closes a session (needs [analytics]), with the
+     * id the Deepdots API stores as `sdkSessionId` on the feedback the session becomes: send it
+     * to your backend to attach data to that feedback later. A session whose only batch is the
+     * closing one reports just `Closed`. `Closed` does not come when the app is killed before
+     * the closing request returns, nor when the closing request fails (the API closes those
+     * itself, later): their id already came with `Open`. Key by `sessionId`, not by order: the
+     * next session's `Open` can arrive before the previous one's `Closed`. Same value as
+     * `DeepdotsPopups.getFeedbackSessionId()` while the session is open. Called from a
+     * background thread: hop to the main thread before touching UI. Paridad con Web
+     * `DeepdotsInitParams.onFeedbackSession`.
+     */
+    val onFeedbackSession: ((FeedbackSession) -> Unit)? = null,
+    /**
      * Geolocalización por IP (país/ciudad) añadida a analytics. Default `true`. El lookup llama
      * a servicios de terceros (ipapi.co, luego ipwho.is y luego ipinfo.io como fallback, 3 s de
      * timeout cada uno) y solo se hace con `analytics` configurado, el tracking activo y la

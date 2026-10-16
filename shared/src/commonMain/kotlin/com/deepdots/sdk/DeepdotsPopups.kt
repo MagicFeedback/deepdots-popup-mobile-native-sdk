@@ -9,6 +9,8 @@ import com.deepdots.sdk.models.CooldownCondition
 import com.deepdots.sdk.models.Event
 import com.deepdots.sdk.models.Environment
 import com.deepdots.sdk.models.EventData
+import com.deepdots.sdk.models.FeedbackSession
+import com.deepdots.sdk.models.FeedbackSessionStatus
 import com.deepdots.sdk.models.InitOptions
 import com.deepdots.sdk.models.LegacyCondition
 import com.deepdots.sdk.models.PopupDefinition
@@ -16,6 +18,7 @@ import com.deepdots.sdk.models.PopupFont
 import com.deepdots.sdk.models.Position
 import com.deepdots.sdk.models.Segments
 import com.deepdots.sdk.models.SessionEndReason
+import com.deepdots.sdk.models.SessionStartReason
 import com.deepdots.sdk.models.ShowOptions
 import com.deepdots.sdk.models.Style
 import com.deepdots.sdk.models.SurveyProgressState
@@ -28,7 +31,7 @@ import com.deepdots.sdk.analytics.AnalyticsEnvelope
 import com.deepdots.sdk.analytics.AnalyticsContext
 import com.deepdots.sdk.analytics.AnalyticsFlushMeta
 import com.deepdots.sdk.analytics.AnalyticsIdentity
-import com.deepdots.sdk.analytics.BuildBodyOptions
+import com.deepdots.sdk.analytics.FeedbackSink
 import com.deepdots.sdk.analytics.collectGeoInfo
 import com.deepdots.sdk.analytics.readCachedGeo
 import com.deepdots.sdk.analytics.resolveLanguage
@@ -77,6 +80,8 @@ import kotlin.math.roundToInt
 
 private const val ANALYTICS_MAX_BATCH_SIZE = 20
 private const val ANALYTICS_FLUSH_INTERVAL_MS = 30_000L
+/** Techo del buffer de disparos recibidos mientras se cargan las definiciones (descarta los más viejos). */
+internal const val MAX_PENDING_TRIGGERS = 20
 /**
  * Latido: con la app en foreground, el flush periódico manda el engagement acumulado al menos
  * cada ANALYTICS_HEARTBEAT_MS. Sin él, una app abierta en una sola pantalla no enviaba nada
@@ -159,6 +164,16 @@ class DeepdotsPopups {
         val font: ServerFontDto? = null,
     )
 
+    /** Disparo del host recibido antes de que lleguen las definiciones de popups. */
+    private sealed class PendingTrigger {
+        data class Event(val name: String) : PendingTrigger()
+        data class Click(val targetId: String) : PendingTrigger()
+        /** Salida de `sourcePath` (ya normalizada): por `setPath` o por `onExit`. */
+        data class Exit(val sourcePath: String) : PendingTrigger()
+        /** Nivel de scroll de la pantalla actual: se guarda solo el máximo. */
+        data class Scroll(val percentage: Int) : PendingTrigger()
+    }
+
     private var initOptions: InitOptions? = null
     private var initialized = false
     private var popupsLoaded = false
@@ -196,14 +211,26 @@ class DeepdotsPopups {
     private val scrollTriggeredPopupIds = mutableSetOf<String>()
     private val deferredExitJobs = mutableMapOf<String, Job>()
     private var popupsService: PopupsService = DefaultPopupsService()
+    /**
+     * `true` mientras el `GET /sdk/{publicKey}/popups` de `init()` está en vuelo. En esa ventana
+     * los disparos del host (`triggerEvent`, `triggerClick`, exit y scroll) no tienen contra qué
+     * evaluarse, así que se guardan en [pendingTriggers] y se reproducen al cargar.
+     */
+    private var awaitingPopups = false
+    private val pendingTriggers = ArrayDeque<PendingTrigger>()
+    /** La carga corre en una corrutina de `Dispatchers.Default` y el host dispara desde su hilo. */
+    private val pendingTriggersLock = SdkLock()
     /** Identidad + sesión (Fase 1 tracking). Null hasta init(). */
     private var tracking: TrackingManager? = null
     /** Capa de analytics (canal separado del feedback). Null hasta init(). */
     private var analytics: AnalyticsManager? = null
-    /** feedbackSessionId cacheado del canal de analytics (devuelto por POST /sdk/feedback). */
-    private var analyticsFeedbackSessionId: String? = null
-    /** Primer POST de feedback en vuelo (aún sin sessionId): los lotes siguientes lo esperan. */
-    private var firstFeedbackPost: Job? = null
+    /**
+     * Transporte real de analytics (POST /sdk/feedback): dueño del feedbackSessionId cacheado.
+     * Null en dry-run (sin `InitOptions.analytics`).
+     */
+    private var feedbackSink: FeedbackSink? = null
+    /** `InitOptions.onFeedbackSession`: avisa al host al abrir y cerrar cada registro. */
+    private var onFeedbackSession: ((FeedbackSession) -> Unit)? = null
     /** Observador de navegación (Fase 2): emite page_view por el canal de analytics. */
     private var navObserver: NavigationObserver? = null
     private var navStarted = false
@@ -287,52 +314,20 @@ class DeepdotsPopups {
         // pasan claves en options.analytics; si no, queda en dry-run: no envía nada y el payload
         // solo se imprime con `debug`, para no ensuciar la consola de la app host en producción.
         val analyticsKeys = options.analytics
-        val analyticsSink: com.deepdots.sdk.analytics.AnalyticsSink? = if (analyticsKeys != null) {
-            { envelope, meta, requeue ->
-                val closing = meta.sessionEnd
-                // El lote de cierre SÍ lleva el sessionId (es el registro que se cierra); es el
-                // siguiente el que lo omite para que el backend abra uno nuevo.
-                val sessionIdOfClosedRecord = analyticsFeedbackSessionId
-                if (closing) {
-                    analyticsFeedbackSessionId = null
-                    SdkRuntime.analyticsFeedbackSessionId = null
-                }
-                // Mientras no se conozca el sessionId, los lotes se SERIALIZAN: dos POST a la vez
-                // sin sessionId crearían dos registros y partirían los datos. En el lote de cierre
-                // no se espera (la app se está yendo): mejor partido que perdido.
-                val waitFor = if (!closing && !meta.final && analyticsFeedbackSessionId == null) {
-                    firstFeedbackPost
-                } else {
-                    null
-                }
-                val job = scope.launch {
-                    runCatching { waitFor?.join() }
-                    val body = com.deepdots.sdk.analytics.buildAnalyticsFeedbackBody(
-                        envelope,
-                        analyticsKeys,
-                        if (closing) sessionIdOfClosedRecord else analyticsFeedbackSessionId,
-                        BuildBodyOptions(sessionEnd = closing),
-                    )
-                    try {
-                        val returnedSessionId = popupsService.postFeedback(body)
-                        // El POST de cierre devuelve el id del registro que acabamos de cerrar:
-                        // no se re-cachea (apuntaría a un registro ya cerrado).
-                        if (!closing && returnedSessionId != null && returnedSessionId != analyticsFeedbackSessionId) {
-                            analyticsFeedbackSessionId = returnedSessionId
-                            SdkRuntime.analyticsFeedbackSessionId = returnedSessionId
-                            log("analytics · feedbackSessionId cached: $analyticsFeedbackSessionId")
-                        }
-                    } catch (t: Throwable) {
-                        // Fallo transitorio (red/5xx/408/429): devolver el lote al buffer.
-                        log("analytics · transient failure sending feedback, batch requeued:", t.message)
-                        requeue()
-                    }
-                }
-                firstFeedbackPost = if (closing || analyticsFeedbackSessionId != null) null else job
-            }
-        } else {
-            null
+        onFeedbackSession = options.onFeedbackSession
+        feedbackSink = analyticsKeys?.let { keys ->
+            FeedbackSink(
+                keys = keys,
+                scope = debugTransportScope ?: scope,
+                post = { body -> popupsService.postFeedback(body) },
+                log = { line -> log(line) },
+                onSessionId = { id -> notifyFeedbackSession(id, FeedbackSessionStatus.Open) },
+                onSessionClosed = { id -> notifyFeedbackSession(id, FeedbackSessionStatus.Closed) },
+                // Espejo para el HTML del survey (correlación survey ↔ analytics).
+                onCachedSessionIdChanged = { id -> SdkRuntime.analyticsFeedbackSessionId = id },
+            )
         }
+        val analyticsSink: com.deepdots.sdk.analytics.AnalyticsSink? = feedbackSink?.sink
         val device = com.deepdots.sdk.analytics.collectDeviceInfo()
         messageGuard.reset()
         // Seam de test: deja observar cada lote (envelope + meta) sin tocar el transporte.
@@ -368,7 +363,7 @@ class DeepdotsPopups {
             installCrashHandlers(crash) { tracking?.isTrackingEnabled() == true }
         }
         // Marca de inicio de sesión (base para Crash-Free Users #14).
-        openSession()
+        openSession(SessionStartReason.COLD_START)
         // Drena SIEMPRE la cola (descarta pendientes si tracking off); solo reenvía si activo.
         val pendingCrashes = crash.drainPendingCrashes()
         if (tracking?.isTrackingEnabled() == true) {
@@ -401,6 +396,7 @@ class DeepdotsPopups {
             log("Missing publicKey; cannot fetch popups from API")
             return
         }
+        pendingTriggersLock.withLock { awaitingPopups = true }
         scope.launch {
             try {
                 val responseText = popupsService.fetchPopups(publicKey, buildFilterParam())
@@ -413,6 +409,7 @@ class DeepdotsPopups {
                 }
             } catch (t: Throwable) {
                 log("Error fetching popups", t.message ?: "unknown")
+                dropPendingTriggers()
             }
         }
     }
@@ -424,6 +421,24 @@ class DeepdotsPopups {
     fun getSessionId(): String? = tracking?.getSessionId()
 
     /**
+     * Id del registro de analytics abierto: el `sessionId` que devolvió `POST /sdk/feedback`, que
+     * la API guarda como `sdkSessionId` en el Feedback en que se convierte la sesión. No es
+     * [getSessionId]. Null hasta que el backend acepta el primer lote, de nuevo al cerrar la
+     * sesión, y siempre en dry-run (sin `InitOptions.analytics`): para saber también qué registro
+     * se cerró, usa `InitOptions.onFeedbackSession`. Paridad con Web `getFeedbackSessionId()`.
+     */
+    fun getFeedbackSessionId(): String? = feedbackSink?.currentSessionId()
+
+    /** Avisa al host del registro abierto o cerrado; un fallo del host no corta el envío. */
+    private fun notifyFeedbackSession(sessionId: String, status: FeedbackSessionStatus) {
+        try {
+            onFeedbackSession?.invoke(FeedbackSession(sessionId, status))
+        } catch (t: Throwable) {
+            log("analytics · onFeedbackSession threw", t.message)
+        }
+    }
+
+    /**
      * Activa/desactiva el tracking (identidad + sesión). Kill-switch del contrato §7bis.
      * Al revocar el consentimiento se cierra la sesión en curso (último lote con
      * `completed:true`); al concederlo se abre una nueva (`session_start`).
@@ -431,7 +446,7 @@ class DeepdotsPopups {
     fun setTrackingEnabled(enabled: Boolean) {
         if (!enabled) closeSession(SessionEndReason.TRACKING_DISABLED)
         tracking?.setTrackingEnabled(enabled)
-        if (enabled) openSession()
+        if (enabled) openSession(SessionStartReason.TRACKING_ENABLED)
         // El lookup de geo se aplaza hasta que haya consentimiento.
         if (enabled) resolveGeo()
     }
@@ -642,7 +657,7 @@ class DeepdotsPopups {
      */
     fun onForeground() {
         engagement?.resume()
-        openSession()
+        openSession(SessionStartReason.FOREGROUND)
     }
 
     /**
@@ -681,7 +696,7 @@ class DeepdotsPopups {
         messageGuard.reset()
 
         log("tracking · user_change · user_id:", tm.getUserId() ?: "null")
-        openSession()
+        openSession(SessionStartReason.USER_CHANGE)
     }
 
     /**
@@ -702,26 +717,29 @@ class DeepdotsPopups {
         SdkRuntime.miniService = analytics?.getMiniService()
         flushEngagement() // → user_engagement con el tiempo activo
         track("deepdots_session_end", mapOf("reason" to reason.wire))
+        // El lote de cierre hace que el transporte olvide el feedbackSessionId (FeedbackSink).
         flushAnalytics(AnalyticsFlushMeta(final = true, sessionEnd = true))
-        // Los session_id (popups y analytics) pertenecían a la sesión que se acaba de cerrar.
-        analyticsFeedbackSessionId = null
-        SdkRuntime.analyticsFeedbackSessionId = null
+        // El session_id de popups pertenecía a la sesión que se acaba de cerrar.
         tracking?.setSessionId(null)
         SdkRuntime.sessionId = null
         log("tracking · session_end:", reason.wire)
     }
 
     /**
-     * Abre sesión (`session_start`) si no hay una abierta y el tracking está activo. Idempotente:
-     * se llama en init(), al volver a foreground, al conceder el consentimiento y tras un cambio
-     * de usuario.
+     * Abre sesión (`session_start`) si no hay una abierta y el tracking está activo. Idempotente.
+     * El `reason` dice por qué empieza (ver [SessionStartReason]):
+     *  - `cold_start`: init() (arranque de la app).
+     *  - `foreground`: onForeground() tras un cierre (onBackground() o endSession()).
+     *  - `tracking_enabled`: setTrackingEnabled(true) (consentimiento concedido).
+     *  - `user_change`: setUserId(), tras cerrar la sesión del usuario anterior.
      */
-    private fun openSession() {
+    private fun openSession(reason: SessionStartReason) {
         if (sessionOpen) return
         if (tracking?.isTrackingEnabled() != true) return
         sessionOpen = true
         lastEngagementAt = nowMs()
-        track("deepdots_session_start", emptyMap())
+        track("deepdots_session_start", mapOf("reason" to reason.wire))
+        log("tracking · session_start:", reason.wire)
     }
 
     /** Emite `user_engagement` con el tiempo activo acumulado (#8). */
@@ -835,7 +853,11 @@ class DeepdotsPopups {
             log("Ignoring empty event trigger name")
             return
         }
+        if (bufferIfAwaitingPopups(PendingTrigger.Event(normalized))) return
+        evaluateEvent(normalized)
+    }
 
+    private fun evaluateEvent(normalized: String) {
         val matched = popupDefinitions.values.firstOrNull { popup ->
             popup.triggers.any { trigger ->
                 trigger is Trigger.Event && trigger.name.trim() == normalized
@@ -856,7 +878,11 @@ class DeepdotsPopups {
             log("Ignoring empty click trigger id")
             return
         }
+        if (bufferIfAwaitingPopups(PendingTrigger.Click(normalized))) return
+        evaluateClick(normalized)
+    }
 
+    private fun evaluateClick(normalized: String) {
         val matched = popupDefinitions.values.firstOrNull { popup ->
             popup.triggers.any { trigger ->
                 trigger is Trigger.Click && trigger.targetId.trim() == normalized
@@ -901,6 +927,7 @@ class DeepdotsPopups {
 
         currentPath = normalizedPath.ifBlank { null }
         scrollTriggeredPopupIds.clear()
+        forgetPendingScroll()
         log("Path updated", currentPath ?: "null")
         processDeferredExitQueue()
 
@@ -922,6 +949,11 @@ class DeepdotsPopups {
     fun onScroll(percentage: Int) {
         if (!ensureInitialized()) return
         val pct = percentage.coerceIn(0, 100)
+        if (bufferIfAwaitingPopups(PendingTrigger.Scroll(pct))) return
+        evaluateScroll(pct)
+    }
+
+    private fun evaluateScroll(pct: Int) {
         popupDefinitions.values.forEach { popup ->
             popup.triggers.forEach { trigger ->
                 if (trigger is Trigger.Scroll) {
@@ -970,12 +1002,21 @@ class DeepdotsPopups {
     /** Seam de test: recibe las líneas del dry-run en vez de `println` (solo se llama con `debug`). */
     internal var debugDryRunLog: ((String) -> Unit)? = null
 
+    /**
+     * Solo test: scope del transporte de analytics (p. ej. `Dispatchers.Unconfined` para que cada
+     * flush termine de enviar antes de volver). Se fija ANTES de `init()`.
+     */
+    internal var debugTransportScope: CoroutineScope? = null
+
     /** Solo test: sustituye el cliente HTTP por un doble (para observar los bodies enviados). */
     internal fun debugSetPopupsService(service: PopupsService) {
         popupsService = service
     }
 
     internal fun debugQueuedPopupIds(): List<String> = queueLock.withLock { popupQueue.toList() }
+
+    /** Solo test: disparos guardados a la espera de que lleguen las definiciones. */
+    internal fun debugPendingTriggerCount(): Int = pendingTriggersLock.withLock { pendingTriggers.size }
 
     internal fun debugDeferredExitQueue(): List<String> = getDeferredExitQueue().map { "${it.id}@${it.sourcePath}" }
 
@@ -1028,13 +1069,78 @@ class DeepdotsPopups {
     }
 
     private fun loadPopupDefinitions(definitions: List<PopupDefinition>) {
-        popupDefinitions.clear()
-        definitions.mapNotNull(::normalizePopupDefinition).forEach { popup ->
-            popupDefinitions[popup.id] = popup
+        val normalized = definitions.mapNotNull(::normalizePopupDefinition)
+        // Definiciones y fin de la espera bajo el mismo lock: un disparo concurrente o se guarda
+        // (y entra en este replay) o ya ve las definiciones. Nunca se queda en el buffer sin replay.
+        val replay = pendingTriggersLock.withLock {
+            popupDefinitions.clear()
+            normalized.forEach { popup -> popupDefinitions[popup.id] = popup }
+            awaitingPopups = false
+            pendingTriggers.toList().also { pendingTriggers.clear() }
         }
         popupsLoaded = true
         processDeferredExitQueue()
         log("Loaded popups", popupDefinitions.keys.joinToString())
+        replayPendingTriggers(replay)
+    }
+
+    /**
+     * Guarda [trigger] si las definiciones aún no han llegado. Devuelve `true` si lo guardó (el
+     * llamador no debe evaluarlo ahora) y `false` si no hay carga en vuelo (se evalúa ya, como
+     * siempre: tras cargar, o tras un fallo, o sin publicKey).
+     */
+    private fun bufferIfAwaitingPopups(trigger: PendingTrigger): Boolean {
+        var dropped: PendingTrigger? = null
+        val buffered = pendingTriggersLock.withLock {
+            if (!awaitingPopups) return@withLock false
+            if (trigger is PendingTrigger.Scroll) {
+                // El scroll es un nivel, no un suceso: basta con el máximo alcanzado en la pantalla.
+                val index = pendingTriggers.indexOfFirst { it is PendingTrigger.Scroll }
+                if (index >= 0) {
+                    val current = pendingTriggers[index] as PendingTrigger.Scroll
+                    if (trigger.percentage > current.percentage) pendingTriggers[index] = trigger
+                    return@withLock true
+                }
+            }
+            if (pendingTriggers.size >= MAX_PENDING_TRIGGERS) dropped = pendingTriggers.removeFirst()
+            pendingTriggers.addLast(trigger)
+            true
+        }
+        if (buffered) log("Popups not loaded yet; trigger buffered", trigger)
+        dropped?.let { log("Pending trigger buffer full; dropped oldest", it) }
+        return buffered
+    }
+
+    /** El nivel de scroll guardado era de la pantalla que se deja: no aplica a la nueva. */
+    private fun forgetPendingScroll() {
+        pendingTriggersLock.withLock { pendingTriggers.removeAll { it is PendingTrigger.Scroll } }
+    }
+
+    /** La carga falló: sin definiciones no habrá replay, así que se descarta y se deja de guardar. */
+    private fun dropPendingTriggers() {
+        val dropped = pendingTriggersLock.withLock {
+            awaitingPopups = false
+            pendingTriggers.size.also { pendingTriggers.clear() }
+        }
+        if (dropped > 0) log("Popups failed to load; dropped pending triggers", dropped)
+    }
+
+    /** Reproduce por la evaluación normal (segmentos, cooldowns y condiciones con el estado de AHORA). */
+    private fun replayPendingTriggers(triggers: List<PendingTrigger>) {
+        if (triggers.isEmpty()) return
+        log("Replaying triggers received before popups loaded", triggers.size)
+        triggers.forEach { trigger ->
+            when (trigger) {
+                is PendingTrigger.Event -> evaluateEvent(trigger.name)
+                is PendingTrigger.Click -> evaluateClick(trigger.targetId)
+                is PendingTrigger.Exit -> queueExitPopups(trigger.sourcePath)
+                is PendingTrigger.Scroll -> evaluateScroll(trigger.percentage)
+            }
+        }
+        // Una salida sin retraso no programa corrutina: la muestra processDeferredExitQueue(), que
+        // setPath() llama con la ruta ya nueva. Aquí la ruta actual ya es la de destino, pero la
+        // pasada de loadPopupDefinitions() fue ANTES de este replay, así que hay que repetirla.
+        if (triggers.any { it is PendingTrigger.Exit }) processDeferredExitQueue()
     }
 
     private fun normalizePopupDefinition(definition: PopupDefinition): PopupDefinition? {
@@ -1198,10 +1304,18 @@ class DeepdotsPopups {
 
     private fun handleSurveyRuntimeEvent(popup: PopupDefinition, name: String, payload: String?) {
         when (name) {
+            // `loaded` (PopupReveal.LOADED_EVENT) no tiene rama a propósito: es el aviso de que
+            // el survey cargó, no una interacción, y no debe llegar al host como PopupClicked.
             "popup_clicked" -> {
                 val extra = parseEventPayload(payload)
-                emitPopupClicked(popup, extra)
                 val action = extra["action"] as? String
+                // Un click del puente siempre dice qué se pulsó. Sin `action` es la forma del
+                // aviso de carga antiguo, que el host recibía como un click falso.
+                if (action.isNullOrBlank()) {
+                    log("Ignoring bridge popup_clicked without action", payload ?: "")
+                    return
+                }
+                emitPopupClicked(popup, extra)
                 if (action == "partial") {
                     recordSurveyPartial(popup)
                 }
@@ -1328,6 +1442,7 @@ class DeepdotsPopups {
 
     private fun queueExitPopups(sourcePath: String) {
         val normalizedSource = normalizeUrl(sourcePath)
+        if (bufferIfAwaitingPopups(PendingTrigger.Exit(normalizedSource))) return
         popupDefinitions.values.forEach { popup ->
             popup.triggers.forEach { trigger ->
                 if (trigger is Trigger.Exit) {

@@ -4,6 +4,88 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.0 - 2026-10-16
+
+### Added
+
+- **`deepdots_session_start` says why the session started**, in a new `reason` param.
+  The SDK closes the session when the app goes to background and opens a new one when it
+  comes back, so "sessions that started on this screen" counted every return from the
+  background as if the app had just been launched. With the reason, analytics can tell
+  them apart: `cold_start` (`init()`, the app was launched), `foreground` (`onForeground()`
+  after the previous session was closed), `tracking_enabled` (`setTrackingEnabled(true)`)
+  and `user_change` (`setUserId()`). Same values as the web SDK where the meaning is the
+  same. The event name and every other event are unchanged; consumers that ignore the
+  param keep working.
+- **Focus on text questions.** When the first question of a page is a text
+  field (text, long text, email or number), the cursor is placed in it after
+  Start, Next or Back. When the popup opens nothing is focused on touch
+  devices, so the keyboard never pops up over a popup the user has not touched.
+  Same rule as the web SDK. The focus comes from `@magicfeedback/native` 2.2.31
+  (its `autofocus: 'navigation'` option), which the WebView already loads.
+  Whether iOS and Android open the keyboard for it is not verified on a device
+  yet.
+- **Multi-language surveys.** The survey WebView asks `@magicfeedback/native` for
+  the language the host passes in `InitOptions.provideLang` or, without it, the
+  device language (`generate({ lang })`). When the survey does not have that
+  language, the API serves the survey's default. The popup chrome (buttons,
+  progress, accessibility labels) follows the language native reports it is
+  showing. Same behaviour as the web SDK.
+- **The id of the feedback a session becomes is readable.**
+  `DeepdotsPopups.getFeedbackSessionId()` returns the `sessionId` that
+  `POST /sdk/feedback` returned for the open analytics session, which the API
+  stores as `sdkSessionId` on its feedback, and
+  `InitOptions.onFeedbackSession` reports it as a `FeedbackSession` with
+  status `Open` when the session's first batch is accepted and `Closed` when
+  the closing one is. A host can hand it to its backend to find that feedback
+  and add data to it. Until now the SDK kept it internal. Same API as the web
+  SDK (`getFeedbackSessionId()` / `onFeedbackSession`).
+
+### Fixed
+
+- **Android: the popup now shows on any `Activity`, not only on a
+  `ComponentActivity`.** With a plain `android.app.Activity` (notably Flutter's
+  default `FlutterActivity`) the popup silently never appeared. When the host
+  activity does not provide the view-tree lifecycle/saved-state owners, the SDK
+  now installs its own, scoped to the popup and destroyed when it closes.
+  `ComponentActivity` hosts (AppCompat, FragmentActivity, FlutterFragmentActivity)
+  behave exactly as before.
+- **Android: the system Back closes the popup.** While the popup is visible,
+  Back (button, gesture and predictive back on API 33+) closes it through the
+  same path as the close (X) button, so status, cooldown and events are
+  identical; it no longer reaches the host (a Flutter host used to finish the
+  whole Activity). Before the popup is revealed and after it closes, Back goes
+  to the host as usual. iOS has no system Back, nothing changes there.
+- **Triggers fired before the popups load are no longer lost.** `init()` fetches
+  the popup definitions asynchronously, and a `triggerEvent` (or `triggerClick`,
+  a screen exit or a scroll) fired in that window was dropped with
+  `No eligible event popup`, even when the matching popup arrived milliseconds
+  later. They are now buffered (up to 20, oldest dropped first) and replayed in
+  order once the definitions arrive, through the normal evaluation, so segments,
+  cooldowns and conditions apply as usual. If the fetch fails, the buffer is
+  discarded. Triggers fired after loading behave as before.
+- **iOS: `close()` / `Deepdots.dismiss()` only close the SDK popup.** They used to
+  dismiss whatever view controller was presented over the context, so calling them
+  while the host had its own modal open (a picker, a share sheet) closed the host's
+  modal instead. The popup view controller is now tagged (`restorationIdentifier`,
+  the iOS twin of the Android container tag) and only that one is dismissed.
+- **The survey's load notice no longer reaches the host as `popup_clicked`.** The
+  WebView sent the survey's style, language and progress under the name
+  `popup_clicked`, so every opening (even one whose survey then failed to load)
+  produced a false click in the host's `PopupClicked` listener. It now travels
+  as `loaded` and stays inside the SDK; a bridge `popup_clicked` without an
+  `action` is ignored. Real interactions still emit `PopupClicked` as before.
+  Same rule as the web SDK.
+- **A session closed while its first batch was still in flight no longer comes
+  back.** The closing batch (`onBackground()`) does not wait for the first one,
+  and when the first one's response arrived afterwards the SDK cached its
+  `sessionId` again: the closed session looked open, and the next session wrote
+  into that old record. That response is now ignored.
+- **A 4xx on `POST /sdk/feedback` is no longer mistaken for an accepted batch.**
+  `DefaultPopupsService.postFeedback` now throws `RejectedFeedbackException`
+  (after logging it, as before) instead of returning `null`; the batch is still
+  dropped, not retried.
+
 ## 0.6.2 - 2026-10-08
 
 ### Changed

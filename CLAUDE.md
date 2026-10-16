@@ -26,8 +26,8 @@ JBR embebido de Android Studio, prefijando todas las tareas:
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew <tarea>
 ```
 
-- Tests unitarios (JVM): `:shared:testDebugUnitTest` — 158 tests
-- Tests comunes en el simulador iOS: `:shared:iosSimulatorArm64Test` — 146 (los 12 que faltan
+- Tests unitarios (JVM): `:shared:testDebugUnitTest` — 232 tests
+- Tests comunes en el simulador iOS: `:shared:iosSimulatorArm64Test` — 220 (los 12 que faltan
   viven en `androidUnitTest` porque necesitan `runBlocking`)
 - Compilar iOS: `:shared:compileKotlinIosSimulatorArm64` · `:shared:compileKotlinIosArm64`
 - Compilar/ensamblar Android: `:shared:compileDebugKotlinAndroid` · `:shared:assembleDebug`
@@ -42,7 +42,8 @@ exacto** de ficheros del repo Web y cualquier cambio debe replicarse en ambos la
 - `tracking/NavigationObserver.kt` ⇔ `src/tracking/navigation-observer.ts` (aquí sin hooks de
   History: la navegación entra por `setPath()`).
 - `analytics/AnalyticsManager.kt` ⇔ `src/analytics/analytics-manager.ts`.
-- `analytics/FeedbackPayload.kt` ⇔ `src/analytics/feedback-payload.ts`.
+- `analytics/FeedbackPayload.kt` ⇔ `src/analytics/feedback-payload.ts` (builder del body +
+  `FeedbackSink`, el transporte, espejo de `createFeedbackSink`).
 - `analytics/EngagementTracker.kt` ⇔ `src/analytics/engagement-tracker.ts`.
 - `analytics/DeviceInfo.kt` ⇔ `src/analytics/device-info.ts` · `analytics/GeoInfo.kt` ⇔ `geo-info.ts`.
 - `analytics/Language.kt` ⇔ `src/analytics/language.ts` · `analytics/Messaging.kt` ⇔ `messaging.ts`.
@@ -84,8 +85,17 @@ nunca llegó a Git y `dev` no compilaba; ver el commit `6f93dc2`).
 - **Pendiente:** persistir el buffer y reenviarlo en el arranque siguiente (en móvil el proceso
   puede congelarse tras el background y el POST no completa; en Web esto lo cubre `sendBeacon`).
   Y sigue el bloqueo de backend del `406 Contact not found` con `user_id` autogenerado.
+- **Registro de la sesión (`sdkSessionId`):** `getFeedbackSessionId()` y
+  `InitOptions.onFeedbackSession` (`FeedbackSession(sessionId, Open|Closed)`) exponen el
+  `sessionId` que devuelve `POST /sdk/feedback`, el que la API guarda como `sdkSessionId` en el
+  Feedback de la sesión. Lo cachea `FeedbackSink` (bajo `SdkLock`); un contador de generación
+  descarta la respuesta tardía de un primer lote cuya sesión ya se cerró. Un 4xx sale del
+  servicio como `RejectedFeedbackException` (antes `null`, indistinguible de un lote aceptado
+  sin `sessionId`).
 - **Seams de test:** `debugLoadPopups(defs)` (popups sin API), `debugAnalyticsFlushListener`
-  (observa cada lote antes del sink) y `debugSetPopupsService(service)` (doble del transporte).
+  (observa cada lote antes del sink), `debugSetPopupsService(service)` (doble del transporte) y
+  `debugTransportScope` (p. ej. `Dispatchers.Unconfined`, antes de `init()`: cada flush termina
+  de enviar al volver, así los tests del transporte van en `commonTest` sin `runBlocking`).
 
 La encuesta en KMP se renderiza en un **WebView** (`SurveyView` + `MagicFeedbackHtml`),
 mientras que el **chrome del popup (título, mensaje, botones, ✕, banner, completado) es
@@ -153,8 +163,8 @@ WebView y la descarga del bundle del CDN.
 - Diferir la presentación entera no se puede: sin presentar el VC, el WebView no se monta ni
   carga, y el aviso no llegaría nunca (mismo motivo por el que en React Native no vale
   `<Modal visible={ready}>`).
-- `ready` no toca métricas: `handleSurveyRuntimeEvent` solo actúa sobre `popup_clicked`,
-  `after_submit` y `survey_completed`, así que no marca PARTIAL.
+- `ready` (ni `loaded`) no toca métricas: `handleSurveyRuntimeEvent` solo actúa sobre
+  `popup_clicked` con `action`, `after_submit` y `survey_completed`, así que no marca PARTIAL.
 - Tests: `PopupRevealTest` (5, commonTest) → 192 JVM + 180 en el simulador iOS, 0 fallos.
 - **Verificado en el simulador iOS** (iPhone 17 Pro, capturas en bucle con `xcrun simctl io …
   screenshot`): el frame anterior a la apertura muestra la pantalla de la app limpia (sin velo,
@@ -236,6 +246,49 @@ viajaba con ella: el usuario creía haber corregido su respuesta y no era así.
 - ⚠️ Verificado con toques reales en la ruta equivalente (el WebView de RN, con Playwright
   y hit-testing de verdad), **no** en el simulador: el mecanismo es el mismo HTML.
   Ojo al comprobarlo, `element.click()` es sintético e **ignora `pointer-events`**.
+
+## Fix: el popup sale en cualquier `Activity` (2026-10-06)
+
+Antes `PopupRenderer.show` (Android) hacía `context.activity as? ComponentActivity ?: return`:
+con una `Activity` a secas (la `FlutterActivity` por defecto de Flutter) el popup no salía y no
+se logueaba nada. `dismissPopup` tenía el mismo cast.
+
+- Si el decorView ya trae `ViewTreeLifecycleOwner` + `ViewTreeSavedStateRegistryOwner`
+  (ComponentActivity tras `setContentView`) se usa lo de siempre, sin tocar nada.
+- Si no, `renderer/PopupViewTreeOwner.kt` (lifecycle + saved state + view models) se instala
+  en el CONTENEDOR del popup: `RESUMED` al engancharse a la ventana, `DESTROYED` + `ViewModelStore`
+  limpio al desengancharse. El detach cubre todas las vías de cierre (acción, `dismissPopup`,
+  Activity destruida) sin que cada una tenga que acordarse.
+- ⚠️ **No basta con los owners en el contenedor:** el Recomposer "de ventana" de Compose se
+  cuelga del decorView (el hijo de `android.R.id.content`, y el contenedor va directo al decor)
+  y busca el lifecycle desde ahí → "ViewTreeLifecycleOwner not found". Por eso el contenedor
+  lleva además su propio `compositionContext = createLifecycleAwareWindowRecomposer(lifecycle)`.
+- Sin dependencias nuevas (lifecycle/savedstate llegan por `activity-compose`). No hay
+  Robolectric: el test (`androidUnitTest/.../PopupViewTreeOwnerTest`, 5) cubre las transiciones
+  del owner; el montaje real en una `FlutterActivity` queda para verificar en dispositivo.
+- La `Activity` a secas no expone su lifecycle, así que el owner NO sigue pause/stop del host:
+  queda `RESUMED` mientras el popup está montado.
+## El aviso de carga del survey NO es un click (2026-10-06)
+
+Un host Flutter recibía `popup_shown` y justo después `popup_clicked` sin que el usuario tocase
+nada (también tras un 406 al cargar el survey). El `onLoadedEvent` del WebView mandaba el estilo,
+el idioma y el progreso con el nombre `popup_clicked`, y `handleSurveyRuntimeEvent` reenviaba
+todo `popup_clicked` al host como `PopupClicked`.
+
+- **Ahora el aviso viaja como `loaded`** (`PopupReveal.LOADED_EVENT`), un único mensaje con
+  `{ style, surveyLang, progress, total }`; se quitó el `emit('loaded')` desnudo que iba detrás.
+  `PopupView` lee estilo/idioma/RTL/progreso solo de ese mensaje y el `SurveyView` de Android
+  quita su spinner con él. `handleSurveyRuntimeEvent` no tiene rama para `loaded`.
+- **Defensa:** un `popup_clicked` del puente sin `action` se ignora (se loguea); un click real
+  siempre dice qué se pulsó. `action: "partial"` sigue llegando al host y marcando PARTIAL.
+- Los clicks del chrome nativo (`handleAction`: accept/decline/start/complete/back) no pasan por
+  el puente y no cambian.
+- Tests: `SurveyBridgeEventsTest` (3).
+- ⚠️ **Diferencias con Web/RN (sin tocar):** el popup DOM web también emite al host
+  `popup_clicked {action:'loaded'}` (y `before_submit`, `validation_error_required`,
+  `submit_error`), etiquetado pero igual de engañoso; y el `ReactNativePopupRenderer` convierte
+  el `loaded` del WebView en `popup_clicked {action:'partial'}`, o sea que en RN la carga marca
+  PARTIAL en backend sin interacción.
 
 ## Ramas
 
