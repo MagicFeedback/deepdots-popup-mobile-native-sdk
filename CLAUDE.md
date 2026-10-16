@@ -26,8 +26,8 @@ JBR embebido de Android Studio, prefijando todas las tareas:
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew <tarea>
 ```
 
-- Tests unitarios (JVM): `:shared:testDebugUnitTest` — 158 tests
-- Tests comunes en el simulador iOS: `:shared:iosSimulatorArm64Test` — 146 (los 12 que faltan
+- Tests unitarios (JVM): `:shared:testDebugUnitTest` — 232 tests
+- Tests comunes en el simulador iOS: `:shared:iosSimulatorArm64Test` — 220 (los 12 que faltan
   viven en `androidUnitTest` porque necesitan `runBlocking`)
 - Compilar iOS: `:shared:compileKotlinIosSimulatorArm64` · `:shared:compileKotlinIosArm64`
 - Compilar/ensamblar Android: `:shared:compileDebugKotlinAndroid` · `:shared:assembleDebug`
@@ -42,7 +42,8 @@ exacto** de ficheros del repo Web y cualquier cambio debe replicarse en ambos la
 - `tracking/NavigationObserver.kt` ⇔ `src/tracking/navigation-observer.ts` (aquí sin hooks de
   History: la navegación entra por `setPath()`).
 - `analytics/AnalyticsManager.kt` ⇔ `src/analytics/analytics-manager.ts`.
-- `analytics/FeedbackPayload.kt` ⇔ `src/analytics/feedback-payload.ts`.
+- `analytics/FeedbackPayload.kt` ⇔ `src/analytics/feedback-payload.ts` (builder del body +
+  `FeedbackSink`, el transporte, espejo de `createFeedbackSink`).
 - `analytics/EngagementTracker.kt` ⇔ `src/analytics/engagement-tracker.ts`.
 - `analytics/DeviceInfo.kt` ⇔ `src/analytics/device-info.ts` · `analytics/GeoInfo.kt` ⇔ `geo-info.ts`.
 - `analytics/Language.kt` ⇔ `src/analytics/language.ts` · `analytics/Messaging.kt` ⇔ `messaging.ts`.
@@ -84,8 +85,17 @@ nunca llegó a Git y `dev` no compilaba; ver el commit `6f93dc2`).
 - **Pendiente:** persistir el buffer y reenviarlo en el arranque siguiente (en móvil el proceso
   puede congelarse tras el background y el POST no completa; en Web esto lo cubre `sendBeacon`).
   Y sigue el bloqueo de backend del `406 Contact not found` con `user_id` autogenerado.
+- **Registro de la sesión (`sdkSessionId`):** `getFeedbackSessionId()` y
+  `InitOptions.onFeedbackSession` (`FeedbackSession(sessionId, Open|Closed)`) exponen el
+  `sessionId` que devuelve `POST /sdk/feedback`, el que la API guarda como `sdkSessionId` en el
+  Feedback de la sesión. Lo cachea `FeedbackSink` (bajo `SdkLock`); un contador de generación
+  descarta la respuesta tardía de un primer lote cuya sesión ya se cerró. Un 4xx sale del
+  servicio como `RejectedFeedbackException` (antes `null`, indistinguible de un lote aceptado
+  sin `sessionId`).
 - **Seams de test:** `debugLoadPopups(defs)` (popups sin API), `debugAnalyticsFlushListener`
-  (observa cada lote antes del sink) y `debugSetPopupsService(service)` (doble del transporte).
+  (observa cada lote antes del sink), `debugSetPopupsService(service)` (doble del transporte) y
+  `debugTransportScope` (p. ej. `Dispatchers.Unconfined`, antes de `init()`: cada flush termina
+  de enviar al volver, así los tests del transporte van en `commonTest` sin `runBlocking`).
 
 La encuesta en KMP se renderiza en un **WebView** (`SurveyView` + `MagicFeedbackHtml`),
 mientras que el **chrome del popup (título, mensaje, botones, ✕, banner, completado) es

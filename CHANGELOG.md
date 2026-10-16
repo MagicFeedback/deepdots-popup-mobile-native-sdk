@@ -23,13 +23,21 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   (its `autofocus: 'navigation'` option), which the WebView already loads.
   Whether iOS and Android open the keyboard for it is not verified on a device
   yet.
-
 - **Multi-language surveys.** The survey WebView asks `@magicfeedback/native` for
   the language the host passes in `InitOptions.provideLang` or, without it, the
   device language (`generate({ lang })`). When the survey does not have that
   language, the API serves the survey's default. The popup chrome (buttons,
   progress, accessibility labels) follows the language native reports it is
   showing. Same behaviour as the web SDK.
+- **The id of the feedback a session becomes is readable.**
+  `DeepdotsPopups.getFeedbackSessionId()` returns the `sessionId` that
+  `POST /sdk/feedback` returned for the open analytics session, which the API
+  stores as `sdkSessionId` on its feedback, and
+  `InitOptions.onFeedbackSession` reports it as a `FeedbackSession` with
+  status `Open` when the session's first batch is accepted and `Closed` when
+  the closing one is. A host can hand it to its backend to find that feedback
+  and add data to it. Until now the SDK kept it internal. Same API as the web
+  SDK (`getFeedbackSessionId()` / `onFeedbackSession`).
 
 ### Fixed
 
@@ -66,6 +74,15 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   as `loaded` and stays inside the SDK; a bridge `popup_clicked` without an
   `action` is ignored. Real interactions still emit `PopupClicked` as before.
   Same rule as the web SDK.
+- **A session closed while its first batch was still in flight no longer comes
+  back.** The closing batch (`onBackground()`) does not wait for the first one,
+  and when the first one's response arrived afterwards the SDK cached its
+  `sessionId` again: the closed session looked open, and the next session wrote
+  into that old record. That response is now ignored.
+- **A 4xx on `POST /sdk/feedback` is no longer mistaken for an accepted batch.**
+  `DefaultPopupsService.postFeedback` now throws `RejectedFeedbackException`
+  (after logging it, as before) instead of returning `null`; the batch is still
+  dropped, not retried.
 
 ## 0.6.2 - 2026-10-08
 
