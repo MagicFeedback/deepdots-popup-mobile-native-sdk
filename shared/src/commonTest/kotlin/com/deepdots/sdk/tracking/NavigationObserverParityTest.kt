@@ -2,6 +2,7 @@ package com.deepdots.sdk.tracking
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /**
  * Paridad con el NavigationObserver Web (src/tracking/navigation-observer.test.ts):
@@ -93,5 +94,118 @@ class NavigationObserverParityTest {
         assertEquals(1, visits.size)
         assertEquals("/home", visits[0].screen)
         assertEquals(2L, visits[0].durationSeconds)
+    }
+
+    // ───────── screenPath y el path de la visita ─────────
+
+    @Test
+    fun screen_path_keeps_the_real_ids_dropping_only_the_query() {
+        assertEquals(
+            "/insights/requests/2f1c9a10-bb5e-11f1-9ff7-b9c354c04f0c",
+            screenPath("https://app.test/insights/requests/2f1c9a10-bb5e-11f1-9ff7-b9c354c04f0c?project=X"),
+        )
+        assertEquals("/#/orders/42", screenPath("https://app.test/#/orders/42?x=1"))
+        assertEquals("/Checkout", screenPath("Checkout"))
+        assertEquals("/", screenPath(""))
+    }
+
+    @Test
+    fun each_visit_carries_both_the_normalized_screen_and_the_real_path() {
+        val obs = observer()
+        obs.begin("/orders/42?tab=1")
+        now += 5_000
+        obs.visit("/orders/new")
+
+        assertEquals("/orders/:id", visits[0].screen)
+        assertEquals("/orders/42", visits[0].path)
+        assertEquals(5L, visits[0].durationSeconds)
+    }
+
+    @Test
+    fun moving_between_two_items_of_the_same_screen_is_a_new_visit() {
+        val obs = observer()
+        obs.begin("/orders/1")
+        now += 3_000
+        obs.visit("/orders/2")
+        now += 1_000
+        obs.visit("/orders/2?tab=2") // misma ruta: solo cambia la query
+        obs.stop()
+
+        assertEquals(listOf("/orders/1", "/orders/2"), visits.map { it.path })
+        assertEquals(listOf("/orders/:id", "/orders/:id"), visits.map { it.screen })
+    }
+
+    // ───────── current() ─────────
+
+    @Test
+    fun current_gives_the_screen_in_progress_with_what_its_page_view_would_carry() {
+        val obs = observer()
+        obs.begin("https://app.test/orders/42?tab=1")
+        now += 7_400
+
+        assertEquals(CurrentScreen(screen = "/orders/:id", path = "/orders/42", seconds = 7), obs.current())
+        assertEquals(0, visits.size, "no cierra ni emite nada")
+
+        obs.stop()
+        assertEquals("/orders/42", visits[0].path)
+        assertEquals(7L, visits[0].durationSeconds)
+    }
+
+    @Test
+    fun current_follows_navigation_from_the_entry_of_the_next_screen() {
+        val obs = observer()
+        obs.begin("/home")
+        now += 10_000
+        obs.visit("/cart")
+        now += 3_000
+
+        assertEquals(CurrentScreen(screen = "/cart", path = "/cart", seconds = 3), obs.current())
+    }
+
+    @Test
+    fun current_is_null_before_begin_and_after_stop() {
+        val obs = observer()
+        assertNull(obs.current())
+        obs.begin("/home")
+        obs.stop()
+        assertNull(obs.current())
+    }
+
+    // ───────── restart() ─────────
+
+    @Test
+    fun restart_resumes_the_last_screen_after_stop_counting_from_the_reopening() {
+        val obs = observer()
+        obs.begin("/settings")
+        now += 1_000
+        obs.stop()
+        now += 4_000 // sesión cerrada: este rato no es de nadie
+        obs.restart()
+        now += 2_000
+        obs.stop()
+
+        assertEquals(listOf("/settings" to 1L, "/settings" to 2L), visits.map { it.screen to it.durationSeconds })
+    }
+
+    @Test
+    fun restart_does_not_override_a_screen_in_progress() {
+        val obs = observer()
+        obs.begin("/settings")
+        now += 1_000
+        obs.restart()
+        now += 1_000
+        obs.stop()
+
+        assertEquals(listOf("/settings" to 2L), visits.map { it.screen to it.durationSeconds })
+    }
+
+    @Test
+    fun restart_does_nothing_before_any_path() {
+        val obs = observer()
+        obs.restart()
+        obs.stop()
+
+        assertEquals(0, visits.size)
+        assertNull(obs.current())
     }
 }

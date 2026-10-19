@@ -1,6 +1,8 @@
 package com.deepdots.sdk.ui
 
 import android.annotation.SuppressLint
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -50,6 +52,7 @@ actual fun SurveyView(
         AndroidView(factory = { ctx ->
             WebView.setWebContentsDebuggingEnabled(true)
             val assetSize = try { ctx.assets.open("magicfeedback/magicfeedback-sdk.browser.js").use { it.available() } } catch (e: Exception) { -1 }
+            val mainHandler = Handler(Looper.getMainLooper())
             val webView = WebView(ctx).apply {
                 setBackgroundColor(backgroundColor.toArgb())
                 settings.javaScriptEnabled = true
@@ -115,6 +118,16 @@ actual fun SurveyView(
                 addJavascriptInterface(object {
                     @JavascriptInterface
                     fun emit(event: String) {
+                        // Los métodos de un JavascriptInterface corren en el hilo `JavaBridge`, no
+                        // en el principal. Todo lo que dispara un evento del survey toca vistas o
+                        // estado de Compose (p. ej. el `ready` enseña el contenedor del popup), así
+                        // que se pasa al hilo principal. Antes el `ready` hacía `setVisibility`
+                        // desde aquí: CalledFromWrongThreadException a medias, el contenedor
+                        // quedaba VISIBLE sin repintarse y el popup, invisible, se comía los toques.
+                        mainHandler.post { handleBridgeEvent(event) }
+                    }
+
+                    private fun handleBridgeEvent(event: String) {
                         // Accept plain string or JSON {name,payload}
                         val name = try {
                             if (event.trim().startsWith("{")) {

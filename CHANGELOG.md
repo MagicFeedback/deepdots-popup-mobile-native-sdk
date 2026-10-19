@@ -4,6 +4,58 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.1 - 2026-10-19
+
+### Added
+
+- **`deepdots_page_view` carries the real `path`** next to the normalised `screen`
+  (`/orders/42` where `screen` says `/orders/:id`), the same values as the web SDK. A move
+  between two items of the same screen (`/orders/1` → `/orders/2`) is now a visit of its own;
+  only a change in the query is still ignored.
+
+### Fixed
+
+- **Android: the popup no longer stays invisible and blocks the screen.** When the survey
+  loaded before the 1.2 s reveal ceiling (a fast device, or a WebView already warm), its
+  `ready` message arrived on the WebView's `JavaBridge` thread and the SDK showed the popup
+  container from there. Android threw `CalledFromWrongThreadException` half-way: the container
+  was left `VISIBLE` (eating every touch) but never redrawn, so the user saw nothing until
+  something else forced a redraw. Survey bridge events are now handled on the main thread, and
+  the container is shown with `post`.
+- **Android: the survey now runs the `@magicfeedback/native` version the SDK pins (2.2.31).**
+  The survey HTML loads the vendored bundle first and only falls back to the CDN, and on
+  Android the vendored one always loads; it was still 2.2.4. Among other things, the numeric
+  rating put the scale text inside the first and last chips ("1 = Very bad") instead of below
+  the row. The vendored bundle (Android and iOS) is updated and a test keeps it in sync with the
+  CDN version.
+
+- **The last screen of a session is no longer lost when the session never closes.**
+  `deepdots_page_view` goes out when the user *leaves* a screen or `onBackground()` closes the
+  session, and the 5-minute heartbeat only sent `deepdots_user_engagement`, which carried no
+  screen. When the close never arrives (the app is killed in the foreground: a crash, an OOM,
+  or swiped away from the iOS app switcher without going through the background; or the
+  system suspends it before the closing request goes out), the backend closes the record
+  with only what it has, so a one-screen visit had no page view at all and a longer one lost
+  its last screen. Every heartbeat `deepdots_user_engagement` now also carries the screen the
+  user is on: `screen` and `path` (the same values its page view will carry) and
+  `screen_seconds` (time on that screen so far, measured like the page view's
+  `duration_seconds`); the three come together or not at all. The engagement sent while
+  closing the session carries none of them, because that screen has just got its page view.
+  No extra page views are emitted, so nothing is counted twice; the event name and its
+  `engagement_time_msec` are unchanged. Same params and rules as the web SDK; the journey
+  builder uses them to add the missing screen.
+- **The screen the user comes back to from the background is counted again.**
+  `onBackground()` closed the current screen, but `onForeground()` did not resume it, so the
+  screen the app returned to had no page view and, on the next `setPath()`, the new screen
+  was taken as the first one. The new session now resumes the last `setPath()` screen,
+  counted from the moment it opens, and emits its page view when the user leaves it or the
+  app goes to the background again. The same applies after `setUserId()` and
+  `setTrackingEnabled(true)`. Same as the web SDK's `restart()`.
+- **iOS: the closing batch asks for time to finish.** The request with the page view of the
+  last screen and the `session_end` goes out in `onBackground()`, and iOS could suspend the
+  app before it completed. It now runs inside a `UIApplication` background task that ends
+  as soon as the request finishes (or fails). Android is unchanged.
+
 ## 0.7.0 - 2026-10-16
 
 ### Added
