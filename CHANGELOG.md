@@ -13,6 +13,20 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ### Fixed
 
+- **Android: the popup no longer stays invisible and blocks the screen.** When the survey
+  loaded before the 1.2 s reveal ceiling (a fast device, or a WebView already warm), its
+  `ready` message arrived on the WebView's `JavaBridge` thread and the SDK showed the popup
+  container from there. Android threw `CalledFromWrongThreadException` half-way: the container
+  was left `VISIBLE` (eating every touch) but never redrawn, so the user saw nothing until
+  something else forced a redraw. Survey bridge events are now handled on the main thread, and
+  the container is shown with `post`.
+- **Android: the survey now runs the `@magicfeedback/native` version the SDK pins (2.2.31).**
+  The survey HTML loads the vendored bundle first and only falls back to the CDN, and on
+  Android the vendored one always loads; it was still 2.2.4. Among other things, the numeric
+  rating put the scale text inside the first and last chips ("1 = Very bad") instead of below
+  the row. The vendored bundle (Android and iOS) is updated and a test keeps it in sync with the
+  CDN version.
+
 - **The last screen of a session is no longer lost when the session never closes.**
   `deepdots_page_view` goes out when the user *leaves* a screen or `onBackground()` closes the
   session, and the 5-minute heartbeat only sent `deepdots_user_engagement`, which carried no
