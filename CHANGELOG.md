@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.1 - 2026-10-19
+
 ### Added
 
 - **`deepdots_page_view` carries the real `path`** next to the normalised `screen`
