@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.Reference" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">#0F4C81</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+    </style>
+
+    <style name="Theme.Reference.Splash">
+        <item name="android:windowBackground">#0F4C81</item>
+    </style>
+</resources>

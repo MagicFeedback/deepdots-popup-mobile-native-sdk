@@ -1,0 +1,6 @@
+<resources>
+    <!-- Ids de la pantalla de checkout, que se construye por código (Activity "plana"). -->
+    <item name="checkout_probe" type="id" />
+    <item name="checkout_place_order" type="id" />
+    <item name="checkout_fire_event" type="id" />
+</resources>

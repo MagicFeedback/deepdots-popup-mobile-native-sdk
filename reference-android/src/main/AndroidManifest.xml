@@ -1,0 +1,49 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:name=".ReferenceApp"
+        android:label="Deepdots Reference"
+        android:theme="@style/Theme.Reference"
+        android:supportsRtl="true">
+
+        <activity
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Reference.Splash">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Views + Fragments con BottomNavigationView. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
+        <!-- Compose. Se abre también por deep link: deepdots-ref://product/{id} -->
+        <activity
+            android:name=".ProductDetailActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="deepdots-ref" android:host="product" />
+            </intent-filter>
+        </activity>
+
+        <!-- android.app.Activity "plana" (sin ComponentActivity), como FlutterActivity. -->
+        <activity
+            android:name=".CheckoutActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light" />
+
+        <activity
+            android:name=".DiagnosticsActivity"
+            android:exported="false" />
+    </application>
+</manifest>
