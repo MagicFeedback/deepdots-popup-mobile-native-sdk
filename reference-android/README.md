@@ -52,19 +52,27 @@ que el debug no ve.
 
 Registro de la app: `adb logcat -s DeepdotsRef`.
 
-## Primeros hallazgos (2026-10-22, emulador API 36, SDK en `dev` = 0.7.1)
+## Casos de prueba
+
+Pestaña Account → **Test cases** (`TestCasesActivity`): cada caso dice cómo reproducirlo y qué
+tiene que pasar. Son bugs ya arreglados; si uno vuelve a fallar, es una regresión.
+
+1. Popup disparado con un bottom sheet del host abierto.
+2. Popup disparado con un diálogo del host abierto.
+3. Toque fuera del popup (la sonda no debe subir).
+4. Survey que no carga.
+
+## Hallazgos (2026-10-22, emulador API 36, SDK en `dev` = 0.7.1)
 
 1. **La integración de pruebas de `api-dev` está rota en el backend.** Sus popups apuntan al
    `productId` `40c20557…`, y `GET /sdk/app/{surveyId}/{productId}/info` responde 406
    `Public key not found` en dev y en prod. Ningún survey carga. Hace falta una integración de
    pruebas válida (idealmente una solo para esta app, con un popup por tipo de trigger).
-2. **Cuando el survey no carga, el popup no se puede cerrar desde la UI.** Sale
-   "Survey load timeout" con un botón "Send" y sin la X. En Android se sale con Back; en iOS,
-   que no tiene Back, el usuario se queda atrapado.
-3. **Con un modal del host abierto, el popup se pinta debajo.** Disparando el evento desde el
-   bottom sheet, el popup aparece detrás del velo del sheet y no se puede tocar hasta cerrar el
-   sheet. El SDK monta el popup en la ventana de la Activity y el modal es otra ventana encima.
-
-Verificado sin problemas: arranque con splash, popup por tiempo en una Activity Compose,
-cierre con Back, la app sigue respondiendo tras cerrar el popup, y Back cierra antes el modal del
-host que el popup.
+   **Pendiente.**
+2. **Con el survey caído no se podía cerrar el popup desde la UI.** El WebView, sin tamaño
+   propio, medía 0 px y pintaba su fondo encima de la cabecera (la X desaparecía), y el fallo
+   de carga llegaba al popup como una carga correcta (un "Send" sobre un survey vacío).
+   **Arreglado** (caso 4).
+3. **Con un modal del host abierto, el popup se pintaba debajo** de su velo, sin poder tocarse.
+   **Arreglado:** espera a que el modal se cierre (casos 1 y 2).
+4. **Los toques fuera del popup llegaban a la app de debajo.** **Arreglado** (caso 3).

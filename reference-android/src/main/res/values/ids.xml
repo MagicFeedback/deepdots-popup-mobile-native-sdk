@@ -3,4 +3,11 @@
     <item name="checkout_probe" type="id" />
     <item name="checkout_place_order" type="id" />
     <item name="checkout_fire_event" type="id" />
+
+    <!-- Pantalla de casos de prueba (TestCasesActivity). -->
+    <item name="cases_probe" type="id" />
+    <item name="case_sheet_event" type="id" />
+    <item name="case_dialog_event" type="id" />
+    <item name="case_scrim_event" type="id" />
+    <item name="case_load_error_event" type="id" />
 </resources>

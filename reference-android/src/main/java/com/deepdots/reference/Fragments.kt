@@ -126,6 +126,9 @@ class AccountFragment : TrackedFragment(Catalog.ACCOUNT) {
         view.findViewById<Button>(R.id.open_checkout).setOnClickListener {
             startActivity(Intent(requireContext(), CheckoutActivity::class.java))
         }
+        view.findViewById<Button>(R.id.open_test_cases).setOnClickListener {
+            startActivity(Intent(requireContext(), TestCasesActivity::class.java))
+        }
         view.findViewById<Button>(R.id.open_diagnostics).setOnClickListener {
             startActivity(Intent(requireContext(), DiagnosticsActivity::class.java))
         }

@@ -66,6 +66,12 @@
             android:text="Checkout (plain Activity)" />
 
         <Button
+            android:id="@+id/open_test_cases"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test cases" />
+
+        <Button
             android:id="@+id/open_diagnostics"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

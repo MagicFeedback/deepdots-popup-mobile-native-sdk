@@ -37,6 +37,7 @@ object Catalog {
     const val ACCOUNT = "/account"
     const val CHECKOUT = "/checkout"
     const val DIAGNOSTICS = "/diagnostics"
+    const val TEST_CASES = "/test-cases"
 
     const val CUSTOM_EVENT = "custom-event"
     const val ADD_TO_CART_CLICK = "add-to-cart"
