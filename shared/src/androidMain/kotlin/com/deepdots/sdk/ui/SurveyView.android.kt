@@ -16,9 +16,7 @@ import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -43,13 +41,16 @@ actual fun SurveyView(
     font: PopupFont?
 ) {
     var loading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(520.dp)
     ) {
-        AndroidView(factory = { ctx ->
+        // Tamaño explícito: sin él el AndroidView mide wrap_content y, mientras el survey no
+        // pinta nada (cargando, o si falla la carga), el WebView se queda con alto 0. Un WebView
+        // de alto 0 pinta su fondo sin recortar encima de lo que Compose dibujó antes, y tapaba
+        // la cabecera del popup con la X: sin survey no había forma de cerrarlo desde la UI.
+        AndroidView(modifier = Modifier.matchParentSize(), factory = { ctx ->
             WebView.setWebContentsDebuggingEnabled(true)
             val assetSize = try { ctx.assets.open("magicfeedback/magicfeedback-sdk.browser.js").use { it.available() } } catch (e: Exception) { -1 }
             val mainHandler = Handler(Looper.getMainLooper())
@@ -135,9 +136,9 @@ actual fun SurveyView(
                                 regex.find(event)?.groupValues?.get(1) ?: event
                             } else event
                         } catch (e: Exception) { event }
+                        // El aviso de "no ha cargado" lo pinta PopupView (común a Android e iOS).
                         if (name.startsWith("error")) {
                             loading = false
-                            errorMessage = if (name.contains("timeout")) "Survey load timeout" else "Error loading survey"
                         } else if (name == PopupReveal.LOADED_EVENT) {
                             loading = false
                         } else if (name == "before_submit") {
@@ -166,9 +167,6 @@ actual fun SurveyView(
             })
             webView
         }, update = {})
-        if (errorMessage != null) {
-            Box(modifier = Modifier.fillMaxWidth().height(520.dp), contentAlignment = Alignment.Center) { Text(errorMessage!!) }
-        }
         DisposableEffect(Unit) { onDispose { } }
     }
 }
