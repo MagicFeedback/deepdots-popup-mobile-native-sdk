@@ -35,6 +35,18 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   `decorView`, outside the content the Activity resizes, so while typing the footer (Send) was
   under the keyboard. The card is now laid out in the space above it. iOS is unchanged (Compose
   already moves the focused content there).
+- **iOS: the popup no longer crashes the app when `Info.plist` lacks
+  `CADisableMinimumFrameDurationOnPhone`.** Compose Multiplatform checks that key when the popup's
+  view controller is created and throws an uncaught exception if it is missing or `false`, on any
+  iPhone. The SDK now turns that check off: without the key the popup animates at 60 Hz on
+  ProMotion screens instead of 120 Hz. Adding the key is still recommended, but no longer required.
+- **iOS: a popup is no longer lost when the host is presenting something.** The popup was presented
+  from the context's view controller (usually the window's root). If that controller was already
+  presenting a sheet or a full-screen screen, UIKit refused silently: the popup counted as shown
+  (`PopupShown`, the report to the backend, the cooldown) and nobody saw it. It is now presented
+  from the top of the presented chain, so it shows over sheets and full-screen screens; with a host
+  alert on top, it waits until the alert is closed. `close()` / `Deepdots.dismiss` cancel a popup
+  that is waiting.
 - **Android: apps that minify their release build (R8) compile again.** The AAR shipped without
   consumer ProGuard rules (the file existed at the repo root but was not wired to the module),
   and R8 failed with `Missing class org.slf4j.impl.StaticLoggerBinder`, pulled in by Ktor. The

@@ -1,5 +1,6 @@
 package com.deepdots.sdk.platform
 
+import com.deepdots.sdk.renderer.PopupPresenter
 import platform.UIKit.restorationIdentifier
 import platform.UIKit.UIViewController
 
@@ -10,6 +11,8 @@ import platform.UIKit.UIViewController
 internal const val DEEPDOTS_POPUP_VC_ID = "DeepdotsPopupContainer"
 
 actual fun dismissPopup(context: PlatformContext) {
+    // Un popup que esperaba a que el host cerrase su alerta tampoco debe aparecer después.
+    PopupPresenter.cancelPendingPresentation()
     // Solo el popup del SDK, nunca un VC del host: antes se cerraba cualquier
     // `presentedViewController`, así que un `close()` con un picker o un share sheet del host
     // abierto se lo llevaba por delante. Se recorre la cadena de presentados porque el popup no
