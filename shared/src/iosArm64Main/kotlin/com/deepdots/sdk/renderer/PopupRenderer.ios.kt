@@ -28,7 +28,15 @@ actual object PopupRenderer {
         var controllerRef: UIViewController? = null
         // `opaque = false`: el canvas de Compose no pinta fondo propio, así que el scrim del
         // popup (semitransparente) deja ver la app de debajo, como en Android y en web.
-        val vc = ComposeUIViewController(configure = { opaque = false }) {
+        // `enforceStrictPlistSanityCheck = false`: Compose exige por defecto
+        // `CADisableMinimumFrameDurationOnPhone = true` en el Info.plist y, si falta, lanza una
+        // excepción que nadie captura y CIERRA LA APP DEL HOST al abrir el popup (en cualquier
+        // iPhone, no solo en los de 120 Hz). Un SDK no puede tumbar la app por una clave del
+        // plist: sin ella el popup solo se anima a 60 Hz en pantallas ProMotion.
+        val vc = ComposeUIViewController(configure = {
+            opaque = false
+            enforceStrictPlistSanityCheck = false
+        }) {
             PopupView(
                 popup = popup,
                 // Apertura diferida: la vista del controlador se presenta con alpha 0 y se
@@ -66,6 +74,9 @@ actual object PopupRenderer {
         vc.view.backgroundColor = UIColor.clearColor
         vc.view.setUserInteractionEnabled(false)
         vc.view.setAlpha(0.0)
-        context.viewController.presentViewController(vc, true, null)
+        // Desde lo más alto de la cadena, no desde el del contexto: si este ya presenta algo (un
+        // sheet o una pantalla completa del host), UIKit rechazaba la presentación en silencio y
+        // el popup se perdía aunque contase como mostrado. Ver PopupPresenter.
+        PopupPresenter.present(context.viewController, vc)
     }
 }

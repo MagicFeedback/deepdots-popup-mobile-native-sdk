@@ -1,0 +1,13 @@
+// App de referencia iOS. Equipo y bundle propios para no chocar con el demo (iosApp).
+TEAM_ID=
+
+PRODUCT_NAME=DeepdotsReference
+PRODUCT_BUNDLE_IDENTIFIER=com.deepdots.reference$(TEAM_ID)
+
+CURRENT_PROJECT_VERSION=1
+MARKETING_VERSION=1.0
+
+// Integración de pruebas en api-dev (ver README). Se puede cambiar por línea de comandos:
+// xcodebuild ... DEEPDOTS_PUBLIC_KEY=<clave> DEEPDOTS_ENV=prod
+DEEPDOTS_PUBLIC_KEY=GCt7N5GG7jrvOI2GMRpjY99H3v6u3pIx
+DEEPDOTS_ENV=dev
