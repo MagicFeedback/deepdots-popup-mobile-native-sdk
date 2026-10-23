@@ -14,6 +14,23 @@ import com.deepdots.sdk.models.PopupDefinition
 internal fun popupCloseAction(popup: PopupDefinition, declineLabel: String): Action =
     popup.actions.decline ?: Action.Decline(label = declineLabel, cooldownDays = 0)
 
+/** Qué hace el Back del sistema con el popup a la vista. */
+internal enum class PopupBackAction {
+    /** Hay un teclado abierto (el usuario escribía en el survey): solo se oculta. */
+    HideKeyboard,
+
+    /** Cierra el popup, igual que la X. */
+    Close,
+}
+
+/**
+ * El Back con el teclado abierto solo oculta el teclado, como en cualquier pantalla. Sin esto el
+ * popup, que se registra por encima del teclado para ganar a los callbacks del host, lo cerraba
+ * todo de una vez y se perdía lo escrito.
+ */
+internal fun popupBackAction(keyboardVisible: Boolean): PopupBackAction =
+    if (keyboardVisible) PopupBackAction.HideKeyboard else PopupBackAction.Close
+
 /**
  * Engancha el Back del sistema al cierre del popup mientras [enabled] (el popup está a la
  * vista). Android: botón, gesto y predictive back (API 33+) llaman a [onBack] en vez de llegar

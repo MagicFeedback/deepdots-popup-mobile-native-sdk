@@ -178,7 +178,9 @@ fun PopupView(
             // El velo es modal: un toque fuera de la tarjeta no debe llegar a la app de debajo.
             // Sin esto pasaba de largo (el contenedor no consumía nada) y, con el popup abierto,
             // el usuario podía pulsar botones del host que ni siquiera veía bien.
-            .pointerInput(Unit) { consumeAllTouches() },
+            .pointerInput(Unit) { consumeAllTouches() }
+            // El velo cubre toda la pantalla; la tarjeta se centra en lo que deja el teclado.
+            .avoidKeyboard(),
         contentAlignment = mapPosition(popup.style.position)
     ) {
         Surface(

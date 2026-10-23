@@ -26,6 +26,20 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   the Activity window does not have the focus (a host modal is open), the popup now waits and
   opens as soon as the modal closes. `close()` / `Deepdots.dismiss` also cancel a popup that is
   waiting.
+- **Android: the system Back with the keyboard open only hides the keyboard.** The popup's
+  predictive-back callback is registered with `PRIORITY_OVERLAY`, which also outranks the
+  keyboard's, so a single Back while typing in the survey hid the keyboard and closed the popup
+  (counted as declined, the text lost). Now, with the keyboard visible, Back hides it and the
+  popup stays; the next Back closes it as before.
+- **Android: the keyboard no longer covers the popup's buttons.** The popup lives in the
+  `decorView`, outside the content the Activity resizes, so while typing the footer (Send) was
+  under the keyboard. The card is now laid out in the space above it. iOS is unchanged (Compose
+  already moves the focused content there).
+- **Android: apps that minify their release build (R8) compile again.** The AAR shipped without
+  consumer ProGuard rules (the file existed at the repo root but was not wired to the module),
+  and R8 failed with `Missing class org.slf4j.impl.StaticLoggerBinder`, pulled in by Ktor. The
+  rules now travel inside the AAR: they keep the SDK classes and silence that optional slf4j
+  binder.
 
 ## 0.7.1 - 2026-10-19
 
