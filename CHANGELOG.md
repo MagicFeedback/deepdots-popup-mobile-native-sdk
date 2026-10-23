@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.2 - 2026-10-23
+
 ### Fixed
 
 - **A popup whose survey cannot load can be closed again.** Two problems added up. On
