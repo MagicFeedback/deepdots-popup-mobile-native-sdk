@@ -316,6 +316,14 @@ ${PopupReveal.REVEAL_JS}
                       lang: $langLiteral,
                       onLoadedEvent: function(args){
                         mfReady = true; var s=document.getElementById('mf-status'); if(s) s.textContent='';
+                        // Native avisa aqui tambien de que el survey NO ha cargado (clave o
+                        // producto inexistentes, sin red). No es un 'loaded': con el, la capa
+                        // nativa enseñaba un Send sobre un survey vacio y sin forma de salir.
+                        if (args && args.error) {
+                          var why = (args.error && args.error.message) ? args.error.message : String(args.error);
+                          emitJSON('${PopupReveal.LOAD_ERROR_EVENT}', { message: why });
+                          return;
+                        }
                         try {
                           var style = (args && args.formData && args.formData.style) ? args.formData.style : null;
                           // El survey pinta sus controles con --mf-primary, que sale de

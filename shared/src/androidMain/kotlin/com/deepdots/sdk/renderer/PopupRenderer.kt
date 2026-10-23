@@ -1,8 +1,10 @@
 package com.deepdots.sdk.renderer
 
+import android.app.Activity
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.webkit.WebView
 import android.widget.FrameLayout
 import androidx.compose.ui.platform.ComposeView
@@ -17,7 +19,33 @@ import com.deepdots.sdk.models.Action
 import com.deepdots.sdk.models.PopupDefinition
 import com.deepdots.sdk.platform.PlatformContext
 import com.deepdots.sdk.ui.PopupView
+import java.util.WeakHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+
+/** Qué hacer con un popup según el estado de la ventana de la Activity. */
+internal enum class AttachDecision {
+    /** Montarlo ya. */
+    Now,
+
+    /** Hay otra ventana del host encima (diálogo, bottom sheet, picker): esperar a que se cierre. */
+    WaitForFocus,
+
+    /** La Activity se está cerrando: no tiene sentido montarlo ni esperar. */
+    Drop,
+}
+
+/**
+ * Lógica pura de cuándo montar el popup, separada para poder testearla en JVM.
+ *
+ * El popup va en la ventana de la Activity; un diálogo o un bottom sheet del host son otra
+ * ventana ENCIMA, y el popup quedaba debajo de su velo, sin poder tocarse. Con uno de ellos
+ * abierto la ventana de la Activity pierde el foco, así que se espera a que lo recupere.
+ */
+internal fun popupAttachDecision(hasWindowFocus: Boolean, finishing: Boolean): AttachDecision = when {
+    finishing -> AttachDecision.Drop
+    hasWindowFocus -> AttachDecision.Now
+    else -> AttachDecision.WaitForFocus
+}
 
 actual object PopupRenderer {
     actual fun show(
@@ -94,7 +122,39 @@ actual object PopupRenderer {
             }
         }
         container.addView(composeView)
-        root.addView(container)
+        when (popupAttachDecision(activity.hasWindowFocus(), activity.isFinishing)) {
+            AttachDecision.Now -> root.addView(container)
+            AttachDecision.WaitForFocus -> attachWhenFocused(activity, root, container)
+            AttachDecision.Drop ->
+                Log.w(LOG_TAG, "Popup ${popup.id} not shown: ${activity.javaClass.name} is finishing")
+        }
+    }
+
+    /** Popups esperando a que el host cierre su modal, uno por ventana. */
+    private val pending = WeakHashMap<View, ViewTreeObserver.OnWindowFocusChangeListener>()
+
+    private fun attachWhenFocused(activity: Activity, root: ViewGroup, container: View) {
+        cancelPending(root)
+        Log.i(LOG_TAG, "Host window on top (dialog or sheet): popup waits until it closes")
+        val listener = object : ViewTreeObserver.OnWindowFocusChangeListener {
+            override fun onWindowFocusChanged(hasFocus: Boolean) {
+                if (!hasFocus) return
+                cancelPending(root)
+                // Fuera del despacho del foco: añadir vistas dentro de él no es seguro.
+                root.post {
+                    if (!activity.isFinishing && !activity.isDestroyed) root.addView(container)
+                }
+            }
+        }
+        pending[root] = listener
+        root.viewTreeObserver.addOnWindowFocusChangeListener(listener)
+    }
+
+    /** Olvida el popup que esperaba en [root] (`close()` / `Deepdots.dismiss` antes de mostrarse). */
+    internal fun cancelPending(root: View) {
+        val listener = pending.remove(root) ?: return
+        val observer = root.viewTreeObserver
+        if (observer.isAlive) observer.removeOnWindowFocusChangeListener(listener)
     }
 
     /**

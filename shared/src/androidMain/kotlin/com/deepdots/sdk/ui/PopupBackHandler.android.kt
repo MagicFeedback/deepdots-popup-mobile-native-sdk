@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.os.Build
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
 import androidx.activity.ComponentActivity
@@ -15,6 +16,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import com.deepdots.sdk.renderer.PopupContainer
 
 /**
@@ -41,7 +45,13 @@ internal actual fun PopupBackHandler(enabled: Boolean, onBack: () -> Unit) {
     DisposableEffect(enabled, context, view) {
         val activity = if (enabled) context.findActivity() else null
         val registration = if (activity != null) {
-            registerPopupBack(activity, view) { currentOnBack() }
+            registerPopupBack(activity, view) {
+                // Con el teclado abierto el Back es para él (ver `popupBackAction`).
+                when (popupBackAction(isKeyboardVisible(view))) {
+                    PopupBackAction.HideKeyboard -> hideKeyboard(activity, view)
+                    PopupBackAction.Close -> currentOnBack()
+                }
+            }
         } else {
             BackRegistration()
         }
@@ -110,6 +120,20 @@ private fun registerPopupBack(activity: Activity, view: View, onBack: () -> Unit
     registration.add { view.removeOnAttachStateChangeListener(detachListener) }
 
     return registration
+}
+
+/** Si el teclado está a la vista en la ventana del popup. */
+private fun isKeyboardVisible(view: View): Boolean =
+    ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+
+/**
+ * Oculta el teclado. Por el controlador de insets (API 30+) y, como red, por el
+ * `InputMethodManager`, que es lo que funciona en versiones anteriores.
+ */
+private fun hideKeyboard(activity: Activity, view: View) {
+    activity.window?.let { WindowCompat.getInsetsController(it, view).hide(WindowInsetsCompat.Type.ime()) }
+    val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+    imm?.hideSoftInputFromWindow(view.windowToken, 0)
 }
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {

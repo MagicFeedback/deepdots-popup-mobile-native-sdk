@@ -133,7 +133,11 @@ kotlin {
 android {
     namespace = "com.deepdots.sdk"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
-    defaultConfig { minSdk = libs.versions.android.minSdk.get().toInt() }
+    defaultConfig {
+        minSdk = libs.versions.android.minSdk.get().toInt()
+        // Viajan dentro del AAR y R8 las aplica en la app del cliente.
+        consumerProguardFiles("consumer-rules.pro")
+    }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
     buildTypes { getByName("release") { isMinifyEnabled = false }; getByName("debug") { } }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
