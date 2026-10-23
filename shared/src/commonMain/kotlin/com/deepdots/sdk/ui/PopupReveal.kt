@@ -35,6 +35,14 @@ object PopupReveal {
      */
     const val LOADED_EVENT: String = "loaded"
 
+    /**
+     * Aviso del WebView de que el survey NO ha podido cargar: `@magicfeedback/native` llama a
+     * `onLoadedEvent({ error })` cuando falla el `GET .../info` (clave o producto inexistentes,
+     * sin red). Lleva `message` con el motivo. Los otros fallos del WebView (`error:timeout`,
+     * `error:init`, `error:module*`) comparten el prefijo `error:` y se tratan igual.
+     */
+    const val LOAD_ERROR_EVENT: String = "error:load"
+
     /** Mensaje con el que el WebView informa de lo que mide su contenido, en px CSS = dp. */
     const val CONTENT_HEIGHT_EVENT: String = "content_height"
 
@@ -94,3 +102,10 @@ object PopupReveal {
         }
     """.trimIndent()
 }
+
+/**
+ * Si un mensaje del WebView dice que el survey no ha podido cargar. Solo los fallos de carga
+ * (prefijo `error:`): los de validación y envío (`validation_error_*`, `submit_error`) dejan al
+ * usuario seguir en el survey.
+ */
+internal fun isSurveyLoadError(name: String): Boolean = name.startsWith("error:")

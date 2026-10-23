@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/account_user"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+        <Button
+            android:id="@+id/account_sign_in"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sign in as test-user-1" />
+
+        <Button
+            android:id="@+id/account_sign_out"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sign out" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:text="Host modals (the SDK must not touch them)"
+            android:textAppearance="?attr/textAppearanceLabelLarge" />
+
+        <Button
+            android:id="@+id/open_dialog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open dialog" />
+
+        <Button
+            android:id="@+id/open_bottom_sheet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open bottom sheet" />
+
+        <Button
+            android:id="@+id/open_date_picker"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open date picker" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:text="Other screens"
+            android:textAppearance="?attr/textAppearanceLabelLarge" />
+
+        <Button
+            android:id="@+id/open_checkout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Checkout (plain Activity)" />
+
+        <Button
+            android:id="@+id/open_test_cases"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Test cases" />
+
+        <Button
+            android:id="@+id/open_diagnostics"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Diagnostics" />
+    </LinearLayout>
+</ScrollView>

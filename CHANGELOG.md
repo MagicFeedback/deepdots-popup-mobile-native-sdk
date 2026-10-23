@@ -4,6 +4,43 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **A popup whose survey cannot load can be closed again.** Two problems added up. On
+  Android the survey `WebView` had no size of its own, so while the survey had not drawn
+  anything (loading, or failed) it measured 0 px high, and a 0 px `WebView` painted its white
+  background over the popup header, X included. And when `@magicfeedback/native` reported a
+  failed load (unknown key or product, no network) the survey HTML forwarded it as a normal
+  load, so the popup showed a Send button over an empty survey. Now the `WebView` fills its
+  slot, a failed load reaches the popup as an error, and the popup shows a translated notice
+  ("We couldn't load this survey.") with the X and a Cancel button, both closing it. Before,
+  on Android the only way out was the system Back. The Cancel button and
+  the survey's own close no longer depend on the API sending `actions.decline`: without it they
+  did nothing.
+- **Taps outside the popup no longer reach the app underneath.** The dimmed backdrop looked
+  modal but let touches through, so with a popup open the user could press host buttons behind
+  it. The backdrop now swallows them; taps on the popup itself are unchanged.
+- **Android: a popup no longer opens under a host dialog or bottom sheet.** The popup is drawn
+  in the Activity window, and a dialog, bottom sheet or picker is another window on top of it,
+  so a popup triggered while one was open showed up under its scrim and could not be used. When
+  the Activity window does not have the focus (a host modal is open), the popup now waits and
+  opens as soon as the modal closes. `close()` / `Deepdots.dismiss` also cancel a popup that is
+  waiting.
+- **Android: the system Back with the keyboard open only hides the keyboard.** The popup's
+  predictive-back callback is registered with `PRIORITY_OVERLAY`, which also outranks the
+  keyboard's, so a single Back while typing in the survey hid the keyboard and closed the popup
+  (counted as declined, the text lost). Now, with the keyboard visible, Back hides it and the
+  popup stays; the next Back closes it as before.
+- **Android: the keyboard no longer covers the popup's buttons.** The popup lives in the
+  `decorView`, outside the content the Activity resizes, so while typing the footer (Send) was
+  under the keyboard. The card is now laid out in the space above it. iOS is unchanged (Compose
+  already moves the focused content there).
+- **Android: apps that minify their release build (R8) compile again.** The AAR shipped without
+  consumer ProGuard rules (the file existed at the repo root but was not wired to the module),
+  and R8 failed with `Missing class org.slf4j.impl.StaticLoggerBinder`, pulled in by Ktor. The
+  rules now travel inside the AAR: they keep the SDK classes and silence that optional slf4j
+  binder.
+
 ## 0.7.1 - 2026-10-19
 
 ### Added

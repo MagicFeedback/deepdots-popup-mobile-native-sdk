@@ -48,6 +48,8 @@ object DefaultLabels {
         val errorRequired: String,
         /** Aviso cuando el envío falla. */
         val errorSubmit: String,
+        /** Aviso cuando el survey no ha podido cargar (el popup solo ofrece cerrarlo). */
+        val errorLoad: String,
     ) {
         fun get(slot: Slot): String = when (slot) {
             Slot.ACCEPT -> accept
@@ -71,6 +73,7 @@ object DefaultLabels {
         loadingAria = "Loading survey",
         errorRequired = "Please answer the required question to continue.",
         errorSubmit = "An error occurred while submitting. Please try again or close the popup.",
+        errorLoad = "We couldn't load this survey.",
     )
 
     private val ES = Labels(
@@ -86,6 +89,7 @@ object DefaultLabels {
         loadingAria = "Cargando encuesta",
         errorRequired = "Responde la pregunta obligatoria para continuar.",
         errorSubmit = "Se produjo un error al enviar. Inténtalo de nuevo o cierra la ventana.",
+        errorLoad = "No se ha podido cargar la encuesta.",
     )
 
     private val DA = Labels(
@@ -101,6 +105,7 @@ object DefaultLabels {
         loadingAria = "Indlæser undersøgelse",
         errorRequired = "Besvar venligst det obligatoriske spørgsmål for at fortsætte.",
         errorSubmit = "Der opstod en fejl under afsendelsen. Prøv igen, eller luk pop op-vinduet.",
+        errorLoad = "Undersøgelsen kunne ikke indlæses.",
     )
 
     private val NO = Labels(
@@ -116,6 +121,7 @@ object DefaultLabels {
         loadingAria = "Laster undersøkelse",
         errorRequired = "Svar på det obligatoriske spørsmålet for å fortsette.",
         errorSubmit = "Det oppstod en feil under innsendingen. Prøv igjen, eller lukk popupen.",
+        errorLoad = "Undersøkelsen kunne ikke lastes inn.",
     )
 
     private val SV = Labels(
@@ -131,6 +137,7 @@ object DefaultLabels {
         loadingAria = "Laddar undersökning",
         errorRequired = "Svara på den obligatoriska frågan för att fortsätta.",
         errorSubmit = "Ett fel uppstod vid inskickningen. Försök igen eller stäng popupen.",
+        errorLoad = "Enkäten kunde inte laddas.",
     )
 
     private val FI = Labels(
@@ -146,6 +153,7 @@ object DefaultLabels {
         loadingAria = "Ladataan kyselyä",
         errorRequired = "Vastaa pakolliseen kysymykseen jatkaaksesi.",
         errorSubmit = "Lähetyksessä tapahtui virhe. Yritä uudelleen tai sulje ponnahdusikkuna.",
+        errorLoad = "Kyselyä ei voitu ladata.",
     )
 
     private val DE = Labels(
@@ -161,6 +169,7 @@ object DefaultLabels {
         loadingAria = "Umfrage wird geladen",
         errorRequired = "Bitte beantworte die Pflichtfrage, um fortzufahren.",
         errorSubmit = "Beim Senden ist ein Fehler aufgetreten. Versuche es erneut oder schließe das Popup.",
+        errorLoad = "Die Umfrage konnte nicht geladen werden.",
     )
 
     private val FR = Labels(
@@ -176,6 +185,7 @@ object DefaultLabels {
         loadingAria = "Chargement de l'enquête",
         errorRequired = "Veuillez répondre à la question obligatoire pour continuer.",
         errorSubmit = "Une erreur s'est produite lors de l'envoi. Réessayez ou fermez la fenêtre.",
+        errorLoad = "Impossible de charger l'enquête.",
     )
 
     private val PT = Labels(
@@ -191,6 +201,7 @@ object DefaultLabels {
         loadingAria = "A carregar questionário",
         errorRequired = "Responda à pergunta obrigatória para continuar.",
         errorSubmit = "Ocorreu um erro ao enviar. Tente novamente ou feche a janela.",
+        errorLoad = "Não foi possível carregar o inquérito.",
     )
 
     // ⚠️ Árabe: el texto es RTL pero el chrome sigue maquetado LTR, igual que en Web. Traducir
@@ -209,6 +220,7 @@ object DefaultLabels {
         loadingAria = "جارٍ تحميل الاستبيان",
         errorRequired = "يرجى الإجابة على السؤال المطلوب للمتابعة.",
         errorSubmit = "حدث خطأ أثناء الإرسال. يرجى المحاولة مرة أخرى أو إغلاق النافذة.",
+        errorLoad = "تعذّر تحميل الاستبيان.",
     )
 
     private val BN = Labels(
@@ -224,6 +236,7 @@ object DefaultLabels {
         loadingAria = "জরিপ লোড হচ্ছে",
         errorRequired = "চালিয়ে যেতে আবশ্যক প্রশ্নের উত্তর দিন।",
         errorSubmit = "জমা দেওয়ার সময় একটি ত্রুটি ঘটেছে। আবার চেষ্টা করুন বা পপআপ বন্ধ করুন।",
+        errorLoad = "সমীক্ষাটি লোড করা যায়নি।",
     )
 
     private val ZH_CN = Labels(
@@ -239,6 +252,7 @@ object DefaultLabels {
         loadingAria = "正在加载问卷",
         errorRequired = "请回答必答题后继续。",
         errorSubmit = "提交时出错。请重试或关闭弹窗。",
+        errorLoad = "无法加载问卷。",
     )
 
     private val TABLE: Map<String, Labels> = mapOf(

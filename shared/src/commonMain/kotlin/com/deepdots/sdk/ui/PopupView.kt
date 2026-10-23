@@ -24,6 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -171,7 +174,13 @@ fun PopupView(
             // survey. El velo del scrim también desaparece, si no se vería el fondo oscuro
             // varios cientos de ms antes que la tarjeta.
             .alpha(if (revealed) 1f else 0f)
-            .background(if (chrome) Color(0x66000000) else Color.Transparent),
+            .background(if (chrome) Color(0x66000000) else Color.Transparent)
+            // El velo es modal: un toque fuera de la tarjeta no debe llegar a la app de debajo.
+            // Sin esto pasaba de largo (el contenedor no consumía nada) y, con el popup abierto,
+            // el usuario podía pulsar botones del host que ni siquiera veía bien.
+            .pointerInput(Unit) { consumeAllTouches() }
+            // El velo cubre toda la pantalla; la tarjeta se centra en lo que deja el teclado.
+            .avoidKeyboard(),
         contentAlignment = mapPosition(popup.style.position)
     ) {
         Surface(
@@ -471,7 +480,14 @@ fun PopupView(
                                                 viewState = navState()
                                             }
                                             else -> {
-                                                if (name.startsWith("validation_error")) {
+                                                if (isSurveyLoadError(name)) {
+                                                    // El survey no ha cargado: se enseña el aviso
+                                                    // y solo se ofrece cerrar. Se revela ya, sin
+                                                    // esperar un `ready` que no va a llegar.
+                                                    viewState = ViewState.Error
+                                                    errorHint = null
+                                                    reveal()
+                                                } else if (name.startsWith("validation_error")) {
                                                     // Rama defensiva: hoy el WebView solo emite
                                                     // `validation_error_required`. Sin mensaje del
                                                     // bridge se usa el mismo aviso traducido, en
@@ -501,7 +517,9 @@ fun PopupView(
                                                     viewState = navState()
                                                     errorHint = null
                                                 } else if (name == "popup_close") {
-                                                    popup.actions.decline?.let { onAction(it) }
+                                                    // Mismo cierre que la X: sin `actions.decline`
+                                                    // en la API, esto antes no hacía nada.
+                                                    requestClose()
                                                 }
                                             }
                                         }
@@ -510,6 +528,21 @@ fun PopupView(
                                     },
                                     onController = { controller -> surveyController = controller }
                                 )
+                            }
+                            // Survey que no ha cargado: el aviso va encima del WebView vacío. Vive
+                            // aquí (común) y no en cada SurveyView para que iOS lo tenga igual.
+                            if (viewState == ViewState.Error) {
+                                Box(
+                                    modifier = Modifier.matchParentSize().background(bgColor),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = labels.errorLoad,
+                                        color = textColor,
+                                        fontSize = 15.sp,
+                                        modifier = Modifier.padding(16.dp),
+                                    )
+                                }
                             }
                             // Spinner solo sobre el survey y solo si la pagina tarda: antes era un
                             // velo sobre toda la tarjeta que salia en cada cambio de pagina.
@@ -603,8 +636,11 @@ fun PopupView(
                                     ) { Text(actionLabel(popup.actions.complete?.label, DefaultLabels.Slot.COMPLETE), color = Color.White) }
                                 }
                                 ViewState.Error -> {
+                                    Spacer(modifier = Modifier.weight(1f))
                                     Button(
-                                        onClick = { if (!pageLoading) popup.actions.decline?.let { onAction(it) } },
+                                        // Mismo cierre que la X. Antes dependía de que la API
+                                        // mandase `actions.decline`; sin él el botón no hacía nada.
+                                        onClick = requestClose,
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
                                     ) { Text(actionLabel(popup.actions.decline?.label, DefaultLabels.Slot.DECLINE), color = Color.White) }
                                 }
@@ -625,6 +661,19 @@ fun PopupView(
                 }
             }
         }
+    }
+}
+
+/**
+ * Consume todos los toques que llegan al velo sin hacer nada con ellos. Los hijos (la tarjeta,
+ * sus botones y el WebView) los reciben antes, así que esto solo se queda con los que caen fuera.
+ */
+private suspend fun PointerInputScope.consumeAllTouches() {
+    awaitEachGesture {
+        do {
+            val event = awaitPointerEvent()
+            event.changes.forEach { it.consume() }
+        } while (event.changes.any { it.pressed })
     }
 }
 
