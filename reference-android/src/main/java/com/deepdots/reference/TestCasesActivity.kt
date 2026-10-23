@@ -80,6 +80,17 @@ class TestCasesActivity : AppCompatActivity() {
             buttonId = R.id.case_load_error_event,
         ) { fireEvent() }
 
+        addCase(
+            column,
+            title = "5. Writing in the survey with the keyboard open",
+            steps = "Fires custom-event. Answer the rating; on the text page the keyboard opens. " +
+                "Type something, then press the system Back once.",
+            expected = "With the keyboard open, Back and Send stay visible above it. The first Back " +
+                "only hides the keyboard: the popup stays open and keeps the text. A second Back " +
+                "closes it. Send works with the keyboard still open.",
+            buttonId = R.id.case_keyboard_event,
+        ) { fireEvent() }
+
         setContentView(ScrollView(this).apply {
             fitsSystemWindows = true
             addView(column)

@@ -10,4 +10,5 @@
     <item name="case_dialog_event" type="id" />
     <item name="case_scrim_event" type="id" />
     <item name="case_load_error_event" type="id" />
+    <item name="case_keyboard_event" type="id" />
 </resources>

@@ -65,6 +65,7 @@ tiene que pasar. Son bugs ya arreglados; si uno vuelve a fallar, es una regresi√
 2. Popup disparado con un di√°logo del host abierto.
 3. Toque fuera del popup (la sonda no debe subir).
 4. Survey que no carga.
+5. Escribir en el survey con el teclado abierto (Back y Send).
 
 ## Hallazgos (2026-10-22, emulador API 36, SDK en `dev` = 0.7.1)
 
@@ -79,3 +80,5 @@ tiene que pasar. Son bugs ya arreglados; si uno vuelve a fallar, es una regresi√
 3. **Con un modal del host abierto, el popup se pintaba debajo** de su velo, sin poder tocarse.
    **Arreglado:** espera a que el modal se cierre (casos 1 y 2).
 4. **Los toques fuera del popup llegaban a la app de debajo.** **Arreglado** (caso 3).
+5. **Con el teclado abierto, el Back cerraba el popup** (y se perd√≠a lo escrito), y el teclado
+   tapaba el Send. **Arreglado** (caso 5).
