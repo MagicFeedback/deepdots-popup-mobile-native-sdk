@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.3 - 2026-10-23
+
 ### Fixed
 
 - **`setContactAttributes()` retries after a failed send.** The SDK only sends contact
