@@ -25,7 +25,11 @@ Compose) para poder automatizarlos.
 
 ## Rutas y popups
 
-La app usa la integración de pruebas de `api-dev`, que segmenta así:
+La app usa la configuración de popups **"Reference app (native SDK tests)"** del proyecto
+`MAGICFEEDBACK_DEV` (clave `GCt7N5GG7jrvOI2GMRpjY99H3v6u3pIx`, api-dev), creada para ella. Todos
+los popups abren el survey **"Reference app - Basic"** (valoración 1-10 obligatoria + texto libre
+opcional, en dos páginas). Re-display por defecto: 7 días tras mostrarse, así que para repetir un
+caso hay que borrar los datos de la app (`adb shell pm clear com.deepdots.reference`).
 
 | Ruta / disparo | Trigger configurado |
 |---|---|
@@ -33,7 +37,7 @@ La app usa la integración de pruebas de `api-dev`, que segmenta así:
 | `/detail/2` (producto 2) | scroll 50 % |
 | `/detail/3` (producto 3) | salida |
 | evento `custom-event` (cualquier ruta) | evento |
-| click `add-to-cart` | sin popup configurado todavía |
+| click `add-to-cart` (cualquier ficha) | click |
 
 ## Uso
 
@@ -64,11 +68,10 @@ tiene que pasar. Son bugs ya arreglados; si uno vuelve a fallar, es una regresi�
 
 ## Hallazgos (2026-10-22, emulador API 36, SDK en `dev` = 0.7.1)
 
-1. **La integración de pruebas de `api-dev` está rota en el backend.** Sus popups apuntan al
-   `productId` `40c20557…`, y `GET /sdk/app/{surveyId}/{productId}/info` responde 406
-   `Public key not found` en dev y en prod. Ningún survey carga. Hace falta una integración de
-   pruebas válida (idealmente una solo para esta app, con un popup por tipo de trigger).
-   **Pendiente.**
+1. **La integración de pruebas antigua de `api-dev` (clave `12mGEGK4…`) está rota en el
+   backend.** Sus popups apuntan al `productId` `40c20557…`, y
+   `GET /sdk/app/{surveyId}/{productId}/info` responde 406 `Public key not found`. **Resuelto**
+   creando una configuración propia para esta app (ver "Rutas y popups").
 2. **Con el survey caído no se podía cerrar el popup desde la UI.** El WebView, sin tamaño
    propio, medía 0 px y pintaba su fondo encima de la cabecera (la X desaparecía), y el fallo
    de carga llegaba al popup como una carga correcta (un "Send" sobre un survey vacío).

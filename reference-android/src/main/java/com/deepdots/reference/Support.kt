@@ -11,12 +11,13 @@ import java.util.Locale
 /** Rutas que la app pasa a `setPath()` y nombres de trigger que usa. */
 object Catalog {
     /**
-     * Las fichas usan `/detail/{id}` porque son las rutas que segmentan los popups de la
-     * integración de pruebas en api-dev:
+     * Rutas que segmentan los popups de la configuración de pruebas en api-dev
+     * ("Reference app (native SDK tests)", survey "Reference app - Basic"):
      *  - `/detail/1` → time on page (2 s)
      *  - `/detail/2` → scroll (50 %)
      *  - `/detail/3` → exit (al salir de la ficha)
      *  - evento `custom-event` → cualquier ruta
+     *  - click `add-to-cart` → cualquier ficha (`/detail`)
      */
     data class Product(val id: Int, val name: String, val price: String, val note: String)
 
@@ -24,7 +25,7 @@ object Catalog {
         Product(1, "Cordless drill 18V", "1.299 kr", "Popup by time on page (2 s)"),
         Product(2, "Wood screws 4x40 (200)", "89 kr", "Popup by scroll (50 %)"),
         Product(3, "Safety gloves", "129 kr", "Popup on exit (when you leave)"),
-        Product(4, "Spirit level 60 cm", "249 kr", "No popup configured"),
+        Product(4, "Spirit level 60 cm", "249 kr", "Popup on Add to cart (click)"),
         Product(5, "Measuring tape 5 m", "119 kr", "No popup configured"),
         Product(6, "Work light LED", "399 kr", "No popup configured"),
     )

@@ -19,10 +19,11 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        // Integración de pruebas en api-dev. Se puede cambiar sin tocar código:
+        // Configuración de popups "Reference app (native SDK tests)" en api-dev (proyecto
+        // MAGICFEEDBACK_DEV), con el survey "Reference app - Basic". Se puede cambiar sin tocar código:
         // ./gradlew :reference-android:installDebug -PdeepdotsPublicKey=... -PdeepdotsEnv=prod
         val publicKey = (project.findProperty("deepdotsPublicKey") as String?)
-            ?: "12mGEGK4YXHXHrxZ45bJOsH6fiOl6ew1"
+            ?: "GCt7N5GG7jrvOI2GMRpjY99H3v6u3pIx"
         val env = (project.findProperty("deepdotsEnv") as String?) ?: "dev"
         buildConfigField("String", "DEEPDOTS_PUBLIC_KEY", "\"$publicKey\"")
         buildConfigField("String", "DEEPDOTS_ENV", "\"$env\"")
