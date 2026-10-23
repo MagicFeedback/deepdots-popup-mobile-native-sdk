@@ -4,6 +4,20 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.3 - 2026-10-23
+
+### Fixed
+
+- **`setContactAttributes()` retries after a failed send.** The SDK only sends contact
+  attributes when they change, and a non-2xx response from `POST /sdk/popups/contact` still
+  recorded them as sent, so they were not sent again until a value changed. Now they are only
+  recorded once the API accepts them, and the next call retries. `setContactAttributes()`
+  returns `false` when the send fails.
+- **Contact attributes are sent for every user on a shared device.** The "last sent" record
+  did not include the user, so after `setUserId()` a second user with the same attributes as
+  the previous one never sent theirs. After upgrading, each user's attributes are sent once
+  more on the next call.
+
 ## 0.7.2 - 2026-10-23
 
 ### Fixed

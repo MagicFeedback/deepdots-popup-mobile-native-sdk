@@ -4,6 +4,7 @@ import com.deepdots.sdk.storage.InMemoryStorage
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -17,11 +18,20 @@ class ContactManagerParityTest {
 
     private val sent = mutableListOf<ContactBody>()
 
-    private fun mgr(storage: InMemoryStorage = InMemoryStorage()) = ContactManager(
+    /** Cuántos envíos siguientes deben fallar (simula sin red o un no-2xx). */
+    private var failNext = 0
+
+    private fun mgr(storage: InMemoryStorage = InMemoryStorage(), userId: String = "user-a") = ContactManager(
         storage = storage,
         publicKey = "pk-1",
-        userId = "user-a",
-        post = { body -> sent += body },
+        userId = userId,
+        post = { body ->
+            sent += body
+            if (failNext > 0) {
+                failNext--
+                throw IllegalStateException("HTTP 503")
+            }
+        },
     )
 
     @Test
@@ -83,5 +93,31 @@ class ContactManagerParityTest {
         m.setAttributes(mapOf("" to "x", "plan" to null, "age" to 20))
 
         assertEquals(mapOf("age" to "20"), sent[0].userAttributes)
+    }
+
+    @Test
+    fun a_failed_send_is_not_cached_and_the_next_call_retries() = runBlocking {
+        val storage = InMemoryStorage()
+        val m = mgr(storage)
+        failNext = 1
+
+        val first = m.setAttributes(mapOf("plan" to "premium"))
+        assertTrue(!first, "un envío fallido devuelve false")
+        assertNull(storage.getString(CONTACT_ATTRIBUTES_KEY), "no se guarda la caché si falla")
+
+        val second = m.setAttributes(mapOf("plan" to "premium"))
+        assertTrue(second)
+        assertEquals(2, sent.size)
+    }
+
+    @Test
+    fun the_cache_is_per_user_on_a_shared_device() = runBlocking {
+        val storage = InMemoryStorage()
+        mgr(storage, userId = "user-a").setAttributes(mapOf("customer_number" to "12345"))
+        val second = mgr(storage, userId = "user-b").setAttributes(mapOf("customer_number" to "12345"))
+
+        assertTrue(second, "otro usuario con los mismos atributos tiene que enviar los suyos")
+        assertEquals(2, sent.size)
+        assertEquals("user-b", sent[1].userId)
     }
 }
