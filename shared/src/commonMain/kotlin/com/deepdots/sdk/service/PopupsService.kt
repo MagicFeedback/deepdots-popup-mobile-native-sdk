@@ -54,7 +54,7 @@ interface PopupsService {
 
     /**
      * Persists the host-owned user attributes on the backend Contact (popup segmentation).
-     * Endpoint: POST /sdk/popups/contact
+     * Endpoint: POST /sdk/popups/contact. Throws when the send fails (no network or non-2xx).
      */
     suspend fun postContact(body: ContactBody)
 }
@@ -150,6 +150,8 @@ class DefaultPopupsService(
         if (status < 200 || status >= 300) {
             val text = runCatching { response.bodyAsText() }.getOrDefault("")
             println("[DeepdotsPopups] POST /sdk/popups/contact rejected with $status: ${text.take(500)}")
+            // Lanza para que ContactManager no dé los atributos por enviados y reintente.
+            throw IllegalStateException("POST /sdk/popups/contact rejected with $status")
         }
     }
 
