@@ -65,6 +65,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -1083,6 +1084,10 @@ class DeepdotsPopups {
     }
 
     internal fun debugParseServerPayload(payload: String): List<PopupDefinition> = parseServerPopups(payload)
+
+    /** Lo que acepta `GET /sdk/popups` por popup: el schema de release se genera de aquí (MF-3242). */
+    internal fun debugServerPopupDescriptor(): SerialDescriptor = ServerPopupDto.serializer().descriptor
+    internal fun debugServerStyleDescriptor(): SerialDescriptor = ServerStyleDto.serializer().descriptor
 
     private fun startAutoLaunch() {
         triggerJobs.forEach { it.cancel() }
