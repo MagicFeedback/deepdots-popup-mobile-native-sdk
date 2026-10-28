@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.8.0 - 2026-10-28
+
 ### Added
 
 - **Every release says what it is compatible with, and what exactly was published.** The
