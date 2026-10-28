@@ -55,13 +55,14 @@ jobs:
       # ajv, fijado en scripts/release/package-lock.json.
       - run: npm ci --prefix scripts/release
 
-      - name: Gate unit tests
-        run: npm test --prefix scripts/release
-
       # HEAD es la PR fusionada sobre su base: el diff es justo lo que cambiaria el merge.
       - name: Check version, changelog and manifest
         id: gate
         run: node scripts/release/check.mjs pr --base "origin/${{ github.base_ref }}"
+
+      - name: Gate unit tests
+        if: ${{ !cancelled() }}
+        run: npm test --prefix scripts/release
 
       # El schema de configuracion sale del codigo Kotlin y los fixtures pasan por el parser
       # del SDK: eso solo lo puede comprobar Gradle. Corre aunque falle el paso anterior.

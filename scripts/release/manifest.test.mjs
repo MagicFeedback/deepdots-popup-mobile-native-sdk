@@ -9,9 +9,10 @@ import { kotlinConst, repoFacts, spmIosMinimum, validateManifest } from './manif
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
-test('el manifiesto del repo es valido y coincide con el codigo', () => {
-  const { errors } = validateManifest({ root: ROOT });
-  assert.deepEqual(errors, []);
+// El manifiesto del repo lo valida el propio gate (check.mjs); aqui solo copias que se rompen
+// a proposito, para que estos tests no dependan del estado del manifiesto en cada rama.
+test('una copia sin tocar del manifiesto es valida', () => {
+  assert.deepEqual(sandbox(() => {}), []);
 });
 
 test('lee las versiones del codigo', () => {
