@@ -22,6 +22,7 @@ internal const val MAGICFEEDBACK_VERSION: String = "2.2.31"
  * con su CSS re-vendorizado y apuntar aqui a esa version; mientras ese npm no este publicado,
  * el WebView pedira una URL que no existe y el survey saldra sin estilos.
  */
+// failure test MF-3242: cambio del SDK sin notas
 internal const val POPUP_SDK_CSS_VERSION: String = "1.10.0"
 
 /**
