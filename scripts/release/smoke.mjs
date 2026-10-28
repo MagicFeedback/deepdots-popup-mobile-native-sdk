@@ -120,8 +120,9 @@ function checkXcframework(zip, manifest, failures) {
       const min = plistString(plist, 'MinimumOSVersion');
       result.minimumOSVersion[slice] = min;
       // Framework estatico: el minimo efectivo lo pone el enlazado (-mios-version-min) y SPM;
-      // el del Info.plist no puede pedir MAS que el manifiesto.
-      if (min && !osAtMost(min, manifest.hosts.ios.minimum)) {
+      // el del Info.plist no puede pedir MAS que el manifiesto. El slice de simulador arm64
+      // siempre dice 14.0 (no hay simuladores arm64 anteriores): solo se anota.
+      if (min && !slice.endsWith('-simulator') && !osAtMost(min, manifest.hosts.ios.minimum)) {
         failures.push(`XCFramework ${slice}: MinimumOSVersion ${min} es mayor que el minimo del manifiesto (${manifest.hosts.ios.minimum})`);
       }
     }

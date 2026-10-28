@@ -37,7 +37,7 @@
     "ios": {
       "minimum": "13.0",
       "architectures": ["ios-arm64", "ios-arm64-simulator"],
-      "notes": "Sin slice x86_64: no corre en el simulador de Macs Intel."
+      "notes": "Sin slice x86_64: no corre en el simulador de Macs Intel. El slice de simulador (arm64) pide iOS 14."
     },
     "frameworks": [
       { "name": "android-compose", "support": "supported" },
