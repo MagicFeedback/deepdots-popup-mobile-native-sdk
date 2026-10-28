@@ -18,7 +18,7 @@
   },
   "surveyRenderer": {
     "package": "@magicfeedback/native",
-    "version": "2.2.31",
+    "version": "2.2.4",
     "delivery": { "android": "vendored", "ios": "cdn" },
     "notes": "Android carga el bundle vendorizado de los assets del AAR. En iOS el XCFramework no lleva el bundle: el WebView lo carga del CDN (jsDelivr, luego unpkg) en la version exacta, salvo que la app lo incluya en su bundle."
   },
@@ -29,7 +29,7 @@
   },
   "hosts": {
     "android": {
-      "minSdk": 24,
+      "minSdk": 21,
       "compileSdk": 36,
       "targetSdk": 36,
       "notes": "Cualquier Activity (ComponentActivity, AppCompatActivity, FlutterActivity)."
