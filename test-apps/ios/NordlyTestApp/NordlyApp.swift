@@ -366,6 +366,5 @@ struct RateSheet: View {
             Spacer()
         }
         .padding(20)
-        .accessibilityIdentifier("rate-sheet")
     }
 }

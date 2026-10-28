@@ -32,6 +32,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.deepdots.testapp
         CODE_SIGNING_ALLOWED: NO
         TARGETED_DEVICE_FAMILY: "1"
+        # The XCFramework has no x86_64 simulator slice (compatibility.json): arm64 only.
+        "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
     info:
       path: NordlyTestApp/Info.plist
       properties:

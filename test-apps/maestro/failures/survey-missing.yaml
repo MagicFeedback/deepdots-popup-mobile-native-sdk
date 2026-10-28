@@ -9,6 +9,10 @@ tags: [failure]
       SCENARIO: fault-survey-missing
 - tapOn:
     id: lab-open
+- scrollUntilVisible:
+    element:
+      id: lab-event-fault_survey
+    direction: DOWN
 - tapOn:
     id: lab-event-fault_survey
 - extendedWaitUntil:

@@ -8,6 +8,10 @@ tags: [smoke]
       SCENARIO: release-fixtures
 - tapOn:
     id: lab-open
+- scrollUntilVisible:
+    element:
+      id: lab-event-fixture_minimal
+    direction: DOWN
 - tapOn:
     id: lab-event-fixture_minimal
 - extendedWaitUntil:
