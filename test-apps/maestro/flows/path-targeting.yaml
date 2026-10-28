@@ -1,0 +1,12 @@
+# The same /checkout popup does NOT show on another screen.
+appId: com.deepdots.testapp
+tags: [smoke]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: checkout-time
+      START: cart
+- waitForAnimationToEnd:
+    timeout: 6000
+- assertNotVisible: "Did anything stop you from completing your order?"

@@ -1,0 +1,10 @@
+# Maestro workspace for the native test apps (MF-3244). Same flows on Android and iOS:
+# both apps use the bundle id com.deepdots.testapp and the same accessibility ids.
+flows:
+  - flows/*
+  - failures/*
+# failures/missing-navigation.yaml must fail; CI runs it on its own and expects the failure.
+excludeTags:
+  - expected-failure
+executionOrder:
+  continueOnFailure: true

@@ -1,0 +1,121 @@
+# Native test apps (MF-3244): builds the NORDLY apps against PUBLISHED SDK versions
+# (Android: Maven Central, iOS: MagicFeedback/DeepdotsSDK-SPM), runs the Maestro suite on an
+# emulator / simulator against DEV (MAGICFEEDBACK_DEV) and keeps logs, JUnit and videos.
+# Docs: test-apps/README.md
+name: Test apps
+
+on:
+  pull_request:
+    paths:
+      - "test-apps/**"
+      - ".github/workflows/test-apps.yml"
+  workflow_dispatch:
+    inputs:
+      versions:
+        description: "SDK versions, JSON list (published versions; Android also accepts \"local\")"
+        default: '["0.7.3", "0.7.0"]'
+      record:
+        description: "Record one video per flow"
+        type: boolean
+        default: false
+
+concurrency:
+  group: test-apps-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android · SDK ${{ matrix.sdk }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: ${{ fromJSON(github.event.inputs.versions || '["0.7.3", "0.7.0"]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Build app (SDK ${{ matrix.sdk }})
+        working-directory: test-apps/android
+        run: ./gradlew :app:assembleDebug :app:labSdkInfo -PsdkVersion=${{ matrix.sdk }}
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Run suite on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          RECORD: ${{ github.event.inputs.record == 'true' && '1' || '0' }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: |
+            adb install -r test-apps/android/app/build/outputs/apk/debug/app-debug.apk
+            test-apps/scripts/run-maestro.sh android ${{ matrix.sdk }} out/android-${{ matrix.sdk }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-apps-android-${{ matrix.sdk }}
+          path: out/android-${{ matrix.sdk }}
+          retention-days: 14
+
+  ios:
+    name: iOS · SDK ${{ matrix.sdk }}
+    runs-on: macos-15
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: ${{ fromJSON(github.event.inputs.versions || '["0.7.3", "0.7.0"]') }}
+    steps:
+      - uses: actions/checkout@v4
+        if: matrix.sdk != 'local'
+      - name: Select Xcode
+        if: matrix.sdk != 'local'
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+      - name: Install tools
+        if: matrix.sdk != 'local'
+        run: |
+          brew install xcodegen
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Generate and build app (SDK ${{ matrix.sdk }})
+        if: matrix.sdk != 'local'
+        working-directory: test-apps/ios
+        run: |
+          SDK_VERSION=${{ matrix.sdk }} xcodegen generate
+          xcodebuild -project NordlyTestApp.xcodeproj -scheme NordlyTestApp -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build -quiet build
+          RESOLVED=$(python3 -c "import json;print(next(p['state']['version'] for p in json.load(open('NordlyTestApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved'))['pins'] if p['identity']=='deepdotssdk-spm'))")
+          echo "[lab] sdk requested=${{ matrix.sdk }} resolved=$RESOLVED source=SPM (DeepdotsSDK-SPM)"
+          test "$RESOLVED" = "${{ matrix.sdk }}"
+      - name: Boot simulator and install
+        if: matrix.sdk != 'local'
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for r,v in d.items() if 'iOS' in r for x in v if x['name']=='iPhone 16'))")
+          echo "DEVICE=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID" && xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" test-apps/ios/build/Build/Products/Debug-iphonesimulator/NordlyTestApp.app
+      - name: Run suite on the simulator
+        if: matrix.sdk != 'local'
+        env:
+          RECORD: ${{ github.event.inputs.record == 'true' && '1' || '0' }}
+        run: test-apps/scripts/run-maestro.sh ios ${{ matrix.sdk }} out/ios-${{ matrix.sdk }}
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.sdk != 'local'
+        with:
+          name: test-apps-ios-${{ matrix.sdk }}
+          path: out/ios-${{ matrix.sdk }}
+          retention-days: 14

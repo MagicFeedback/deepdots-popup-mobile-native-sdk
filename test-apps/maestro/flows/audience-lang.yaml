@@ -1,0 +1,21 @@
+# Audience segmentation by language: only the popup for the app language shows.
+appId: com.deepdots.testapp
+tags: [smoke]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: audience-lang
+      LANG: es
+- tapOn:
+    id: tab-shop
+- tapOn:
+    id: product-fjell-jacket
+- tapOn:
+    id: rate-product
+- tapOn:
+    id: submit-rating
+- extendedWaitUntil:
+    visible: "Valora este producto (público ES)"
+    timeout: 15000
+- assertNotVisible: "Rate this product (EN audience)"

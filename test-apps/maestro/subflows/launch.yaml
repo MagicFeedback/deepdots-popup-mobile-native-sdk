@@ -1,0 +1,19 @@
+# Fresh launch (clean state) of one scenario, cookie dialog accepted.
+# env: SCENARIO (required), NAV, LANG, START
+appId: com.deepdots.testapp
+---
+- launchApp:
+    clearState: true
+    arguments:
+      scenario: ${SCENARIO}
+      nav: ${NAV || 'history'}
+      lang: ${LANG || 'en'}
+      start: ${START || 'home'}
+      load: immediate
+- tapOn: "Accept all"
+- assertVisible:
+    id: lab-env
+    text: DEV
+- assertVisible:
+    id: lab-scenario
+    text: ${SCENARIO}

@@ -1,0 +1,18 @@
+# Failure: no network at all (airplane mode, Android only). No popup, the app keeps working.
+appId: com.deepdots.testapp
+tags: [failure, android-only]
+---
+- launchApp:
+    clearState: true
+    arguments:
+      scenario: not-on-cart
+- tapOn: "Accept all"
+- setAirplaneMode: enabled
+- stopApp
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertNotVisible: "Like what you see?"
+- runFlow: ../subflows/host-usable.yaml
+- setAirplaneMode: disabled

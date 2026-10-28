@@ -1,0 +1,25 @@
+# MANDATORY FAILURE TEST 2a — the popup shows but its survey fails to load (survey id that does
+# not exist in DEV). The popup can be closed and the host app keeps working.
+appId: com.deepdots.testapp
+tags: [failure]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: fault-survey-missing
+- tapOn:
+    id: lab-open
+- tapOn:
+    id: lab-event-fault_survey
+- extendedWaitUntil:
+    visible: "This survey does not exist"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: survey-missing-popup
+- runFlow:
+    when:
+      visible: "Close popup"
+    file: ../subflows/close-popup.yaml
+- runFlow: ../subflows/host-usable.yaml
+- takeScreenshot: survey-missing-host-usable

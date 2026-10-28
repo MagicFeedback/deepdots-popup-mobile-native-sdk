@@ -1,0 +1,6 @@
+# Closes the SDK popup with its X ("Close popup" is the SDK's accessibility label).
+appId: com.deepdots.testapp
+---
+- tapOn: "Close popup"
+- waitForAnimationToEnd:
+    timeout: 3000

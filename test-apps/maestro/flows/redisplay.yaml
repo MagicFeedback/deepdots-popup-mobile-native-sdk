@@ -1,0 +1,33 @@
+# Re-display rule: cooldown SHOWED 1 day. Shown once; after closing it and relaunching the app
+# (same storage) it does not show again; after a Reset (clean storage) it shows again.
+appId: com.deepdots.testapp
+tags: [smoke]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: redisplay
+      START: account
+- extendedWaitUntil:
+    visible: "How is your account?"
+    timeout: 15000
+- runFlow: ../subflows/close-popup.yaml
+- stopApp
+- launchApp:
+    clearState: false
+    arguments:
+      start: account
+- assertVisible:
+    id: lab-scenario
+    text: redisplay
+- waitForAnimationToEnd:
+    timeout: 6000
+- assertNotVisible: "How is your account?"
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: redisplay
+      START: account
+- extendedWaitUntil:
+    visible: "How is your account?"
+    timeout: 15000
