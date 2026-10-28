@@ -66,6 +66,15 @@ failed=()
 for f in $FLOWS; do
   name=$(basename "$f" .yaml)
   if grep -q 'android-only' "$f" && [ "$PLATFORM" != android ]; then echo "[lab] skip $name (android-only)"; continue; fi
+  if grep -q 'known-issue' "$f"; then
+    if run_flow "$f"; then
+      echo "::error::[lab] $name PASSED: the known issue looks fixed, drop its known-issue tag"
+      failed+=("$name")
+    else
+      echo "::warning::[lab] $name still fails (known issue): $(grep -m1 -E 'Assertion|Element' "$OUT/maestro/$name.txt" | sed 's/^ *//')"
+    fi
+    continue
+  fi
   if grep -q 'expected-failure' "$f"; then
     if run_flow "$f"; then
       echo "::error::[lab] $name PASSED but must fail: the missing navigation event was NOT detected"

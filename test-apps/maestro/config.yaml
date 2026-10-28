@@ -6,5 +6,6 @@ flows:
 # failures/missing-navigation.yaml must fail; CI runs it on its own and expects the failure.
 excludeTags:
   - expected-failure
+  - known-issue
 executionOrder:
   continueOnFailure: true

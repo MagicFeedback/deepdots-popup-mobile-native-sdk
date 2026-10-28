@@ -7,7 +7,8 @@ tags: [smoke]
     file: ../subflows/launch.yaml
     env:
       SCENARIO: redisplay
-      START: account
+- tapOn:
+    id: tab-account
 - extendedWaitUntil:
     visible: "How is your account?"
     timeout: 15000
@@ -15,11 +16,11 @@ tags: [smoke]
 - stopApp
 - launchApp:
     clearState: false
-    arguments:
-      start: account
 - assertVisible:
     id: lab-scenario
     text: redisplay
+- tapOn:
+    id: tab-account
 - waitForAnimationToEnd:
     timeout: 6000
 - assertNotVisible: "How is your account?"
@@ -27,7 +28,8 @@ tags: [smoke]
     file: ../subflows/launch.yaml
     env:
       SCENARIO: redisplay
-      START: account
+- tapOn:
+    id: tab-account
 - extendedWaitUntil:
     visible: "How is your account?"
     timeout: 15000
