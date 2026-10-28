@@ -4,7 +4,7 @@
 //
 //   node scripts/release.mjs prepare <X.Y.Z|patch|minor|major> [--dry-run]
 //     Desde origin/dev: rama release/X.Y.Z, version con scripts/bump_version.sh
-//     (gradle.properties + README/docs), "## Unreleased" del CHANGELOG pasa a "## X.Y.Z - fecha",
+//     (gradle.properties + README/docs + release/compatibility.json), "## Unreleased" del CHANGELOG pasa a "## X.Y.Z - fecha",
 //     commit, push y PR a dev. Trabaja en un worktree temporal: tu checkout no se toca.
 //
 //   node scripts/release.mjs tag [--yes] [--no-watch]
@@ -217,18 +217,20 @@ async function tagRelease({ yes, watch }) {
   if (!versionBody(showFile(sha, 'CHANGELOG.md'), version))
     fail(`El CHANGELOG de ${BASE} no tiene la seccion "## ${version}" (o esta vacia).`);
 
-  // Si hay una PR de release para esta version, tiene que estar fusionada.
-  const pr = tryRun('gh', ['pr', 'list', '--repo', REPO, '--head', `release/${version}`, '--state', 'all', '--json', 'number,state', '--jq', '.[0] // empty']);
+  // Si hay una PR de release para esta version, tiene que estar fusionada y con su "Release dry
+  // run" (gate + tests + build + smoke en macOS) en verde: release.yml lo exige antes de publicar.
+  const pr = tryRun('gh', ['pr', 'list', '--repo', REPO, '--head', `release/${version}`, '--state', 'all', '--json', 'number,state,headRefOid', '--jq', '.[0] // empty']);
   if (pr.ok && pr.out) {
-    const { number, state } = JSON.parse(pr.out);
+    const { number, state, headRefOid } = JSON.parse(pr.out);
     if (state !== 'MERGED') fail(`La PR #${number} (release/${version}) esta ${state}: fusionala antes de etiquetar.`);
+    const dryRun = tryRun('gh', ['api', `repos/${REPO}/commits/${headRefOid}/check-runs`, '--jq', '[.check_runs[] | select(.name == "Release dry run")] | sort_by(.started_at) | last | .conclusion // empty']);
+    if (dryRun.out !== 'success') fail(`El "Release dry run" de la PR #${number} no esta en verde (${dryRun.out || 'sin ejecutar'}): release.yml no publicaria.`);
   }
 
   // Avisos, no bloqueos: el workflow se salta lo que ya existe o lo que no tiene secrets.
   if (remoteTagExists(`https://github.com/${SPM_REPO}.git`, version))
     console.log(`  ⚠ ${SPM_REPO} ya tiene ${version}: el workflow no publicara iOS.`);
   if (await onMavenCentral(version)) console.log(`  ⚠ ${version} ya esta en Maven Central: el workflow no lo republicara.`);
-  console.log('  (el nativo no tiene CI en dev: los tests los corre el propio workflow antes de publicar)');
 
   if (!yes && !(await confirm(`\nEtiquetar ${tag} sobre ${sha.slice(0, 7)} y publicar?`))) fail('Cancelado.');
 

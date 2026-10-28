@@ -124,6 +124,10 @@ kotlin {
         // val iosArm64Main by getting { dependsOn(iosMain) }
         // val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
         commonTest.dependencies { implementation(libs.kotlin.test) }
+        // ReleaseContractTest lee InitOptions por reflexión para generar release/config.schema.json.
+        val androidUnitTest by getting {
+            dependencies { implementation(kotlin("reflect")) }
+        }
     }
 
     // Configure iOS frameworks
@@ -175,6 +179,15 @@ tasks.register("buildSdkDist") {
     group = "distribution"
     description = "Builds Android AAR and iOS frameworks and copies them to dist/"
     dependsOn(copyAarToDist, copyIosFrameworksToDist)
+}
+
+// ReleaseContractTest lee release/ (manifiesto, schema y fixtures): sin declararlo como entrada,
+// la caché de Gradle daría el test por bueno aunque esos ficheros cambien.
+tasks.withType<Test>().configureEach {
+    inputs.dir(rootProject.layout.projectDirectory.dir("release"))
+        .withPropertyName("releaseContract")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.property("updateReleaseSchema", providers.environmentVariable("UPDATE_RELEASE_SCHEMA").orElse(""))
 }
 
 // Simulador de los tests de iOS: `-PiosTestDevice=<nombre o UDID>`. Sin la propiedad decide el

@@ -1,0 +1,196 @@
+name: Release check
+
+# Gate de release en las PRs (MF-3242). Reglas en scripts/release/rules.mjs y docs/VERSIONING.md.
+#
+# - "Version & changelog": un cambio del SDK trae release notes en "## Unreleased" (hacia dev) o
+#   sube la version (PR de release; hacia main, cualquier cambio del SDK); el manifiesto de
+#   compatibilidad (release/compatibility.json) es valido y coincide con el codigo; y
+#   release/config.schema.json + los fixtures pasan ReleaseContractTest.
+#   En local: npm ci --prefix scripts/release && node scripts/release/check.mjs pr
+# - "Release dry run": solo en las PRs que suben la version. Corre en macOS el mismo gate, los
+#   mismos tests y el mismo build que release.yml, con las mismas herramientas; pasa la prueba de
+#   humo al AAR y al XCFramework y genera su release.json, sin publicar nada.
+
+on:
+  pull_request:
+    branches: [dev, main]
+    # edited: cambiar la base de la PR cambia contra que se compara.
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  checks: read # metadata.mjs
+
+concurrency:
+  group: release-check-${{ github.ref }}
+  cancel-in-progress: true
+
+# Mismas versiones que release.yml: el dry-run tiene que probar lo mismo que la publicacion.
+env:
+  JAVA_VERSION: "21"
+  NODE_VERSION: "24"
+  XCODE_APP: /Applications/Xcode_16.4.app
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
+
+jobs:
+  version:
+    name: Version & changelog
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      kind: ${{ steps.gate.outputs.kind }}
+      version: ${{ steps.gate.outputs.version }}
+    steps:
+      # Historial y tags completos: la rama base para comparar y los vX.Y.Z publicados.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: scripts/release/package-lock.json
+
+      # ajv, fijado en scripts/release/package-lock.json.
+      - run: npm ci --prefix scripts/release
+
+      - name: Gate unit tests
+        run: npm test --prefix scripts/release
+
+      # HEAD es la PR fusionada sobre su base: el diff es justo lo que cambiaria el merge.
+      - name: Check version, changelog and manifest
+        id: gate
+        run: node scripts/release/check.mjs pr --base "origin/${{ github.base_ref }}"
+
+      # El schema de configuracion sale del codigo Kotlin y los fixtures pasan por el parser
+      # del SDK: eso solo lo puede comprobar Gradle. Corre aunque falle el paso anterior.
+      - uses: actions/setup-java@v4
+        if: ${{ !cancelled() }}
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: android-actions/setup-android@v3
+        if: ${{ !cancelled() }}
+        with:
+          packages: platform-tools
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: ${{ !cancelled() }}
+
+      - name: Config schema and fixtures (ReleaseContractTest)
+        if: ${{ !cancelled() }}
+        run: ./gradlew :shared:testDebugUnitTest --tests '*ReleaseContractTest*'
+
+  dry-run:
+    name: Release dry run
+    needs: version
+    # Tambien cuando "Version & changelog" falla: asi se ve que el gate de publicacion bloquea igual.
+    if: ${{ !cancelled() && needs.version.outputs.kind == 'release' }}
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          if [ ! -d "$XCODE_APP" ]; then
+            echo "::error::La imagen no trae $XCODE_APP. Cambia XCODE_APP aqui y en release.yml (a la vez)."
+            ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: scripts/release/package-lock.json
+
+      - run: npm ci --prefix scripts/release
+
+      - name: Release gate
+        run: node scripts/release/check.mjs release --tag "v${{ needs.version.outputs.version }}" --notes-out "$RUNNER_TEMP/notes.md" --new-tag
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Cache Kotlin/Native toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - name: Unit tests (JVM)
+        run: ./gradlew :shared:testDebugUnitTest
+
+      - name: Unit tests (iOS simulator)
+        run: |
+          set -euo pipefail
+          UDID="$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          phones = [d for runtime, ds in devices.items() if "iOS" in runtime for d in ds if d["name"].startswith("iPhone")]
+          print(phones[-1]["udid"] if phones else "")
+          ')"
+          if [ -z "$UDID" ]; then echo "::error::No hay ningun simulador de iPhone disponible."; exit 1; fi
+          ./gradlew :shared:iosSimulatorArm64Test "-PiosTestDevice=$UDID"
+
+      # Los mismos pasos de build que release.yml: el AAR sale del staging repo de Maven (sin
+      # firmar aqui: no hay secrets en las PRs) y el XCFramework de prepare_spm_release.sh.
+      - name: Build artifacts
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          rm -rf build/release-staging-repo
+          ./gradlew :shared:publishAndroidReleasePublicationToReleaseStagingRepository
+          scripts/prepare_spm_release.sh "$VERSION" "https://github.com/MagicFeedback/DeepdotsSDK-SPM/releases/download/$VERSION"
+          mkdir -p "$RUNNER_TEMP/out"
+          cp "build/release-staging-repo/com/deepdots/sdk/shared-android/$VERSION/shared-android-$VERSION.aar" "$RUNNER_TEMP/out/DeepdotsSDK-$VERSION.aar"
+          cp "dist/spm/DeepdotsSDK-$VERSION.xcframework.zip" "$RUNNER_TEMP/out/"
+
+      - name: Smoke test and metadata
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          RELEASE_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/out"
+          node scripts/release/smoke.mjs --aar "$OUT/DeepdotsSDK-$VERSION.aar" \
+            --xcframework "$OUT/DeepdotsSDK-$VERSION.xcframework.zip" --json "$RUNNER_TEMP/smoke.json"
+          node scripts/release/metadata.mjs --dry-run --tag "v$VERSION" \
+            --aar "$OUT/DeepdotsSDK-$VERSION.aar" --xcframework "$OUT/DeepdotsSDK-$VERSION.xcframework.zip" \
+            --spm-checksum "$(cat "dist/spm/DeepdotsSDK-$VERSION.xcframework.zip.checksum")" \
+            --maven-dir build/release-staging-repo --smoke "$RUNNER_TEMP/smoke.json" \
+            --out "$OUT/release.json"
+          cp release/compatibility.json release/config.schema.json "$RUNNER_TEMP/notes.md" "$OUT/"
+          (cd "$OUT" && shasum -a 256 -- *.aar *.zip > SHA256SUMS && cat SHA256SUMS)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-dry-run-v${{ needs.version.outputs.version }}
+          path: ${{ runner.temp }}/out/
+          retention-days: 14
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: shared/build/reports/tests/
+          retention-days: 7

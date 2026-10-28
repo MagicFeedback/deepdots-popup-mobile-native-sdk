@@ -4,6 +4,17 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- **Every release says what it is compatible with, and what exactly was published.** The
+  GitHub Release of each version now carries, next to the AAR, the XCFramework zip, its
+  `SHA256SUMS`, the compatibility manifest (`release/compatibility.json`: Android `minSdk`,
+  iOS minimum, the `@magicfeedback/native` version the survey runs, the configuration
+  schema, known issues) and `release.json` (commit, sha256 of each artifact, where it was
+  published, the checks that passed and who approved it). A release without a version bump,
+  release notes or a valid manifest is no longer published. See `docs/VERSIONING.md`, which
+  also states which versions are supported.
+
 ## 0.7.3 - 2026-10-23
 
 ### Fixed

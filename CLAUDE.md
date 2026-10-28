@@ -326,3 +326,18 @@ pasos y los secrets están en la cabecera del workflow y en el README (§15). Ma
 en 0.3.0 hasta que existan los secrets de Sonatype y de firma GPG: sin ellos el workflow se salta
 ese paso con un aviso. Los scripts de `scripts/` son el fallback manual y tienen rutas locales
 viejas (`deploy_sdk_release.sh` y el `update_version.sh` del repo SPM).
+
+**Gate de release (MF-3242, 2026-10-28), espejo del web (MF-3241):** reglas en
+`scripts/release/` (`rules`, `check`, `manifest`, `smoke`, `metadata`; tests con
+`npm test --prefix scripts/release`) y política en `docs/VERSIONING.md`.
+- Toda PR que toque `shared/src/*Main`, los `.gradle.kts`, `libs.versions.toml` o
+  `gradle.properties` necesita notas en `## Unreleased` (check "Version & changelog" de
+  `release-check.yml`). La PR de release corre además "Release dry run" (macOS: gate + tests +
+  build + smoke + `release.json`), y `release.mjs tag` / `release.yml` exigen que esté en verde.
+- `release/compatibility.json` repite versiones del código y el gate las contrasta: al cambiar
+  `MAGICFEEDBACK_VERSION`, `POPUP_SDK_CSS_VERSION`, `minSdk`, el mínimo de iOS o la toolchain,
+  actualízalo en la misma PR. `bump_version.sh` sube su `version`.
+- Al cambiar `InitOptions` o `ServerPopupDto`: `UPDATE_RELEASE_SCHEMA=1 ./gradlew
+  :shared:testDebugUnitTest --tests '*ReleaseContractTest*'` regenera `release/config.schema.json`.
+- `release.yml` construye el AAR (staging repo de Maven) y el zip del XCFramework UNA vez; esos
+  ficheros son los que se publican y se adjuntan. Xcode y Node van fijados en los dos workflows.

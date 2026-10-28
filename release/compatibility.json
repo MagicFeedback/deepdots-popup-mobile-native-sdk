@@ -1,0 +1,125 @@
+{
+  "$schema": "./compatibility.schema.json",
+  "schemaVersion": 1,
+  "package": "deepdots-popup-native-sdk",
+  "platform": "native",
+  "version": "0.7.3",
+  "artifacts": {
+    "android": {
+      "maven": "com.deepdots.sdk:shared-android",
+      "file": "DeepdotsSDK-{version}.aar",
+      "notes": "Se publica en Maven Central cuando el workflow tiene los secrets de Sonatype y de firma; si no, solo como AAR en la GitHub Release."
+    },
+    "ios": {
+      "spm": "MagicFeedback/DeepdotsSDK-SPM",
+      "product": "DeepdotsSDK",
+      "file": "DeepdotsSDK-{version}.xcframework.zip"
+    }
+  },
+  "surveyRenderer": {
+    "package": "@magicfeedback/native",
+    "version": "2.2.31",
+    "delivery": { "android": "vendored", "ios": "cdn" },
+    "notes": "Android carga el bundle vendorizado de los assets del AAR. En iOS el XCFramework no lleva el bundle: el WebView lo carga del CDN (jsDelivr, luego unpkg) en la version exacta, salvo que la app lo incluya en su bundle."
+  },
+  "popupSdkCss": {
+    "package": "@magicfeedback/popup-sdk",
+    "version": "1.10.0",
+    "notes": "CSS del survey que el WebView carga del CDN (dist/assets/assets/style.css). Se fija a una version publicada; no sigue a MAGICFEEDBACK_VERSION."
+  },
+  "hosts": {
+    "android": {
+      "minSdk": 24,
+      "compileSdk": 36,
+      "targetSdk": 36,
+      "notes": "Cualquier Activity (ComponentActivity, AppCompatActivity, FlutterActivity)."
+    },
+    "ios": {
+      "minimum": "13.0",
+      "architectures": ["ios-arm64", "ios-arm64-simulator"],
+      "notes": "Sin slice x86_64: no corre en el simulador de Macs Intel."
+    },
+    "frameworks": [
+      { "name": "android-compose", "support": "supported" },
+      { "name": "android-views", "support": "supported" },
+      { "name": "ios-swiftui", "support": "supported" },
+      { "name": "ios-uikit", "support": "supported" },
+      { "name": "kotlin-multiplatform", "support": "supported", "notes": "Dependencia directa del modulo shared." },
+      { "name": "flutter", "support": "best-effort", "notes": "A traves del plugin deepdots_popups, que versiona aparte." }
+    ],
+    "tests": [
+      { "name": "jvm", "command": ":shared:testDebugUnitTest" },
+      { "name": "ios-simulator", "command": ":shared:iosSimulatorArm64Test" }
+    ]
+  },
+  "toolchain": {
+    "kotlin": "2.2.20",
+    "composeMultiplatform": "1.9.1",
+    "agp": "9.0.0"
+  },
+  "configSchema": {
+    "path": "release/config.schema.json",
+    "generatedFrom": "InitOptions (reflexion) y ServerPopupDto (descriptor de kotlinx.serialization), por ReleaseContractTest"
+  },
+  "fixtures": [
+    {
+      "id": "minimal-event",
+      "path": "release/fixtures/popups/minimal-event.json",
+      "trigger": { "event": "fixture_minimal" },
+      "covers": ["campos obligatorios", "trigger event", "sin actions/style/segments"]
+    },
+    {
+      "id": "full-definition",
+      "path": "release/fixtures/popups/full-definition.json",
+      "trigger": { "event": "fixture_full" },
+      "covers": ["actions completas", "cooldown", "style.font", "segments.lang", "segments.path", "segments.excludedPaths"]
+    },
+    {
+      "id": "hash-route-dark",
+      "path": "release/fixtures/popups/hash-route-dark.json",
+      "trigger": { "event": "fixture_hash" },
+      "covers": ["ruta con hash", "theme dark", "actions vacio"]
+    },
+    {
+      "id": "legacy-shapes",
+      "path": "release/fixtures/popups/legacy-shapes.json",
+      "trigger": { "event": "fixture_legacy" },
+      "covers": ["trigger como objeto", "tipo en mayusculas", "conditions legacy", "style como JSON en string", "productId null"]
+    }
+  ],
+  "knownIssues": [
+    {
+      "id": "analytics-session-close-opportunistic",
+      "summary": "El lote de cierre de sesion (completed:true) no sale si la app muere o el sistema la congela antes de terminar la peticion; el buffer no se persiste y el backend cierra esas sesiones por inactividad.",
+      "affects": ["all"],
+      "detected": "2026-07-30"
+    },
+    {
+      "id": "ios-renderer-from-cdn",
+      "summary": "El XCFramework no lleva el bundle vendorizado de @magicfeedback/native: en iOS el survey necesita acceso a jsDelivr o unpkg para cargar.",
+      "affects": ["ios"],
+      "detected": "2026-10-28",
+      "workaround": "Anadir magicfeedback/magicfeedback-sdk.browser.js (de shared/src/iosMain/resources) al bundle de la app."
+    },
+    {
+      "id": "first-open-reveal-timeout",
+      "summary": "La primera apertura en frio suele superar el techo de 1200 ms (el WebView descarga el renderer) y el popup se abre con spinner; las siguientes salen limpias.",
+      "affects": ["ios", "android"],
+      "detected": "2026-09-14"
+    },
+    {
+      "id": "plain-activity-lifecycle",
+      "summary": "Con una Activity que no es ComponentActivity (p. ej. FlutterActivity), el popup queda RESUMED mientras esta montado y no sigue el pause/stop del host.",
+      "affects": ["android"],
+      "detected": "2026-10-06"
+    },
+    {
+      "id": "android-aar-without-pom",
+      "summary": "Mientras Maven Central no tenga la version, el AAR de la GitHub Release no lleva POM: la app tiene que declarar las dependencias del SDK (Compose, Ktor, Coil...) a mano.",
+      "affects": ["android"],
+      "detected": "2026-10-05",
+      "workaround": "Usar Maven Central cuando la version este alli (artifact.maven en release.json)."
+    }
+  ],
+  "supportPolicy": "docs/VERSIONING.md"
+}

@@ -1,0 +1,1072 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Deepdots native SDK configuration",
+  "description": "Generado por shared/src/androidUnitTest/.../release/ReleaseContractTest.kt; no editar a mano. init = InitOptions (API Kotlin; x-kotlin es el tipo exacto). popups = respuesta de GET /sdk/popups tal como la acepta el SDK.",
+  "type": "object",
+  "properties": {
+    "init": {
+      "$ref": "#/definitions/models.InitOptions"
+    },
+    "popups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/PopupDefinition"
+      }
+    }
+  },
+  "definitions": {
+    "PopupDefinition": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "message": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trigger": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ServerTrigger"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/ServerTrigger"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "triggers": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ServerTrigger"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/ServerTrigger"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conditions": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "answered": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "cooldownDays": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              }
+            }
+          }
+        },
+        "cooldown": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "answered": {
+                "enum": [
+                  "SHOWED",
+                  "PARTIAL",
+                  "COMPLETED"
+                ]
+              },
+              "cooldownDays": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              }
+            },
+            "required": [
+              "answered"
+            ]
+          }
+        },
+        "actions": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ServerActions"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "style": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ServerStyle"
+                },
+                {
+                  "type": "string",
+                  "description": "El mismo objeto, serializado como JSON."
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "segments": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ServerSegments"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "surveyId": {
+          "type": "string"
+        },
+        "productId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "surveyId"
+      ]
+    },
+    "ServerActionAccept": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "surveyId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": []
+    },
+    "ServerActionDecline": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cooldownDays": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": []
+    },
+    "ServerActionLabel": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": []
+    },
+    "ServerActions": {
+      "type": "object",
+      "properties": {
+        "accept": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ServerActionAccept"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ServerActionDecline"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "start": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ServerActionLabel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "complete": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ServerActionLabel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "back": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ServerActionLabel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": []
+    },
+    "ServerFont": {
+      "type": "object",
+      "properties": {
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": []
+    },
+    "ServerSegments": {
+      "type": "object",
+      "properties": {
+        "lang": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "path": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludedPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": []
+    },
+    "ServerStyle": {
+      "type": "object",
+      "properties": {
+        "theme": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "position": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "imageUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "font": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ServerFont"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": []
+    },
+    "ServerTrigger": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "El SDK no distingue mayúsculas. Un tipo desconocido se ignora; un popup sin triggers válidos se descarta.",
+          "enum": [
+            "time_on_page",
+            "scroll",
+            "exit",
+            "event",
+            "click",
+            "TIME_ON_PAGE",
+            "SCROLL",
+            "EXIT",
+            "EVENT",
+            "CLICK"
+          ]
+        },
+        "value": {
+          "type": [
+            "string",
+            "number",
+            "null"
+          ]
+        },
+        "condition": {
+          "description": "Condiciones legacy de ese trigger (como conditions)."
+        }
+      },
+      "required": [
+        "type"
+      ]
+    },
+    "analytics.AnalyticsKeys": {
+      "type": "object",
+      "x-kotlin": "analytics.AnalyticsKeys",
+      "properties": {
+        "publicKey": {
+          "type": "string",
+          "x-kotlin": "String"
+        },
+        "integration": {
+          "type": "string",
+          "x-kotlin": "String"
+        }
+      },
+      "required": [
+        "publicKey",
+        "integration"
+      ]
+    },
+    "models.Action.Accept": {
+      "type": "object",
+      "x-kotlin": "models.Action.Accept",
+      "properties": {
+        "label": {
+          "type": "string",
+          "x-kotlin": "String"
+        },
+        "surveyId": {
+          "type": "string",
+          "x-kotlin": "String"
+        }
+      },
+      "required": [
+        "label",
+        "surveyId"
+      ]
+    },
+    "models.Action.Back": {
+      "type": "object",
+      "x-kotlin": "models.Action.Back",
+      "properties": {
+        "label": {
+          "type": "string",
+          "x-kotlin": "String"
+        }
+      },
+      "required": [
+        "label"
+      ]
+    },
+    "models.Action.Complete": {
+      "type": "object",
+      "x-kotlin": "models.Action.Complete",
+      "properties": {
+        "label": {
+          "type": "string",
+          "x-kotlin": "String"
+        }
+      },
+      "required": [
+        "label"
+      ]
+    },
+    "models.Action.Decline": {
+      "type": "object",
+      "x-kotlin": "models.Action.Decline",
+      "properties": {
+        "label": {
+          "type": "string",
+          "x-kotlin": "String"
+        },
+        "cooldownDays": {
+          "type": "integer",
+          "x-kotlin": "Int"
+        }
+      },
+      "required": [
+        "label",
+        "cooldownDays"
+      ]
+    },
+    "models.Action.Start": {
+      "type": "object",
+      "x-kotlin": "models.Action.Start",
+      "properties": {
+        "label": {
+          "type": "string",
+          "x-kotlin": "String"
+        }
+      },
+      "required": [
+        "label"
+      ]
+    },
+    "models.Actions": {
+      "type": "object",
+      "x-kotlin": "models.Actions",
+      "properties": {
+        "accept": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/models.Action.Accept",
+              "x-kotlin": "Action.Accept?"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/models.Action.Decline",
+              "x-kotlin": "Action.Decline?"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "start": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/models.Action.Start",
+              "x-kotlin": "Action.Start?"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "complete": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/models.Action.Complete",
+              "x-kotlin": "Action.Complete?"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "back": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/models.Action.Back",
+              "x-kotlin": "Action.Back?"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": []
+    },
+    "models.CooldownCondition": {
+      "type": "object",
+      "x-kotlin": "models.CooldownCondition",
+      "properties": {
+        "answered": {
+          "$ref": "#/definitions/models.TriggerConditionStatus",
+          "x-kotlin": "TriggerConditionStatus"
+        },
+        "cooldownDays": {
+          "type": "integer",
+          "x-kotlin": "Int"
+        }
+      },
+      "required": [
+        "answered"
+      ]
+    },
+    "models.Environment": {
+      "x-kotlin": "models.Environment",
+      "enum": [
+        "Production",
+        "Development"
+      ]
+    },
+    "models.ImageAlignment": {
+      "x-kotlin": "models.ImageAlignment",
+      "enum": [
+        "Center",
+        "Left",
+        "Right"
+      ]
+    },
+    "models.ImageSize": {
+      "x-kotlin": "models.ImageSize",
+      "enum": [
+        "Small",
+        "Medium",
+        "Large"
+      ]
+    },
+    "models.InitOptions": {
+      "type": "object",
+      "x-kotlin": "models.InitOptions",
+      "properties": {
+        "debug": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-kotlin": "Boolean?"
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/models.Environment",
+              "x-kotlin": "Environment?"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/models.Mode",
+              "x-kotlin": "Mode?"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "popupOptions": {
+          "$ref": "#/definitions/models.PopupOptions",
+          "x-kotlin": "PopupOptions"
+        },
+        "provideLang": {
+          "x-kotlin": "() -> String?"
+        },
+        "autoLaunch": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-kotlin": "Boolean?"
+        },
+        "storage": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/storage.KeyValueStorage",
+              "x-kotlin": "KeyValueStorage?"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "trackingEnabled": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-kotlin": "Boolean?"
+        },
+        "analytics": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/analytics.AnalyticsKeys",
+              "x-kotlin": "AnalyticsKeys?"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "onFeedbackSession": {
+          "x-kotlin": "((FeedbackSession) -> Unit)?"
+        },
+        "geolocation": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-kotlin": "Boolean?"
+        },
+        "contactAttributes": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "x-kotlin": "Any?"
+          },
+          "x-kotlin": "Map<String, Any?>?"
+        },
+        "renderChrome": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-kotlin": "Boolean?"
+        },
+        "showProgressBar": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-kotlin": "Boolean?"
+        },
+        "metadata": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "x-kotlin": "Any"
+          },
+          "x-kotlin": "Map<String, Any>?"
+        }
+      },
+      "required": []
+    },
+    "models.LegacyCondition": {
+      "type": "object",
+      "x-kotlin": "models.LegacyCondition",
+      "properties": {
+        "answered": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-kotlin": "Boolean?"
+        },
+        "cooldownDays": {
+          "type": "integer",
+          "x-kotlin": "Int"
+        }
+      },
+      "required": []
+    },
+    "models.Mode": {
+      "x-kotlin": "models.Mode",
+      "enum": [
+        "Client",
+        "Server"
+      ]
+    },
+    "models.PopupDefinition": {
+      "type": "object",
+      "x-kotlin": "models.PopupDefinition",
+      "properties": {
+        "id": {
+          "type": "string",
+          "x-kotlin": "String"
+        },
+        "title": {
+          "type": "string",
+          "x-kotlin": "String"
+        },
+        "message": {
+          "type": "string",
+          "x-kotlin": "String"
+        },
+        "trigger": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/models.Trigger",
+              "x-kotlin": "Trigger?"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/models.Trigger",
+            "x-kotlin": "Trigger"
+          },
+          "x-kotlin": "List<Trigger>"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/models.LegacyCondition",
+            "x-kotlin": "LegacyCondition"
+          },
+          "x-kotlin": "List<LegacyCondition>"
+        },
+        "cooldown": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/models.CooldownCondition",
+            "x-kotlin": "CooldownCondition"
+          },
+          "x-kotlin": "List<CooldownCondition>"
+        },
+        "legacyConditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/models.LegacyCondition",
+            "x-kotlin": "LegacyCondition"
+          },
+          "x-kotlin": "List<LegacyCondition>"
+        },
+        "actions": {
+          "$ref": "#/definitions/models.Actions",
+          "x-kotlin": "Actions"
+        },
+        "surveyId": {
+          "type": "string",
+          "x-kotlin": "String"
+        },
+        "productId": {
+          "type": "string",
+          "x-kotlin": "String"
+        },
+        "style": {
+          "$ref": "#/definitions/models.Style",
+          "x-kotlin": "Style"
+        },
+        "segments": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/models.Segments",
+              "x-kotlin": "Segments?"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "surveyId",
+        "productId"
+      ]
+    },
+    "models.PopupFont": {
+      "type": "object",
+      "x-kotlin": "models.PopupFont",
+      "properties": {
+        "family": {
+          "type": "string",
+          "x-kotlin": "String"
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-kotlin": "String?"
+        }
+      },
+      "required": [
+        "family"
+      ]
+    },
+    "models.PopupOptions": {
+      "type": "object",
+      "x-kotlin": "models.PopupOptions",
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-kotlin": "String?"
+        },
+        "publicKey": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-kotlin": "String?"
+        },
+        "popups": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/models.PopupDefinition",
+            "x-kotlin": "PopupDefinition"
+          },
+          "x-kotlin": "List<PopupDefinition>?"
+        },
+        "companyId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-kotlin": "String?"
+        }
+      },
+      "required": []
+    },
+    "models.Position": {
+      "x-kotlin": "models.Position",
+      "enum": [
+        "TopLeft",
+        "TopRight",
+        "BottomLeft",
+        "BottomRight",
+        "Center"
+      ]
+    },
+    "models.Segments": {
+      "type": "object",
+      "x-kotlin": "models.Segments",
+      "properties": {
+        "lang": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-kotlin": "String"
+          },
+          "x-kotlin": "List<String>"
+        },
+        "path": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-kotlin": "String"
+          },
+          "x-kotlin": "List<String>"
+        },
+        "excludedPaths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-kotlin": "String"
+          },
+          "x-kotlin": "List<String>"
+        }
+      },
+      "required": []
+    },
+    "models.Style": {
+      "type": "object",
+      "x-kotlin": "models.Style",
+      "properties": {
+        "theme": {
+          "$ref": "#/definitions/models.Theme",
+          "x-kotlin": "Theme"
+        },
+        "position": {
+          "$ref": "#/definitions/models.Position",
+          "x-kotlin": "Position"
+        },
+        "imageUrl": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-kotlin": "String?"
+        },
+        "imageSize": {
+          "$ref": "#/definitions/models.ImageSize",
+          "x-kotlin": "ImageSize"
+        },
+        "imageAlignment": {
+          "$ref": "#/definitions/models.ImageAlignment",
+          "x-kotlin": "ImageAlignment"
+        },
+        "font": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/models.PopupFont",
+              "x-kotlin": "PopupFont?"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": []
+    },
+    "models.Theme": {
+      "x-kotlin": "models.Theme",
+      "enum": [
+        "Light",
+        "Dark"
+      ]
+    },
+    "models.Trigger": {
+      "x-kotlin": "models.Trigger",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/models.Trigger.Click"
+        },
+        {
+          "$ref": "#/definitions/models.Trigger.Event"
+        },
+        {
+          "$ref": "#/definitions/models.Trigger.Exit"
+        },
+        {
+          "$ref": "#/definitions/models.Trigger.Scroll"
+        },
+        {
+          "$ref": "#/definitions/models.Trigger.TimeOnPage"
+        }
+      ]
+    },
+    "models.Trigger.Click": {
+      "type": "object",
+      "x-kotlin": "models.Trigger.Click",
+      "properties": {
+        "targetId": {
+          "type": "string",
+          "x-kotlin": "String"
+        }
+      },
+      "required": [
+        "targetId"
+      ]
+    },
+    "models.Trigger.Event": {
+      "type": "object",
+      "x-kotlin": "models.Trigger.Event",
+      "properties": {
+        "name": {
+          "type": "string",
+          "x-kotlin": "String"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "models.Trigger.Exit": {
+      "type": "object",
+      "x-kotlin": "models.Trigger.Exit",
+      "properties": {
+        "delaySeconds": {
+          "type": "number",
+          "x-kotlin": "Double"
+        }
+      },
+      "required": []
+    },
+    "models.Trigger.Scroll": {
+      "type": "object",
+      "x-kotlin": "models.Trigger.Scroll",
+      "properties": {
+        "percentage": {
+          "type": "integer",
+          "x-kotlin": "Int"
+        }
+      },
+      "required": [
+        "percentage"
+      ]
+    },
+    "models.Trigger.TimeOnPage": {
+      "type": "object",
+      "x-kotlin": "models.Trigger.TimeOnPage",
+      "properties": {
+        "seconds": {
+          "type": "number",
+          "x-kotlin": "Double"
+        }
+      },
+      "required": [
+        "seconds"
+      ]
+    },
+    "models.TriggerConditionStatus": {
+      "x-kotlin": "models.TriggerConditionStatus",
+      "enum": [
+        "SHOWED",
+        "PARTIAL",
+        "COMPLETED"
+      ]
+    },
+    "storage.KeyValueStorage": {
+      "x-kotlin": "storage.KeyValueStorage",
+      "description": "Interfaz que implementa el host."
+    }
+  }
+}
