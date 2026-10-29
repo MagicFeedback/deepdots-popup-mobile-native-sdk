@@ -17,7 +17,7 @@ on:
     inputs:
       sdk:
         description: "SDK version under test (published)"
-        default: "0.7.4"
+        default: "0.7.5"
       control:
         description: "Negative-control SDK version (must fail the control flow)"
         default: "0.7.0"
@@ -47,7 +47,7 @@ concurrency:
 
 # Same tools as release.yml / release-check.yml (MF-3242).
 env:
-  SDK: ${{ github.event.inputs.sdk || '0.7.4' }}
+  SDK: ${{ github.event.inputs.sdk || '0.7.5' }}
   CONTROL_SDK: ${{ github.event.inputs.control || '0.7.0' }}
   APPS_REF: ${{ github.event.inputs.apps_ref || 'feat/mf-3244-test-apps' }}
   FLOWS: ${{ github.event.inputs.flows }}
