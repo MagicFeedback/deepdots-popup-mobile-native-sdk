@@ -7,11 +7,10 @@ onFlowComplete:
   - waitForAnimationToEnd:
       timeout: 8000
 ---
-- launchApp:
-    clearState: true
-    arguments:
-      scenario: not-on-cart
-- tapOn: "Accept all"
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: not-on-cart
 - setAirplaneMode: enabled
 - stopApp
 - launchApp:
