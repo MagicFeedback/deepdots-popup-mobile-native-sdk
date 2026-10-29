@@ -1,6 +1,22 @@
-# Closes the SDK popup with its X ("Close popup" is the SDK's accessibility label).
+# Closes the SDK popup. env: TITLE (the popup's title).
+# Taps its X ("Close popup" is the SDK's accessibility label). Android 0.7.0 does not always
+# expose that label to UI Automator, so if the popup is still there, Back closes it.
 appId: com.deepdots.testapp
 ---
-- tapOn: "Close popup"
+- extendedWaitUntil:
+    visible: "Close popup"
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: "Close popup"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 3000
+- runFlow:
+    when:
+      visible: ${TITLE}
+    commands:
+      - pressKey: back
+      - waitForAnimationToEnd:
+          timeout: 3000
+- assertNotVisible: ${TITLE}

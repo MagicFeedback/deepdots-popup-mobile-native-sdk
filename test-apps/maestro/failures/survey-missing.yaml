@@ -22,8 +22,8 @@ tags: [failure]
     timeout: 6000
 - takeScreenshot: survey-missing-popup
 - runFlow:
-    when:
-      visible: "Close popup"
     file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "This survey does not exist"
 - runFlow: ../subflows/host-usable.yaml
 - takeScreenshot: survey-missing-host-usable

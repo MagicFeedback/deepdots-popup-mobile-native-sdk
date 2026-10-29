@@ -12,7 +12,10 @@ tags: [smoke]
 - extendedWaitUntil:
     visible: "How is your account?"
     timeout: 15000
-- runFlow: ../subflows/close-popup.yaml
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "How is your account?"
 - stopApp
 - launchApp:
     clearState: false
