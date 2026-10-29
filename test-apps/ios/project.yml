@@ -40,6 +40,9 @@ targets:
         CFBundleDisplayName: NORDLY
         LabSDKVersion: $(LAB_SDK_VERSION)
         UILaunchScreen: {}
+        # Recommended by the SDK docs. Without it SDK 0.7.0 crashes when it presents the popup
+        # (Compose's frame-rate check, fixed in 0.7.1); the CI run on 28-oct reproduced it.
+        CADisableMinimumFrameDurationOnPhone: true
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
 schemes:

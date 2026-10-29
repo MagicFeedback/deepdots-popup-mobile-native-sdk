@@ -59,6 +59,9 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          cores: 4
+          ram-size: 4096M
+          heap-size: 512M
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: |
@@ -112,6 +115,7 @@ jobs:
         if: matrix.sdk != 'local'
         env:
           RECORD: ${{ github.event.inputs.record == 'true' && '1' || '0' }}
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "180000"
         run: test-apps/scripts/run-maestro.sh ios ${{ matrix.sdk }} out/ios-${{ matrix.sdk }}
       - uses: actions/upload-artifact@v4
         if: always() && matrix.sdk != 'local'

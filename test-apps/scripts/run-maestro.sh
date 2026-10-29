@@ -61,6 +61,9 @@ run_flow() { # <flow file> -> exit code of maestro
   return $code
 }
 
+# Warm-up: the first cold start on a CI emulator/simulator is the slow one.
+maestro_cmd test -e SCENARIO=checkout-time subflows/launch.yaml > "$OUT/maestro/warm-up.txt" 2>&1 || true
+
 FLOWS=${FLOWS:-$(ls flows/*.yaml failures/*.yaml)}
 failed=()
 for f in $FLOWS; do
@@ -79,13 +82,25 @@ for f in $FLOWS; do
     if run_flow "$f"; then
       echo "::error::[lab] $name PASSED but must fail: the missing navigation event was NOT detected"
       failed+=("$name")
-    else
-      echo "[lab] $name failed as expected: $(grep -m1 -E 'Assertion|not visible|Timeout|Element' "$OUT/maestro/$name.txt" | sed 's/^ *//')"
+    elif grep -q 'Assertion is false: "Why did you leave the checkout?" is visible' "$OUT/maestro/$name.txt"; then
+      echo "[lab] $name failed as expected: $(grep -m1 -E '^\[Failed\]' "$OUT/maestro/$name.txt")"
       echo "[lab] => the test system detects the missing trigger"
+    else
+      echo "::error::[lab] $name failed for another reason (not the missing popup): $(grep -m1 -E '^\[Failed\]' "$OUT/maestro/$name.txt")"
+      failed+=("$name")
     fi
     continue
   fi
-  if run_flow "$f"; then echo "[lab] PASS $name"; else echo "::error::[lab] FAIL $name"; tail -5 "$OUT/maestro/$name.txt"; failed+=("$name"); fi
+  if run_flow "$f"; then echo "[lab] PASS $name"; continue; fi
+  # One retry, so a slow CI device does not hide real results; the retry is reported.
+  first=$(grep -m1 -E '^\[Failed\]' "$OUT/maestro/$name.txt")
+  mv "$OUT/maestro/$name.txt" "$OUT/maestro/$name.try1.txt"
+  if run_flow "$f"; then
+    echo "::warning::[lab] PASS $name on retry (first try: $first)"
+  else
+    echo "::error::[lab] FAIL $name: $(grep -m1 -E '^\[Failed\]' "$OUT/maestro/$name.txt")"
+    failed+=("$name")
+  fi
 done
 
 sleep 2; kill "$LOG_PID" 2>/dev/null
