@@ -1,0 +1,35 @@
+# The X closes the popup with the keyboard open on a free-text question (iPad CI failure in run
+# 40918433857). The 'simple' survey: page 1 NPS (picking a value moves on by itself), page 2 free
+# text, which @magicfeedback/native focuses after the page change. Answers go to DEV only.
+appId: com.deepdots.testapp
+tags: [smoke]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: redisplay
+- tapOn:
+    id: tab-account
+- extendedWaitUntil:
+    visible: "How is your account?"
+    timeout: 15000
+# Wait for the survey itself: before it loads the card is small and grows when it arrives.
+- extendedWaitUntil:
+    visible: "How likely are you to recommend.*"
+    timeout: 30000
+# The first chip: the radio inputs behind the chips are exposed too (value "0", off screen), so
+# match the chip right under the scale label instead of a bare number.
+- tapOn:
+    text: "0"
+    below: "Not likely"
+- extendedWaitUntil:
+    visible: "What could we improve\\?"
+    timeout: 20000
+- tapOn: "Write your answer here..."
+- inputText: "typing"
+- assertVisible: "typing"
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "How is your account?"
+- assertNotVisible: "What could we improve\\?"
