@@ -35,7 +35,6 @@ env:
   BASELINE: ${{ github.event.inputs.baseline || '0.7.4' }}
   IOS: ${{ github.event.inputs.ios || '16.4' }}
   DEVICE_TYPE: "iPhone SE (3rd generation)"
-  APPS_REF: feat/mf-3244-test-apps
   # Flows that open and close popups (the crash is in the dispose of the popup's UI).
   FLOWS: flows/exit-checkout.yaml flows/help-click.yaml flows/lifecycle.yaml flows/checkout-time.yaml lemu/rating-labels.yaml
   CRASH: "setAutomationElements:]: unrecognized selector"
@@ -48,12 +47,8 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
-      - name: Test apps (MF-3244) + Lemu flows
+      - name: Lemu flows
         run: |
-          if [ ! -d test-apps ]; then
-            git fetch --depth=1 origin "$APPS_REF"
-            git checkout FETCH_HEAD -- test-apps
-          fi
           mkdir -p test-apps/maestro/lemu && cp -R .github/test-apps-matrix/lemu/. test-apps/maestro/lemu/
       - name: SDK source (${{ env.SDK_REF }})
         uses: actions/checkout@v4

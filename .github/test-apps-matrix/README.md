@@ -6,7 +6,7 @@ plus two negative controls that must catch the 0.7.0 bugs Lemvigh-Müller hit. `
 the quick per-PR check (one emulator, one simulator).
 
 On a PR it runs only with the `run-matrix` label. Run it from Actions → "Test apps matrix" (inputs: `sdk`, `control`, `flows`, `record`), or with
-`gh workflow run test-apps-matrix.yml -f sdk=0.7.3 -f record=true` once the workflow is on the
+`gh workflow run test-apps-matrix.yml -f sdk=0.7.5 -f record=true` once the workflow is on the
 default branch. The `report` job writes the flows × rows table to the run summary and to the
 `results-matrix` artifact.
 

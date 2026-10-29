@@ -1,4 +1,4 @@
-# Device matrix for the native test apps (MF-3263, Lemvigh-Müller validation of SDK 0.7.3).
+# Device matrix for the native test apps (MF-3263, Lemvigh-Müller validation of SDK 0.7.x).
 # Runs the MF-3244 Maestro suite (test-apps/, test-apps.yml) on every OS version / device / build
 # type we promise, against ONE published SDK version, plus a negative control that must catch the
 # 0.7.0 bugs. Manual (workflow_dispatch) and on PRs that touch it; test-apps.yml stays the quick
@@ -21,9 +21,6 @@ on:
       control:
         description: "Negative-control SDK version (must fail the control flow)"
         default: "0.7.0"
-      apps_ref:
-        description: "Where test-apps/ comes from while it is not in this branch (MF-3244)"
-        default: "feat/mf-3244-test-apps"
       flows:
         description: "Flow files relative to test-apps/maestro, space-separated (empty: all)"
         default: ""
@@ -49,7 +46,6 @@ concurrency:
 env:
   SDK: ${{ github.event.inputs.sdk || '0.7.5' }}
   CONTROL_SDK: ${{ github.event.inputs.control || '0.7.0' }}
-  APPS_REF: ${{ github.event.inputs.apps_ref || 'feat/mf-3244-test-apps' }}
   FLOWS: ${{ github.event.inputs.flows }}
   RECORD: ${{ github.event.inputs.record == 'true' && '1' || '0' }}
   JAVA_VERSION: "21"
@@ -74,13 +70,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - &apps
-        name: Test apps (MF-3244)
+        name: Lemu flows
         run: |
-          if [ ! -d test-apps ]; then
-            git fetch --depth=1 origin "$APPS_REF"
-            git checkout FETCH_HEAD -- test-apps
-            echo "::notice::test-apps/ taken from $APPS_REF ($(git rev-parse --short FETCH_HEAD)); drop this once MF-3244 is in the branch"
-          fi
           # Lemu flows (rating labels, segments.lang) run with the suite on every row.
           mkdir -p test-apps/maestro/lemu && cp -R .github/test-apps-matrix/lemu/. test-apps/maestro/lemu/
           if [ -z "$FLOWS" ]; then
