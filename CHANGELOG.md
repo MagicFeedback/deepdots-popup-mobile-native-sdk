@@ -4,6 +4,20 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.5 - 2026-10-29
+
+### Fixed
+
+- **iOS 16 and older: closing a popup no longer crashes the app when accessibility is on.**
+  Compose Multiplatform 1.9.1 cleared an iOS 17-only accessibility property
+  (`automationElements`) when the popup's UI was disposed, without checking the iOS version. On
+  iOS 13–16, with VoiceOver, Switch Control, Voice Control or UI test automation active, the app
+  terminated with `-[AccessibilityElement setAutomationElements:]: unrecognized selector` when a
+  popup closed. Found by the native test-apps matrix on an iOS 16.4 simulator. The SDK now uses
+  Compose Multiplatform 1.9.3, which checks the version
+  ([compose-multiplatform-core#2541](https://github.com/JetBrains/compose-multiplatform-core/pull/2541)).
+  iOS 17 and later, and users without accessibility features, were not affected.
+
 ## 0.7.4 - 2026-10-29
 
 ### Added

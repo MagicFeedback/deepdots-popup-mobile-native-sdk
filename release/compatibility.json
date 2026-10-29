@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "package": "deepdots-popup-native-sdk",
   "platform": "native",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "artifacts": {
     "android": {
       "maven": "com.deepdots.sdk:shared-android",
@@ -54,7 +54,7 @@
   },
   "toolchain": {
     "kotlin": "2.2.20",
-    "composeMultiplatform": "1.9.1",
+    "composeMultiplatform": "1.9.3",
     "agp": "9.0.0"
   },
   "configSchema": {
