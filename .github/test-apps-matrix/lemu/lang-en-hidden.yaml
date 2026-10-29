@@ -14,7 +14,7 @@ tags: [lemu, known-issue]
 - extendedWaitUntil:
     visible: ".*Meget dårlig.*"
     timeout: 15000
-  optional: true
+    optional: true
 - assertNotVisible: ".*Meget dårlig.*"
 - assertNotVisible: ".*Hvordan vil du vurdere.*"
 - takeScreenshot: lemu-en-hidden
