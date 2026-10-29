@@ -10,10 +10,9 @@ appId: com.deepdots.testapp
       lang: ${LANG || 'en'}
       start: ${START || 'home'}
       load: immediate
-# First launch on a CI emulator can be very slow before the first frame.
 - extendedWaitUntil:
     visible: "Accept all"
-    timeout: 120000
+    timeout: 30000
     optional: true
 # A system "isn't responding" dialog (busy CI emulator) can cover the app: keep waiting.
 - runFlow:
@@ -23,7 +22,25 @@ appId: com.deepdots.testapp
       - tapOn: "Wait"
       - extendedWaitUntil:
           visible: "Accept all"
-          timeout: 60000
+          timeout: 30000
+          optional: true
+# On a busy CI emulator Android sometimes kills the new process right after clearState
+# ("remove task") and nothing restarts it for 2 minutes: launch again.
+- runFlow:
+    when:
+      notVisible: "Accept all"
+    commands:
+      - launchApp:
+          clearState: true
+          arguments:
+            scenario: ${SCENARIO}
+            nav: ${NAV || 'history'}
+            lang: ${LANG || 'en'}
+            start: ${START || 'home'}
+            load: immediate
+      - extendedWaitUntil:
+          visible: "Accept all"
+          timeout: 90000
 - tapOn: "Accept all"
 - assertVisible:
     id: lab-env
