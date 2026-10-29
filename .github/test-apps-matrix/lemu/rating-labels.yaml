@@ -3,7 +3,8 @@
 # labels inside the first and last chips ("1 = Meget dårlig"). From 0.7.1 the chips read 1..5 and
 # the labels sit under the scale. Must FAIL on 0.7.0 and PASS on 0.7.3 (negative-control.sh).
 # Copied into test-apps/maestro/lemu/ by the workflow, so the paths are relative to that folder.
-# env: LEMU_SCENARIO (default lemu: replica of Lemu's popup in MAGICFEEDBACK_DEV, time_on_page 5 s, da)
+# env: LEMU_SCENARIO (default lemu: replica of Lemu's popup in MAGICFEEDBACK_DEV, time_on_page 5 s,
+# segments.lang ["en"] like their prod popup, survey only in Danish)
 appId: com.deepdots.testapp
 tags: [lemu, negative-control]
 ---
@@ -11,7 +12,9 @@ tags: [lemu, negative-control]
     file: ../subflows/launch.yaml
     env:
       SCENARIO: ${LEMU_SCENARIO || 'lemu'}
-      LANG: da
+      # en, not da: the popup is segmented to en (as in prod) and 0.7.4 applies segments.lang.
+      # The survey only exists in Danish, so it still renders in Danish.
+      LANG: en
 # time_on_page 5 s + survey load.
 - extendedWaitUntil:
     visible: ".*Meget dårlig.*"
