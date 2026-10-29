@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "package": "deepdots-popup-native-sdk",
   "platform": "native",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "artifacts": {
     "android": {
       "maven": "com.deepdots.sdk:shared-android",
