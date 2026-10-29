@@ -114,8 +114,11 @@ named "Native Test Apps (MF-3244) · <scenario>").
     rejected (`popups-error.yaml`), no network (`offline.yaml`, Android). After each one the flow
     checks the app with real taps: tabs, a product, add to cart, checkout.
 
-CI: `.github/workflows/test-apps.yml`, one job per platform and SDK version (`0.7.3`, `0.7.0` by
-default; *Run workflow* takes another list and can record videos). Android runs on an
+CI: `.github/workflows/test-apps.yml`, one job per platform and SDK version. The versions come
+from `sdk-versions.json` (latest published, the ones customers run in production, oldest
+supported); add the new version there after each release, and the workflow warns when Maven
+Central has one that is not in the list. *Run workflow* takes another list and can record
+videos. Android runs on an
 `ubuntu-latest` emulator (API 34), iOS on `macos-15` (Xcode 16.4, iPhone 16). Each job uploads
 the device log, the `[lab]` lines, JUnit, Maestro output and, with recording, one MP4 per flow.
 

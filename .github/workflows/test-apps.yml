@@ -12,8 +12,8 @@ on:
   workflow_dispatch:
     inputs:
       versions:
-        description: "SDK versions, JSON list (published versions; Android also accepts \"local\")"
-        default: '["0.7.3", "0.7.0"]'
+        description: "SDK versions, JSON list (published versions; Android also accepts \"local\"). Empty: test-apps/sdk-versions.json"
+        default: ""
       record:
         description: "Record one video per flow"
         type: boolean
@@ -24,14 +24,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  versions:
+    name: SDK versions
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.pick.outputs.list }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: pick
+        env:
+          INPUT: ${{ github.event.inputs.versions }}
+        run: |
+          LIST=${INPUT:-$(jq -c .versions test-apps/sdk-versions.json)}
+          echo "list=$LIST" >> "$GITHUB_OUTPUT"
+          echo "[lab] SDK versions: $LIST"
+          # A new release that nobody added to the list yet.
+          LATEST=$(curl -fsS https://repo1.maven.org/maven2/com/deepdots/sdk/shared-android/maven-metadata.xml | sed -n 's:.*<release>\(.*\)</release>.*:\1:p')
+          if [ -n "$LATEST" ] && ! jq -e --arg v "$LATEST" '.versions | index($v)' test-apps/sdk-versions.json > /dev/null; then
+            echo "::warning::[lab] SDK $LATEST is published but not in test-apps/sdk-versions.json"
+          fi
+
   android:
     name: Android · SDK ${{ matrix.sdk }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    needs: versions
     strategy:
       fail-fast: false
       matrix:
-        sdk: ${{ fromJSON(github.event.inputs.versions || '["0.7.3", "0.7.0"]') }}
+        sdk: ${{ fromJSON(needs.versions.outputs.list) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -78,10 +99,11 @@ jobs:
     name: iOS · SDK ${{ matrix.sdk }}
     runs-on: macos-15
     timeout-minutes: 60
+    needs: versions
     strategy:
       fail-fast: false
       matrix:
-        sdk: ${{ fromJSON(github.event.inputs.versions || '["0.7.3", "0.7.0"]') }}
+        sdk: ${{ fromJSON(needs.versions.outputs.list) }}
     steps:
       - uses: actions/checkout@v4
         if: matrix.sdk != 'local'
