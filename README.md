@@ -137,6 +137,7 @@ sdk.show(ShowOptions(surveyId = "survey-123", productId = "product-xyz"), Platfo
   - Android: `provideLang` lambda + `setPath(path)` on navigation.
   - iOS: same via `provideLang` and `setPath(path:)` in `DeepdotsDemo.swift`.
 - Ensure paths you navigate (`/home`, `/detail/1`, `/detail/2`, etc.) match the segments defined in your backend.
+- `segments.lang` (since 0.7.4): a popup with a language list is shown only when the current language starts with one of them, case-insensitive (`en-US` matches `en`). The current language is `provideLang`, or the device locale when it returns nothing; with neither, the popup is not filtered. Same rules as the web SDK.
 
 ## 7. Cooldown Persistence
 - Uses in-memory by default. You can plug a custom `KeyValueStorage` (Android/iOS) if you need persistence across sessions. Demos use defaults.
