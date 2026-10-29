@@ -1,0 +1,351 @@
+# Device matrix for the native test apps (MF-3263, Lemvigh-Müller validation of SDK 0.7.3).
+# Runs the MF-3244 Maestro suite (test-apps/, test-apps.yml) on every OS version / device / build
+# type we promise, against ONE published SDK version, plus a negative control that must catch the
+# 0.7.0 bugs. Manual (workflow_dispatch) and on PRs that touch it; test-apps.yml stays the quick
+# per-PR check on one emulator and one simulator.
+#
+# Rows (see .github/test-apps-matrix/README.md for runner gaps):
+#   Android  API 26 / 30 / 34 / 36, Pixel 6, debug + release (R8, minify, shrinkResources); Pixel Tablet on 34
+#   iOS      16.4 iPhone SE · 17.5 iPhone 15 (runtimes downloaded) · 18 iPhone 16 Pro Max, iPad (A16),
+#            iPhone 16 Release · 26 iPhone 17 built with Xcode 26 (what App Store builds use today)
+#   Control  Android API 34: lemu/rating-labels.yaml must fail on the control version and pass on `sdk`
+# Every row fails if the device log shows CalledFromWrongThreadException or a crash, besides the flows.
+name: Test apps matrix
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk:
+        description: "SDK version under test (published)"
+        default: "0.7.3"
+      control:
+        description: "Negative-control SDK version (must fail the control flow)"
+        default: "0.7.0"
+      apps_ref:
+        description: "Where test-apps/ comes from while it is not in this branch (MF-3244)"
+        default: "feat/mf-3244-test-apps"
+      flows:
+        description: "Flow files relative to test-apps/maestro, space-separated (empty: all)"
+        default: ""
+      record:
+        description: "Record one video per flow"
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - ".github/workflows/test-apps-matrix.yml"
+      - ".github/test-apps-matrix/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-apps-matrix-${{ github.ref }}
+  cancel-in-progress: true
+
+# Same tools as release.yml / release-check.yml (MF-3242).
+env:
+  SDK: ${{ github.event.inputs.sdk || '0.7.3' }}
+  CONTROL_SDK: ${{ github.event.inputs.control || '0.7.0' }}
+  APPS_REF: ${{ github.event.inputs.apps_ref || 'feat/mf-3244-test-apps' }}
+  FLOWS: ${{ github.event.inputs.flows }}
+  RECORD: ${{ github.event.inputs.record == 'true' && '1' || '0' }}
+  JAVA_VERSION: "21"
+  XCODE_APP: /Applications/Xcode_16.4.app
+
+jobs:
+  android:
+    name: Android ${{ matrix.api }} · ${{ matrix.device }} · ${{ matrix.build }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [26, 30, 34, 36]
+        build: [debug, release]
+        device: [pixel_6]
+        include:
+          - { api: 34, build: debug, device: pixel_tablet }
+    env:
+      OUT: out/android-${{ matrix.api }}-${{ matrix.device }}-${{ matrix.build }}
+    steps:
+      - uses: actions/checkout@v4
+      - &apps
+        name: Test apps (MF-3244)
+        run: |
+          if [ ! -d test-apps ]; then
+            git fetch --depth=1 origin "$APPS_REF"
+            git checkout FETCH_HEAD -- test-apps
+            echo "::notice::test-apps/ taken from $APPS_REF ($(git rev-parse --short FETCH_HEAD)); drop this once MF-3244 is in the branch"
+          fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Build app (${{ matrix.build }}, SDK ${{ env.SDK }})
+        working-directory: test-apps/android
+        run: |
+          if [ "${{ matrix.build }}" = release ]; then
+            ./gradlew :app:assembleRelease :app:labSdkInfo -PsdkVersion="$SDK" \
+              --init-script "$GITHUB_WORKSPACE/.github/test-apps-matrix/release-minify.init.gradle" | tee ../../build.log
+            APK=app/build/outputs/apk/release/app-release.apk
+          else
+            ./gradlew :app:assembleDebug :app:labSdkInfo -PsdkVersion="$SDK" | tee ../../build.log
+            APK=app/build/outputs/apk/debug/app-debug.apk
+          fi
+          echo "APK=test-apps/android/$APK" >> "$GITHUB_ENV"
+          echo "RESOLVED=$(grep -oE 'resolved=[^ ]+' ../../build.log | head -1 | cut -d= -f2)" >> "$GITHUB_ENV"
+      - &maestro
+        name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Run suite on the emulator
+        id: suite
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          profile: ${{ matrix.device }}
+          cores: 4
+          ram-size: 4096M
+          heap-size: 512M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: |
+            mkdir -p $OUT
+            adb shell dumpsys package com.google.android.webview | grep -m1 versionName | tr -d ' ' > $OUT/webview.txt || true
+            adb install -r "$APK"
+            test-apps/scripts/run-maestro.sh android "$SDK" "$OUT"
+            .github/test-apps-matrix/check-device-log.sh "$OUT/device.log"
+      - name: Row metadata
+        if: always()
+        run: |
+          mkdir -p "$OUT"
+          python3 - "$OUT" <<'PY'
+          import json, os, sys
+          out = sys.argv[1]
+          webview = open(f"{out}/webview.txt").read().strip() if os.path.exists(f"{out}/webview.txt") else ""
+          json.dump({
+            "label": "A${{ matrix.api }} ${{ matrix.device == 'pixel_tablet' && 'tablet' || 'phone' }} ${{ matrix.build }}",
+            "platform": "Android", "os": "API ${{ matrix.api }}", "device": "${{ matrix.device }} (emulator)",
+            "build": "${{ matrix.build == 'release' && 'release (R8)' || 'debug' }}",
+            "sdk": os.environ["SDK"], "resolved": os.environ.get("RESOLVED", "?"),
+            "engine": webview.replace("versionName=", "WebView "),
+            "outcome": "${{ steps.suite.outcome }}", "run": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+          }, open(f"{out}/row.json", "w"), indent=2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: matrix-android-${{ matrix.api }}-${{ matrix.device }}-${{ matrix.build }}
+          path: out/
+          retention-days: 30
+
+  ios:
+    name: iOS ${{ matrix.ios }} · ${{ matrix.device }} · ${{ matrix.config }}
+    runs-on: macos-15
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macos-15 only ships iOS 18.x and 26.x runtimes: 16 and 17 are downloaded (~5-10 min each).
+          - { ios: "16.4", device: "iPhone SE (3rd generation)", config: Debug, xcode: /Applications/Xcode_16.4.app, download: true }
+          - { ios: "17.5", device: "iPhone 15", config: Debug, xcode: /Applications/Xcode_16.4.app, download: true }
+          - { ios: "18", device: "iPhone 16 Pro Max", config: Debug, xcode: /Applications/Xcode_16.4.app }
+          - { ios: "18", device: "iPad (A16)", config: Debug, xcode: /Applications/Xcode_16.4.app }
+          - { ios: "18", device: "iPhone 16", config: Release, xcode: /Applications/Xcode_16.4.app }
+          # Since April 2026 App Store uploads need the iOS 26 SDK, so this is how Lemu builds today.
+          - { ios: "26", device: "iPhone 17", config: Debug, xcode: /Applications/Xcode_26.2.app }
+    env:
+      OUT: out/ios-${{ matrix.ios }}-${{ matrix.config }}-${{ matrix.device }}
+    steps:
+      - uses: actions/checkout@v4
+      - *apps
+      - name: Select Xcode
+        run: sudo xcode-select -s "${{ matrix.xcode }}" && xcodebuild -version
+      - name: Download iOS ${{ matrix.ios }} runtime
+        if: matrix.download
+        run: |
+          xcrun simctl runtime list || true
+          sudo xcodebuild -downloadPlatform iOS -buildVersion "${{ matrix.ios }}"
+      - name: Install tools
+        run: brew install xcodegen
+      - *maestro
+      - name: Generate and build app (${{ matrix.config }}, SDK ${{ env.SDK }})
+        working-directory: test-apps/ios
+        run: |
+          SDK_VERSION=$SDK xcodegen generate
+          # iPhone + iPad (the project is iPhone-only; on an iPad it would run in compatibility mode).
+          xcodebuild -project NordlyTestApp.xcodeproj -scheme NordlyTestApp -configuration ${{ matrix.config }} \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            TARGETED_DEVICE_FAMILY=1,2 -quiet build
+          RESOLVED=$(python3 -c "import json;print(next(p['state']['version'] for p in json.load(open('NordlyTestApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved'))['pins'] if p['identity']=='deepdotssdk-spm'))")
+          echo "[lab] sdk requested=$SDK resolved=$RESOLVED source=SPM (DeepdotsSDK-SPM)"
+          test "$RESOLVED" = "$SDK"
+          echo "RESOLVED=$RESOLVED" >> "$GITHUB_ENV"
+      - name: Create and boot simulator
+        run: |
+          RUNTIME=$(xcrun simctl list runtimes -j | python3 -c "
+          import json, sys
+          rs = [r for r in json.load(sys.stdin)['runtimes'] if r['platform'] == 'iOS' and r['isAvailable']
+                and (r['version'] + '.').startswith('${{ matrix.ios }}.')]
+          print(sorted(rs, key=lambda r: [int(x) for x in r['version'].split('.')])[-1]['identifier'])")
+          echo "RUNTIME=$RUNTIME" >> "$GITHUB_ENV"
+          UDID=$(xcrun simctl create "lab" "${{ matrix.device }}" "$RUNTIME")
+          echo "DEVICE=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID" && xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "test-apps/ios/build/Build/Products/${{ matrix.config }}-iphonesimulator/NordlyTestApp.app"
+      - name: Run suite on the simulator
+        id: suite
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "180000"
+        run: |
+          test-apps/scripts/run-maestro.sh ios "$SDK" "$OUT"
+          .github/test-apps-matrix/check-device-log.sh "$OUT/device.log"
+      - name: Row metadata
+        if: always()
+        run: |
+          mkdir -p "$OUT"
+          python3 - "$OUT" <<'PY'
+          import json, os, sys
+          json.dump({
+            "label": "iOS ${{ matrix.ios }} ${{ matrix.device }} ${{ matrix.config }}",
+            "platform": "iOS", "os": os.environ.get("RUNTIME", "iOS ${{ matrix.ios }}").split(".")[-1],
+            "device": "${{ matrix.device }} (simulator)", "build": "${{ matrix.config }} · ${{ matrix.xcode }}".replace("/Applications/", "").replace(".app", ""),
+            "sdk": os.environ["SDK"], "resolved": os.environ.get("RESOLVED", "?"), "engine": "",
+            "outcome": "${{ steps.suite.outcome }}", "run": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+          }, open(f"{sys.argv[1]}/row.json", "w"), indent=2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: matrix-ios-${{ matrix.ios }}-${{ matrix.config }}-${{ strategy.job-index }}
+          path: out/
+          retention-days: 30
+
+  negative-control:
+    name: Negative control · SDK ${{ matrix.sdk }} must ${{ matrix.expect }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { sdk: control, expect: fail }
+          - { sdk: tested, expect: pass }
+    steps:
+      - uses: actions/checkout@v4
+      - *apps
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Build app
+        working-directory: test-apps/android
+        run: |
+          V=${{ matrix.sdk == 'control' && env.CONTROL_SDK || env.SDK }}
+          echo "V=$V" >> "$GITHUB_ENV"
+          ./gradlew :app:assembleDebug :app:labSdkInfo -PsdkVersion="$V"
+      - *maestro
+      - name: Run the control flow
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          cores: 4
+          ram-size: 4096M
+          heap-size: 512M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          # The action runs each line on its own: no shell variables carried between lines.
+          script: |
+            adb install -r test-apps/android/app/build/outputs/apk/debug/app-debug.apk
+            RECORD=1 .github/test-apps-matrix/negative-control.sh "$V" ${{ matrix.expect }} out/control-$V
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: matrix-control-${{ matrix.sdk }}
+          path: out/
+          retention-days: 30
+
+  # Second control, no emulator: 0.7.0 shipped without consumer ProGuard rules and an R8 release
+  # build fails (Missing class org.slf4j.impl.StaticLoggerBinder); fixed in 0.7.2.
+  r8-control:
+    name: R8 control · SDK ${{ matrix.sdk }} must ${{ matrix.expect }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { sdk: control, expect: fail }
+          - { sdk: tested, expect: pass }
+    steps:
+      - uses: actions/checkout@v4
+      - *apps
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Release build with R8
+        working-directory: test-apps/android
+        run: |
+          V=${{ matrix.sdk == 'control' && env.CONTROL_SDK || env.SDK }}
+          mkdir -p "$GITHUB_WORKSPACE/out/r8-$V"
+          ./gradlew :app:assembleRelease -PsdkVersion="$V" \
+            --init-script "$GITHUB_WORKSPACE/.github/test-apps-matrix/release-minify.init.gradle" > "$GITHUB_WORKSPACE/out/r8-$V/build.log" 2>&1
+          code=$?
+          grep -E 'Missing class|BUILD (SUCCESSFUL|FAILED)' "$GITHUB_WORKSPACE/out/r8-$V/build.log" | head -5
+          if [ "${{ matrix.expect }}" = pass ]; then
+            test $code -eq 0 && echo "[lab] R8 control: SDK $V builds with R8" && exit 0
+            echo "::error::[lab] R8 control: SDK $V should build with R8"; exit 1
+          fi
+          if [ $code -ne 0 ] && grep -q 'Missing class org.slf4j' "$GITHUB_WORKSPACE/out/r8-$V/build.log"; then
+            echo "[lab] R8 control: SDK $V fails as expected (no consumer rules: Missing class org.slf4j...)"; exit 0
+          fi
+          echo "::error::[lab] R8 control: SDK $V should fail with the missing slf4j class (exit $code)"; exit 1
+        shell: bash {0}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r8-control-${{ matrix.sdk }}
+          path: out/
+          retention-days: 30
+
+  report:
+    name: Results matrix
+    if: always()
+    needs: [android, ios, negative-control, r8-control]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: matrix-*
+          path: rows
+          merge-multiple: true
+      - name: Summarize
+        run: |
+          python3 .github/test-apps-matrix/summarize.py rows > matrix.md
+          { echo "## SDK $SDK · control $CONTROL_SDK"; echo; cat matrix.md; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: results-matrix
+          path: matrix.md
+          retention-days: 90

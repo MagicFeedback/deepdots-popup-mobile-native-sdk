@@ -1,0 +1,25 @@
+# Negative control (MF-3263): the rating bug Lemvigh-Müller saw on SDK 0.7.0 / Android.
+# 0.7.0 rendered the survey with its vendored @magicfeedback/native 2.2.4, which puts the scale
+# labels inside the first and last chips ("1 = Meget dårlig"). From 0.7.1 the chips read 1..5 and
+# the labels sit under the scale. Must FAIL on 0.7.0 and PASS on 0.7.3 (negative-control.sh).
+# Copied into test-apps/maestro/lemu/ by the workflow, so the paths are relative to that folder.
+# env: LEMU_SCENARIO (default lemu: replica of Lemu's popup in MAGICFEEDBACK_DEV, time_on_page 5 s, da)
+appId: com.deepdots.testapp
+tags: [lemu, negative-control]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: ${LEMU_SCENARIO || 'lemu'}
+      LANG: da
+# time_on_page 5 s + survey load.
+- extendedWaitUntil:
+    visible: ".*Meget dårlig.*"
+    timeout: 30000
+- takeScreenshot: lemu-rating
+- assertNotVisible: "1 = .*"
+- assertNotVisible: "5 = .*"
+- assertVisible: "1"
+- assertVisible: "5"
+- assertVisible: "Meget dårlig"
+- assertVisible: "Meget god"
