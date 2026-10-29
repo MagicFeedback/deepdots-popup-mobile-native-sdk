@@ -65,6 +65,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -262,7 +263,7 @@ class DeepdotsPopups {
     private val messageGuard = MessageGuard()
     /** Atributos de contact del usuario identificado. Null si el host no pasó userId. */
     private var contact: ContactManager? = null
-    /** Idioma resuelto en init (host > locale de la plataforma): fuente única para analytics. */
+    /** Idioma resuelto en init (host > locale de la plataforma): fuente única para analytics y `segments.lang`. */
     private var language: String? = null
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -1084,6 +1085,10 @@ class DeepdotsPopups {
 
     internal fun debugParseServerPayload(payload: String): List<PopupDefinition> = parseServerPopups(payload)
 
+    /** Lo que acepta `GET /sdk/popups` por popup: el schema de release se genera de aquí (MF-3242). */
+    internal fun debugServerPopupDescriptor(): SerialDescriptor = ServerPopupDto.serializer().descriptor
+    internal fun debugServerStyleDescriptor(): SerialDescriptor = ServerStyleDto.serializer().descriptor
+
     private fun startAutoLaunch() {
         triggerJobs.forEach { it.cancel() }
         triggerJobs.clear()
@@ -1615,6 +1620,10 @@ class DeepdotsPopups {
             return false
         }
 
+        if (!matchesSegmentsLang(popup)) {
+            return false
+        }
+
         if (popup.cooldown.isNotEmpty() && !popup.cooldown.all { evaluateCooldown(popup, it) }) {
             return false
         }
@@ -1624,6 +1633,27 @@ class DeepdotsPopups {
         }
 
         return true
+    }
+
+    /**
+     * `segments.lang`: idiomas para los que el popup PUEDE mostrarse. Sin lista, en todos. Espejo
+     * de `matchesSegmentsLang` (Web): el idioma es el mismo que reporta analytics (host >
+     * locale de la plataforma) y vale por prefijo sin distinguir mayúsculas (`en-US` entra en
+     * `en`). Sin idioma resuelto no se puede comparar y no filtra.
+     */
+    private fun matchesSegmentsLang(popup: PopupDefinition): Boolean {
+        val langs = popup.segments?.lang.orEmpty()
+        if (langs.isEmpty()) return true
+
+        val currentLang = language?.lowercase().orEmpty()
+        if (currentLang.isEmpty()) {
+            log("No language available for lang comparison", "popup=${popup.id} langs=$langs")
+            return true
+        }
+
+        val matches = langs.any { it.isNotBlank() && currentLang.startsWith(it.trim().lowercase()) }
+        if (!matches) log("Lang mismatch for popup", "popup=${popup.id} langs=$langs currentLang=$currentLang")
+        return matches
     }
 
     /** `segments.path`: rutas donde el popup PUEDE mostrarse. Sin lista, en todas. */

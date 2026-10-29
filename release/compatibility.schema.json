@@ -1,0 +1,219 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/release/compatibility.schema.json",
+  "title": "Native popup SDK compatibility manifest",
+  "description": "Lo que promete cada release del SDK nativo (MF-3242). Lo valida scripts/release/check.mjs en cada PR y antes de publicar; una release con el manifiesto invalido no se publica.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "package",
+    "platform",
+    "version",
+    "artifacts",
+    "surveyRenderer",
+    "popupSdkCss",
+    "hosts",
+    "toolchain",
+    "configSchema",
+    "fixtures",
+    "knownIssues",
+    "supportPolicy"
+  ],
+  "definitions": {
+    "semver": { "type": "string", "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?$" },
+    "osVersion": { "type": "string", "pattern": "^\\d+\\.\\d+$" }
+  },
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "package": { "const": "deepdots-popup-native-sdk" },
+    "platform": { "const": "native" },
+    "version": {
+      "description": "Igual a PUBLISHING_VERSION de gradle.properties y al tag vX.Y.Z.",
+      "$ref": "#/definitions/semver"
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["android", "ios"],
+      "properties": {
+        "android": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["maven", "file"],
+          "properties": {
+            "maven": { "const": "com.deepdots.sdk:shared-android" },
+            "file": { "type": "string", "pattern": "\\{version\\}\\.aar$" },
+            "notes": { "type": "string" }
+          }
+        },
+        "ios": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["spm", "product", "file"],
+          "properties": {
+            "spm": { "const": "MagicFeedback/DeepdotsSDK-SPM" },
+            "product": { "const": "DeepdotsSDK" },
+            "file": { "type": "string", "pattern": "\\{version\\}\\.xcframework\\.zip$" },
+            "notes": { "type": "string" }
+          }
+        }
+      }
+    },
+    "surveyRenderer": {
+      "description": "El renderer de surveys que carga el WebView (MAGICFEEDBACK_VERSION). Se versiona aparte; aqui queda la version exacta.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package", "version", "delivery"],
+      "properties": {
+        "package": { "const": "@magicfeedback/native" },
+        "version": { "$ref": "#/definitions/semver" },
+        "delivery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["android", "ios"],
+          "properties": {
+            "android": { "enum": ["vendored", "cdn"] },
+            "ios": { "enum": ["vendored", "cdn"] }
+          }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "popupSdkCss": {
+      "description": "CSS del survey que sale de @magicfeedback/popup-sdk por CDN (POPUP_SDK_CSS_VERSION).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package", "version"],
+      "properties": {
+        "package": { "const": "@magicfeedback/popup-sdk" },
+        "version": { "$ref": "#/definitions/semver" },
+        "notes": { "type": "string" }
+      }
+    },
+    "hosts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["android", "ios", "frameworks", "tests"],
+      "properties": {
+        "android": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minSdk", "compileSdk", "targetSdk"],
+          "properties": {
+            "minSdk": { "type": "integer", "minimum": 21 },
+            "compileSdk": { "type": "integer", "minimum": 21 },
+            "targetSdk": { "type": "integer", "minimum": 21 },
+            "notes": { "type": "string" }
+          }
+        },
+        "ios": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minimum", "architectures"],
+          "properties": {
+            "minimum": { "$ref": "#/definitions/osVersion" },
+            "architectures": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["ios-arm64", "ios-arm64-simulator", "ios-arm64_x86_64-simulator"] }
+            },
+            "notes": { "type": "string" }
+          }
+        },
+        "frameworks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "support"],
+            "properties": {
+              "name": { "enum": ["android-compose", "android-views", "ios-swiftui", "ios-uikit", "kotlin-multiplatform", "flutter", "react-native"] },
+              "support": { "enum": ["supported", "best-effort", "unsupported"] },
+              "range": { "type": "string" },
+              "notes": { "type": "string" }
+            }
+          }
+        },
+        "tests": {
+          "description": "Suites que corren antes de publicar (release.yml y el dry-run de la PR).",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "command"],
+            "properties": {
+              "name": { "type": "string" },
+              "command": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "toolchain": {
+      "description": "Versiones de gradle/libs.versions.toml con las que se construye el artefacto.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kotlin", "composeMultiplatform", "agp"],
+      "properties": {
+        "kotlin": { "type": "string" },
+        "composeMultiplatform": { "type": "string" },
+        "agp": { "type": "string" }
+      }
+    },
+    "configSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "generatedFrom"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^release/.+\\.json$" },
+        "generatedFrom": { "type": "string" }
+      }
+    },
+    "fixtures": {
+      "description": "Respuestas de GET /sdk/popups conocidas como buenas. Se validan contra configSchema y las parsea ReleaseContractTest con el SDK.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path", "trigger", "covers"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "path": { "type": "string", "pattern": "^release/fixtures/.+\\.json$" },
+          "trigger": {
+            "description": "Evento del host con el que se dispara algun popup del fixture.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["event"],
+            "properties": {
+              "event": { "type": "string", "minLength": 1 }
+            }
+          },
+          "covers": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+        }
+      }
+    },
+    "knownIssues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "summary", "affects", "detected"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "summary": { "type": "string", "minLength": 10 },
+          "affects": { "type": "array", "minItems": 1, "items": { "enum": ["android", "ios", "all"] } },
+          "detected": { "description": "Fecha en que se detecto (YYYY-MM-DD).", "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "workaround": { "type": "string" },
+          "tracking": { "type": "string" }
+        }
+      }
+    },
+    "supportPolicy": { "type": "string", "pattern": "\\.md$" }
+  }
+}

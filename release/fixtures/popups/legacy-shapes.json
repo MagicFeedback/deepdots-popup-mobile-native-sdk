@@ -1,0 +1,14 @@
+[
+  {
+    "id": "fixture-legacy",
+    "title": "Before you go",
+    "message": "",
+    "trigger": { "type": "EVENT", "value": "fixture_legacy", "condition": [{ "answered": false, "cooldownDays": 3 }] },
+    "conditions": [{ "answered": true, "cooldownDays": "14" }],
+    "cooldown": null,
+    "style": "{\"theme\":\"dark\",\"position\":\"top-left\",\"imageUrl\":null}",
+    "segments": { "lang": ["es"] },
+    "surveyId": "survey-fixture-4",
+    "productId": null
+  }
+]

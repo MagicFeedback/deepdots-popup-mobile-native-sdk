@@ -3,17 +3,26 @@ name: Release
 # Release completo del SDK al subir un tag `vX.Y.Z`. Sustituye a `scripts/deploy_sdk_release.sh`
 # (rutas locales, subida manual al portal de Sonatype y un update_version.sh que recreaba tags).
 #
-# Flujo de release:
-#   1. En `dev`: `scripts/bump_version.sh X.Y.Z` + seccion `## X.Y.Z` en CHANGELOG.md,
-#      commit `chore(release): X.Y.Z` (PR a dev como siempre).
-#   2. Tras el merge: `git tag -a vX.Y.Z <merge> -m vX.Y.Z && git push origin vX.Y.Z`
+# Flujo de release (docs/VERSIONING.md):
+#   1. `node scripts/release.mjs prepare patch|minor|major`: PR a dev con la version, la seccion
+#      `## X.Y.Z - fecha` del CHANGELOG y release/compatibility.json. Su "Release dry run"
+#      (release-check.yml) corre este mismo gate, tests y build antes de que exista el tag.
+#   2. Fusionada la PR: `node scripts/release.mjs tag` (sube el tag vX.Y.Z).
+#
+# Antes de publicar nada, el gate (MF-3242, scripts/release/check.mjs release) bloquea si falta
+# el bump, las release notes o el manifiesto de compatibilidad es invalido, y metadata.mjs
+# bloquea si el "Release dry run" de la PR de release no esta en verde. El AAR y el zip del
+# XCFramework se construyen UNA vez, pasan la prueba de humo y se publican ESOS ficheros.
 #
 # Que publica, por orden (si un paso falla, los siguientes no corren):
 #   - Android en Maven Central (`com.deepdots.sdk:shared-android:X.Y.Z`), firmado.
 #     Se SALTA con un aviso si faltan los secrets de Maven Central o de firma.
 #   - iOS: XCFramework en la release `X.Y.Z` de MagicFeedback/DeepdotsSDK-SPM + Package.swift.
-#   - GitHub Release `vX.Y.Z` en este repo con el AAR y las notas del CHANGELOG.
+#   - GitHub Release `vX.Y.Z` en este repo con el AAR, el zip del XCFramework, SHA256SUMS,
+#     release.json (commit, hashes, donde se publico, dry-run, aprobacion), el manifiesto y el
+#     schema de configuracion; y las notas del CHANGELOG.
 #   - Merge del commit del tag en `main` (+ redeploy de la doc). Con conflicto, abre una PR.
+#     Un parche de una linea antigua (o una prerelease) no se fusiona ni se marca como latest.
 # Ningun paso sobrescribe algo ya publicado: si la version existe, se salta.
 #
 # Secrets (Settings > Secrets and variables > Actions):
@@ -35,13 +44,17 @@ permissions:
   contents: write
   actions: write # lanzar docs-pages.yml tras fusionar en main
   pull-requests: write # PR de respaldo si el merge en main da conflicto
+  checks: read # metadata.mjs lee el "Release dry run" de la PR de release
 
 concurrency:
   group: release
   cancel-in-progress: false
 
+# Mismas versiones que el dry-run de release-check.yml: cambiarlas siempre en los dos.
 env:
   JAVA_VERSION: "21"
+  NODE_VERSION: "24"
+  XCODE_APP: /Applications/Xcode_16.4.app
   GRADLE_OPTS: -Dorg.gradle.daemon=false
   SPM_REPO: MagicFeedback/DeepdotsSDK-SPM
   ARTIFACT_GROUP_PATH: com/deepdots/sdk/shared-android
@@ -58,27 +71,41 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify tag, version and changelog
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          if [ ! -d "$XCODE_APP" ]; then
+            echo "::error::La imagen no trae $XCODE_APP. Cambia XCODE_APP aqui y en release-check.yml (a la vez)."
+            ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: scripts/release/package-lock.json
+
+      - name: Install release tools
+        run: npm ci --prefix scripts/release
+
+      # Gate de release (MF-3242, docs/VERSIONING.md). Si falla, no se publica nada: tag =
+      # version, bump respecto a lo publicado en su linea, notas en el CHANGELOG y manifiesto de
+      # compatibilidad valido (schema, versiones contrastadas con el codigo, fixtures).
+      - name: Release gate
         id: meta
         run: |
           set -euo pipefail
-          TAG="$GITHUB_REF_NAME"
-          VERSION="${TAG#v}"
-          GRADLE_VERSION="$(grep '^PUBLISHING_VERSION=' gradle.properties | cut -d'=' -f2-)"
-          if [ "$VERSION" != "$GRADLE_VERSION" ]; then
-            echo "::error::El tag $TAG no coincide con PUBLISHING_VERSION ($GRADLE_VERSION). Usa scripts/bump_version.sh."
-            exit 1
-          fi
+          # Se releasea desde dev: un tag sobre un commit que no esta en dev es un error.
           git fetch --no-tags origin dev
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/dev; then
-            echo "::error::El commit del tag $TAG no esta en origin/dev."
+            echo "::error::El commit del tag $GITHUB_REF_NAME no esta en origin/dev."
             exit 1
           fi
-          scripts/extract_changelog_section.sh "$VERSION" CHANGELOG.md > "$RUNNER_TEMP/changelog.md" || {
-            echo "::error::CHANGELOG.md no tiene seccion '## $VERSION'."
-            exit 1
-          }
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          node scripts/release/check.mjs release --tag "$GITHUB_REF_NAME" --notes-out "$RUNNER_TEMP/changelog.md"
 
       - name: Check what is already published
         id: state
@@ -151,22 +178,56 @@ jobs:
           path: shared/build/reports/tests/
           retention-days: 7
 
+      # El AAR se construye UNA vez, en el staging repo de Maven (firmado si hay secrets): ese
+      # fichero es el del bundle de Maven Central y el que se adjunta a la GitHub Release.
       - name: Build Android AAR
         env:
           VERSION: ${{ steps.meta.outputs.version }}
+          SIGNING_KEY: ${{ steps.state.outputs.maven == 'publish' && secrets.SIGNING_KEY || '' }}
+          SIGNING_PASSWORD: ${{ steps.state.outputs.maven == 'publish' && secrets.SIGNING_PASSWORD || '' }}
+          SIGNING_KEY_ID: ${{ steps.state.outputs.maven == 'publish' && secrets.SIGNING_KEY_ID || '' }}
         run: |
-          ./gradlew :shared:assembleRelease
+          set -euo pipefail
+          rm -rf build/release-staging-repo
+          ./gradlew :shared:publishAndroidReleasePublicationToReleaseStagingRepository
           mkdir -p "$RUNNER_TEMP/out"
-          cp shared/build/outputs/aar/shared-release.aar "$RUNNER_TEMP/out/DeepdotsSDK-$VERSION.aar"
+          cp "build/release-staging-repo/$ARTIFACT_GROUP_PATH/$VERSION/shared-android-$VERSION.aar" "$RUNNER_TEMP/out/DeepdotsSDK-$VERSION.aar"
 
+      # El zip del XCFramework tambien se construye una vez; su sha256 es el checksum de SPM. Si
+      # SPM ya tiene la version (re-ejecucion), el artefacto es el publicado: se descarga ese.
       - name: Build iOS XCFramework
-        if: steps.state.outputs.spm == 'publish'
         env:
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
           set -euo pipefail
-          scripts/prepare_spm_release.sh "$VERSION" "https://github.com/$SPM_REPO/releases/download/$VERSION"
-          echo "checksum=$(cat dist/spm/DeepdotsSDK-$VERSION.xcframework.zip.checksum)" >> "$GITHUB_ENV"
+          ZIP="DeepdotsSDK-$VERSION.xcframework.zip"
+          if [ "${{ steps.state.outputs.spm }}" = "publish" ]; then
+            scripts/prepare_spm_release.sh "$VERSION" "https://github.com/$SPM_REPO/releases/download/$VERSION"
+            cp "dist/spm/$ZIP" "$RUNNER_TEMP/out/"
+          else
+            curl -fsSL -o "$RUNNER_TEMP/out/$ZIP" "https://github.com/$SPM_REPO/releases/download/$VERSION/$ZIP"
+          fi
+          echo "checksum=$(shasum -a 256 "$RUNNER_TEMP/out/$ZIP" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+
+      - name: Smoke test the artifacts
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          node scripts/release/smoke.mjs --aar "$RUNNER_TEMP/out/DeepdotsSDK-$VERSION.aar" \
+            --xcframework "$RUNNER_TEMP/out/DeepdotsSDK-$VERSION.xcframework.zip" --json "$RUNNER_TEMP/smoke.json"
+
+      # Antes de publicar: el AAR del bundle es el probado, el checksum de SPM es el del zip
+      # probado y el "Release dry run" de la PR de release esta en verde. Si no, no se publica.
+      - name: Check traceability
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          node scripts/release/metadata.mjs --require-ci --tag "$GITHUB_REF_NAME" \
+            --aar "$RUNNER_TEMP/out/DeepdotsSDK-$VERSION.aar" --xcframework "$RUNNER_TEMP/out/DeepdotsSDK-$VERSION.xcframework.zip" \
+            --spm-checksum "$checksum" --maven-dir build/release-staging-repo --smoke "$RUNNER_TEMP/smoke.json" \
+            --out "$RUNNER_TEMP/release.pre.json"
 
       # Firma en local y sube el bundle por la API del Central Portal, en UNA peticion. La via
       # "compatible con OSSRH" (publish...ToOSSRHRepository + /manual/upload) aisla los
@@ -178,14 +239,10 @@ jobs:
           VERSION: ${{ steps.meta.outputs.version }}
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
           PUBLISHING_TYPE: ${{ vars.MAVEN_CENTRAL_PUBLISHING_TYPE || 'automatic' }}
         run: |
           set -euo pipefail
-          rm -rf build/release-staging-repo
-          ./gradlew :shared:publishAndroidReleasePublicationToReleaseStagingRepository
+          # El staging repo ya esta construido y firmado ("Build Android AAR"): no se reconstruye.
           DIR="build/release-staging-repo/$ARTIFACT_GROUP_PATH/$VERSION"
           ls -1 "$DIR"
           for f in "shared-android-$VERSION.aar" "shared-android-$VERSION.pom" "shared-android-$VERSION.aar.asc" "shared-android-$VERSION.pom.asc"; do
@@ -237,7 +294,7 @@ jobs:
           GH_TOKEN: ${{ secrets.SPM_REPO_TOKEN }}
         run: |
           set -euo pipefail
-          ZIP="$GITHUB_WORKSPACE/dist/spm/DeepdotsSDK-$VERSION.xcframework.zip"
+          ZIP="$RUNNER_TEMP/out/DeepdotsSDK-$VERSION.xcframework.zip"
           URL="https://github.com/$SPM_REPO/releases/download/$VERSION/DeepdotsSDK-$VERSION.xcframework.zip"
           cd spm-repo
           sed -i '' \
@@ -277,6 +334,34 @@ jobs:
           )
           EOF
           cd "$CHECK" && swift package resolve
+          # Lo que descarga quien instala por SPM es el zip probado, byte a byte.
+          URL="https://github.com/$SPM_REPO/releases/download/$VERSION/DeepdotsSDK-$VERSION.xcframework.zip"
+          PUBLISHED="$(curl -fsSL "$URL" | shasum -a 256 | cut -d' ' -f1)"
+          if [ "$PUBLISHED" != "$checksum" ]; then
+            echo "::error::El zip publicado en SPM ($PUBLISHED) no es el probado ($checksum)."
+            exit 1
+          fi
+
+      # release.json definitivo: lo mismo que "Check traceability" + donde quedo publicado cada artefacto.
+      - name: Release metadata
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.sha }}
+          MAVEN: ${{ steps.state.outputs.maven }}
+          SPM: ${{ steps.state.outputs.spm }}
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/out"
+          CODE="$(curl -s -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/$ARTIFACT_GROUP_PATH/$VERSION/shared-android-$VERSION.pom")"
+          if [ "$MAVEN" = "publish" ]; then MAVEN_STATE=published; elif [ "$CODE" = "200" ]; then MAVEN_STATE=existing; else MAVEN_STATE=not-published; fi
+          if [ "$SPM" = "publish" ]; then SPM_STATE=published; else SPM_STATE=existing; fi
+          node scripts/release/metadata.mjs --require-ci --tag "$GITHUB_REF_NAME" \
+            --aar "$OUT/DeepdotsSDK-$VERSION.aar" --xcframework "$OUT/DeepdotsSDK-$VERSION.xcframework.zip" \
+            --spm-checksum "$checksum" --maven-dir build/release-staging-repo --smoke "$RUNNER_TEMP/smoke.json" \
+            --maven "$MAVEN_STATE" --spm "$SPM_STATE" --out "$OUT/release.json"
+          cp release/compatibility.json release/config.schema.json "$OUT/"
+          (cd "$OUT" && shasum -a 256 -- *.aar *.zip > SHA256SUMS && cat SHA256SUMS)
 
       - name: GitHub Release
         env:
@@ -308,13 +393,24 @@ jobs:
               echo "Android: attach the AAR below. This version is not on Maven Central; a bare AAR has no POM, so the host app has to declare the SDK's dependencies itself."
             fi
           } >> "$NOTES"
-          gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP/out/DeepdotsSDK-$VERSION.aar" \
-            --title "$GITHUB_REF_NAME" --notes-file "$NOTES" --verify-tag --latest
+          OUT="$RUNNER_TEMP/out"
+          FLAGS=(--latest)
+          if [ "${{ steps.meta.outputs.latest }}" != "true" ]; then FLAGS=(--latest=false); fi
+          if [[ "$VERSION" == *-* ]]; then FLAGS+=(--prerelease); fi
+          # La Release se crea de una vez con sus ficheros: con releases inmutables no se pueden
+          # anadir despues.
+          gh release create "$GITHUB_REF_NAME" \
+            "$OUT/DeepdotsSDK-$VERSION.aar" "$OUT/DeepdotsSDK-$VERSION.xcframework.zip" "$OUT/SHA256SUMS" \
+            "$OUT/release.json" "$OUT/compatibility.json" "$OUT/config.schema.json" \
+            --title "$GITHUB_REF_NAME" --notes-file "$NOTES" --verify-tag "${FLAGS[@]}"
+          echo "Publicada [$GITHUB_REF_NAME]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME)" >> "$GITHUB_STEP_SUMMARY"
 
       # Politica: tras cada release, `main` recibe lo publicado. Se fusiona el commit del TAG
       # (no la punta de dev, que puede ir por delante). Si hay conflicto, no se fuerza nada:
       # se abre una PR para resolverlo a mano.
       - name: Merge release into main
+        # Un parche de una linea antigua no va a main: main tiene la ultima release.
+        if: steps.meta.outputs.latest == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

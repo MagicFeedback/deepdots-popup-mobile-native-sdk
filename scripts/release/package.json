@@ -1,0 +1,13 @@
+{
+  "name": "deepdots-native-sdk-release-tools",
+  "private": true,
+  "description": "Gate de release del SDK nativo (MF-3242). Solo herramientas de CI; no se publica.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test '*.test.mjs'"
+  },
+  "dependencies": {
+    "ajv": "8.17.1"
+  }
+}

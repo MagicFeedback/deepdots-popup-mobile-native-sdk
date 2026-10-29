@@ -48,7 +48,7 @@ Deepdots Popup SDK helps you:
 - Add Maven Central (already in demos) and depend on the published artifact:
 ```kotlin
 dependencies {
-    implementation("com.deepdots.sdk:shared-android:0.7.3")
+    implementation("com.deepdots.sdk:shared-android:0.7.4")
 }
 ```
 - Server mode uses your `publicKey` and remote popups. In the demo (`example-android/MainActivity.kt`), update `publicKey` and `metadata` (e.g., userId). Paths are set via `setPath("/home")`, `setPath("/detail/1")`, etc.
@@ -59,7 +59,7 @@ dependencies {
 ```
 
 ### iOS (Swift Package Manager - Binary) [Official]
-- Add package: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`, version `0.7.3` (requires the release with `DeepdotsSDK-0.7.3.xcframework.zip` uploaded).
+- Add package: `https://github.com/MagicFeedback/DeepdotsSDK-SPM`, version `0.7.4` (requires the release with `DeepdotsSDK-0.7.4.xcframework.zip` uploaded).
 - **Required `Info.plist` key.** Add the following to your app's `Info.plist`. The popup is rendered with Compose Multiplatform, which requires this key on iOS — without it the app can crash on ProMotion (120 Hz) devices when the popup is shown:
   ```xml
   <key>CADisableMinimumFrameDurationOnPhone</key>
@@ -137,6 +137,7 @@ sdk.show(ShowOptions(surveyId = "survey-123", productId = "product-xyz"), Platfo
   - Android: `provideLang` lambda + `setPath(path)` on navigation.
   - iOS: same via `provideLang` and `setPath(path:)` in `DeepdotsDemo.swift`.
 - Ensure paths you navigate (`/home`, `/detail/1`, `/detail/2`, etc.) match the segments defined in your backend.
+- `segments.lang` (since 0.7.4): a popup with a language list is shown only when the current language starts with one of them, case-insensitive (`en-US` matches `en`). The current language is `provideLang`, or the device locale when it returns nothing; with neither, the popup is not filtered. Same rules as the web SDK.
 
 ## 7. Cooldown Persistence
 - Uses in-memory by default. You can plug a custom `KeyValueStorage` (Android/iOS) if you need persistence across sessions. Demos use defaults.
