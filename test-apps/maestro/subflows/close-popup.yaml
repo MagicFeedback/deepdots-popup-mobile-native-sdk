@@ -1,0 +1,33 @@
+# Closes the SDK popup. env: TITLE (the popup's title), X_POINT (optional, where its X is).
+# Taps its X ("Close popup" is the SDK's accessibility label). 0.7.0 does not always expose
+# that label, so if the popup is still there: Back on Android, a tap on X_POINT on iOS.
+appId: com.deepdots.testapp
+---
+- extendedWaitUntil:
+    visible: "Close popup"
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: "Close popup"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    when:
+      visible: ${TITLE}
+      platform: Android
+    commands:
+      - pressKey: back
+      - waitForAnimationToEnd:
+          timeout: 3000
+- runFlow:
+    when:
+      visible: ${TITLE}
+      platform: iOS
+      true: ${!!X_POINT}
+    commands:
+      - tapOn:
+          point: ${X_POINT}
+      - waitForAnimationToEnd:
+          timeout: 3000
+- assertNotVisible: ${TITLE}

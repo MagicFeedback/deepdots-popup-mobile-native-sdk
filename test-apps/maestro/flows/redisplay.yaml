@@ -1,0 +1,40 @@
+# Re-display rule: cooldown SHOWED 1 day. Shown once; after closing it and relaunching the app
+# (same storage) it does not show again; after a Reset (clean storage) it shows again.
+appId: com.deepdots.testapp
+tags: [smoke]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: redisplay
+- tapOn:
+    id: tab-account
+- extendedWaitUntil:
+    visible: "How is your account?"
+    timeout: 15000
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "How is your account?"
+      # iOS 0.7.0: the X has no accessibility label (top right of this card).
+      X_POINT: "88%,13%"
+- stopApp
+- launchApp:
+    clearState: false
+- assertVisible:
+    id: lab-scenario
+    text: redisplay
+- tapOn:
+    id: tab-account
+- waitForAnimationToEnd:
+    timeout: 6000
+- assertNotVisible: "How is your account?"
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: redisplay
+- tapOn:
+    id: tab-account
+- extendedWaitUntil:
+    visible: "How is your account?"
+    timeout: 15000

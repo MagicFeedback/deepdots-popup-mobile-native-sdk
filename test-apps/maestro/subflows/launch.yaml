@@ -1,0 +1,50 @@
+# Fresh launch (clean state) of one scenario, cookie dialog accepted.
+# env: SCENARIO (required), NAV, LANG, START
+appId: com.deepdots.testapp
+---
+- launchApp:
+    clearState: true
+    arguments:
+      scenario: ${SCENARIO}
+      nav: ${NAV || 'history'}
+      lang: ${LANG || 'en'}
+      start: ${START || 'home'}
+      load: immediate
+- extendedWaitUntil:
+    visible: "Accept all"
+    timeout: 30000
+    optional: true
+# A system "isn't responding" dialog (busy CI emulator) can cover the app: keep waiting.
+- runFlow:
+    when:
+      visible: ".*isn't responding.*"
+    commands:
+      - tapOn: "Wait"
+      - extendedWaitUntil:
+          visible: "Accept all"
+          timeout: 30000
+          optional: true
+# On a busy CI emulator Android sometimes kills the new process right after clearState
+# ("remove task") and nothing restarts it for 2 minutes: launch again.
+- runFlow:
+    when:
+      notVisible: "Accept all"
+    commands:
+      - launchApp:
+          clearState: true
+          arguments:
+            scenario: ${SCENARIO}
+            nav: ${NAV || 'history'}
+            lang: ${LANG || 'en'}
+            start: ${START || 'home'}
+            load: immediate
+      - extendedWaitUntil:
+          visible: "Accept all"
+          timeout: 90000
+- tapOn: "Accept all"
+- assertVisible:
+    id: lab-env
+    text: DEV
+- assertVisible:
+    id: lab-scenario
+    text: ${SCENARIO}
