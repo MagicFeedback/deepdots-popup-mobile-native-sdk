@@ -22,9 +22,6 @@ on:
       ios:
         description: "iOS runtime"
         default: "16.4"
-  pull_request:
-    paths:
-      - ".github/workflows/test-apps-ios-source.yml"
 
 permissions:
   contents: read
