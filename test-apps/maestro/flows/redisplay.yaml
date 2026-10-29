@@ -16,6 +16,8 @@ tags: [smoke]
     file: ../subflows/close-popup.yaml
     env:
       TITLE: "How is your account?"
+      # iOS 0.7.0: the X has no accessibility label (top right of this card).
+      X_POINT: "88%,13%"
 - stopApp
 - launchApp:
     clearState: false

@@ -65,6 +65,9 @@ run_flow() { # <flow file> -> exit code of maestro
 # ahead of time (clearState keeps the compiled code).
 if [ "$PLATFORM" = android ]; then
   adb_cmd shell cmd package compile -m speed -f com.deepdots.testapp > /dev/null 2>&1 || true
+  # A busy CI emulator raises "<system app> isn't responding" dialogs over the app (seen:
+  # Pixel Launcher), which hid the cookie dialog in every flow. Don't show them.
+  adb_cmd shell settings put global hide_error_dialogs 1 > /dev/null 2>&1 || true
 fi
 # Warm-up: the first cold start on a CI emulator/simulator is the slow one.
 maestro_cmd test -e SCENARIO=checkout-time subflows/launch.yaml > "$OUT/maestro/warm-up.txt" 2>&1 || true

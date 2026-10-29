@@ -14,6 +14,16 @@ appId: com.deepdots.testapp
 - extendedWaitUntil:
     visible: "Accept all"
     timeout: 120000
+    optional: true
+# A system "isn't responding" dialog (busy CI emulator) can cover the app: keep waiting.
+- runFlow:
+    when:
+      visible: ".*isn't responding.*"
+    commands:
+      - tapOn: "Wait"
+      - extendedWaitUntil:
+          visible: "Accept all"
+          timeout: 60000
 - tapOn: "Accept all"
 - assertVisible:
     id: lab-env
