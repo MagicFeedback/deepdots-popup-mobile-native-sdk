@@ -15,7 +15,7 @@ set -uo pipefail
 SDK=$1 EXPECT=$2 OUT=$3
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 mkdir -p "$ROOT/test-apps/maestro/lemu"
-cp "$ROOT/.github/test-apps-matrix/lemu/"*.yaml "$ROOT/test-apps/maestro/lemu/"
+cp -R "$ROOT/.github/test-apps-matrix/lemu/." "$ROOT/test-apps/maestro/lemu/"
 
 FLOWS="lemu/rating-labels.yaml" "$ROOT/test-apps/scripts/run-maestro.sh" android "$SDK" "$OUT"
 code=$?

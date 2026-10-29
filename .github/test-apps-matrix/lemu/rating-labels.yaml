@@ -9,7 +9,7 @@ appId: com.deepdots.testapp
 tags: [lemu, negative-control]
 ---
 - runFlow:
-    file: ../subflows/launch.yaml
+    file: subflows/launch.yaml
     env:
       SCENARIO: ${LEMU_SCENARIO || 'lemu'}
       # en, not da: the popup is segmented to en (as in prod) and 0.7.4 applies segments.lang.

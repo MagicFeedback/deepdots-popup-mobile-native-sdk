@@ -4,7 +4,7 @@ appId: com.deepdots.testapp
 tags: [lemu]
 ---
 - runFlow:
-    file: ../subflows/launch.yaml
+    file: subflows/launch.yaml
     env:
       SCENARIO: lemu-da
       LANG: da

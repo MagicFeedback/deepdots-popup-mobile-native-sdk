@@ -1,0 +1,22 @@
+# Launch for the Lemu flows: like test-apps/maestro/subflows/launch.yaml but without its DEV / scenario label
+# checks. Lemu's popup fires after 5 s on any path ("/"), so on a slow simulator (seen on the
+# iPad) it can already cover those labels when they are checked. The scenario is still checked,
+# before the popup can be up.
+# env: SCENARIO (required), LANG
+appId: com.deepdots.testapp
+---
+- launchApp:
+    clearState: true
+    arguments:
+      scenario: ${SCENARIO}
+      nav: history
+      lang: ${LANG || 'en'}
+      start: home
+      load: immediate
+- extendedWaitUntil:
+    visible: "Accept all"
+    timeout: 120000
+- assertVisible:
+    id: lab-scenario
+    text: ${SCENARIO}
+- tapOn: "Accept all"
