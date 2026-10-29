@@ -129,7 +129,8 @@ the device log, the `[lab]` lines, JUnit, Maestro output and, with recording, on
   recommend. Without it, **0.7.0 crashes the host when it presents a popup** (Compose's
   frame-rate check; fixed in 0.7.1). The first CI run of this suite reproduced it (run
   40729713599, iOS · 0.7.0: "The app is not running" on every popup).
-- Known issue found here (0.7.3): the native SDK parses `segments.lang` but does not filter by it,
-  so `flows/audience-lang.yaml` is tagged `known-issue` (expected to fail; the runner warns, and
-  turns red when it starts passing). The web SDK does filter.
+- Known issue found here (≤ 0.7.3): the native SDK parses `segments.lang` but does not filter by
+  it (the web SDK does). Fixed in 0.7.4. `flows/audience-lang.yaml` is tagged `known-issue` with
+  `# known-issue-until: 0.7.3`: up to that version the runner expects it to fail (warning) and
+  turns red if it passes; from 0.7.4 (and `local`) it runs as a normal flow.
 - iOS has no `local` mode: it always uses the published XCFramework.

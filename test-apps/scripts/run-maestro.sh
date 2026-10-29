@@ -74,7 +74,16 @@ failed=()
 for f in $FLOWS; do
   name=$(basename "$f" .yaml)
   if grep -q 'android-only' "$f" && [ "$PLATFORM" != android ]; then echo "[lab] skip $name (android-only)"; continue; fi
-  if grep -q 'known-issue' "$f"; then
+  # `# known-issue-until: X.Y.Z`: a known issue only for SDK versions up to X.Y.Z.
+  until_v=$(sed -n 's/^# known-issue-until: *//p' "$f")
+  known=0
+  if grep -q 'tags:.*known-issue' "$f"; then
+    known=1
+    if [ -n "$until_v" ] && { [ "$SDK" = local ] || [ "$(printf '%s\n%s\n' "$SDK" "$until_v" | sort -V | tail -1)" != "$until_v" ]; }; then
+      known=0
+    fi
+  fi
+  if [ "$known" = 1 ]; then
     if run_flow "$f"; then
       echo "::error::[lab] $name PASSED: the known issue looks fixed, drop its known-issue tag"
       failed+=("$name")

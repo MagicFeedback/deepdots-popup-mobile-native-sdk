@@ -1,8 +1,9 @@
 # Audience segmentation by language: only the popup for the app language shows.
 # KNOWN ISSUE (found by MF-3244, SDK 0.7.3): the native SDK parses segments.lang but never
 # filters by it (DeepdotsPopups.shouldShow only checks path / excludedPaths), so with lang=es it
-# shows the popup segmented for "en". The web SDK filters correctly. Expected to fail until the
-# SDK is fixed; the runner turns red when it starts passing, so the tag can be removed.
+# shows the popup segmented for "en". The web SDK filters correctly. Fixed in 0.7.4 (MF-3263):
+# the runner treats it as a known issue up to the version below and as a normal flow after it.
+# known-issue-until: 0.7.3
 appId: com.deepdots.testapp
 tags: [known-issue]
 ---
