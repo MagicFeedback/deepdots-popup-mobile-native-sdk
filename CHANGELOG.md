@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.5 - 2026-10-29
+
 ### Fixed
 
 - **iOS 16 and older: closing a popup no longer crashes the app when accessibility is on.**
