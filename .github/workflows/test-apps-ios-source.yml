@@ -71,7 +71,15 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
       - uses: gradle/actions/setup-gradle@v4
       - name: Download iOS ${{ env.IOS }} runtime
-        run: sudo xcodebuild -downloadPlatform iOS -buildVersion "$IOS"
+        # simctl first: it starts CoreSimulator, without it the download fails with
+        # "Unable to connect to simulator" (exit 70).
+        run: |
+          xcrun simctl runtime list || true
+          for i in 1 2 3; do
+            sudo xcodebuild -downloadPlatform iOS -buildVersion "$IOS" && exit 0
+            echo "::warning::runtime download failed (try $i)"; sleep 20; xcrun simctl list runtimes > /dev/null || true
+          done
+          exit 1
       - name: Install tools
         run: |
           brew install xcodegen
