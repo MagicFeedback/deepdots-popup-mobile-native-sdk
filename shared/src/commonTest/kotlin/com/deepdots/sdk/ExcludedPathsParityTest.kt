@@ -196,6 +196,8 @@ class ExcludedPathsParityTest {
                     debug = true,
                     popupOptions = PopupOptions(),
                     storage = InMemoryStorage(),
+                    // Los popups llevan `segments.lang = ["en"]`: fija el idioma, no depende del locale de la máquina.
+                    provideLang = { "en" },
                 ),
             )
             debugLoadPopups(popups)

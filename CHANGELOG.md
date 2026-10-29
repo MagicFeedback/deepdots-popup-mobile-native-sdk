@@ -4,6 +4,22 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.5 - 2026-10-29
+
+### Fixed
+
+- **iOS 16 and older: closing a popup no longer crashes the app when accessibility is on.**
+  Compose Multiplatform 1.9.1 cleared an iOS 17-only accessibility property
+  (`automationElements`) when the popup's UI was disposed, without checking the iOS version. On
+  iOS 13–16, with VoiceOver, Switch Control, Voice Control or UI test automation active, the app
+  terminated with `-[AccessibilityElement setAutomationElements:]: unrecognized selector` when a
+  popup closed. Found by the native test-apps matrix on an iOS 16.4 simulator. The SDK now uses
+  Compose Multiplatform 1.9.3, which checks the version
+  ([compose-multiplatform-core#2541](https://github.com/JetBrains/compose-multiplatform-core/pull/2541)).
+  iOS 17 and later, and users without accessibility features, were not affected.
+
+## 0.7.4 - 2026-10-29
+
 ### Added
 
 - **Every release says what it is compatible with, and what exactly was published.** The
@@ -14,6 +30,19 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   published, the checks that passed and who approved it). A release without a version bump,
   release notes or a valid manifest is no longer published. See `docs/VERSIONING.md`, which
   also states which versions are supported.
+
+### Fixed
+
+- **Popups segmented by language (`segments.lang`) are only shown to that language.** The SDK
+  read the list from the API but never applied it, so a popup configured for, say, Danish users
+  was shown to everyone, and two popups on the same trigger for different languages were both
+  queued. The current language is the one the SDK already reports to analytics: the app's
+  `provideLang`, or the device locale when that returns nothing. It matches by prefix and
+  ignores case (`en-US` matches `en`), the same rules as the web SDK. A popup without a
+  language list is shown to everyone, as before, and so is every popup when no language can be
+  resolved.
+  **Behaviour change:** a popup with `segments.lang` no longer reaches users whose app or device
+  language is not in its list. If your app passes no `provideLang`, the device language decides.
 
 ## 0.7.3 - 2026-10-23
 
