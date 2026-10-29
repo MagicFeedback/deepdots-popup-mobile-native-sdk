@@ -10,10 +10,10 @@ appId: com.deepdots.testapp
       lang: ${LANG || 'en'}
       start: ${START || 'home'}
       load: immediate
-# First launch on a CI emulator can take 20 s before the first frame.
+# First launch on a CI emulator can be very slow before the first frame.
 - extendedWaitUntil:
     visible: "Accept all"
-    timeout: 60000
+    timeout: 120000
 - tapOn: "Accept all"
 - assertVisible:
     id: lab-env

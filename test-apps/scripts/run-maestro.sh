@@ -61,6 +61,11 @@ run_flow() { # <flow file> -> exit code of maestro
   return $code
 }
 
+# A debug APK runs interpreted/JIT; on a CI emulator the first frame took 64 s. Compile it
+# ahead of time (clearState keeps the compiled code).
+if [ "$PLATFORM" = android ]; then
+  adb_cmd shell cmd package compile -m speed -f com.deepdots.testapp > /dev/null 2>&1 || true
+fi
 # Warm-up: the first cold start on a CI emulator/simulator is the slow one.
 maestro_cmd test -e SCENARIO=checkout-time subflows/launch.yaml > "$OUT/maestro/warm-up.txt" 2>&1 || true
 
