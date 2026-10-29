@@ -101,16 +101,24 @@ for f in $FLOWS; do
     continue
   fi
   if grep -q 'expected-failure' "$f"; then
-    if run_flow "$f"; then
-      echo "::error::[lab] $name PASSED but must fail: the missing navigation event was NOT detected"
-      failed+=("$name")
-    elif grep -q 'Assertion is false: "Why did you leave the checkout?" is visible' "$OUT/maestro/$name.txt"; then
-      echo "[lab] $name failed as expected: $(grep -m1 -E '^\[Failed\]' "$OUT/maestro/$name.txt")"
-      echo "[lab] => the test system detects the missing trigger"
-    else
-      echo "::error::[lab] $name failed for another reason (not the missing popup): $(grep -m1 -E '^\[Failed\]' "$OUT/maestro/$name.txt")"
-      failed+=("$name")
-    fi
+    # Up to two tries: a failure for another reason (e.g. the driver did not start) is retried.
+    for try in 1 2; do
+      if run_flow "$f"; then
+        echo "::error::[lab] $name PASSED but must fail: the missing navigation event was NOT detected"
+        failed+=("$name")
+      elif grep -q 'Assertion is false: "Why did you leave the checkout?" is visible' "$OUT/maestro/$name.txt"; then
+        echo "[lab] $name failed as expected: $(grep -m1 -E '^\[Failed\]' "$OUT/maestro/$name.txt")"
+        echo "[lab] => the test system detects the missing trigger"
+      elif [ "$try" = 1 ]; then
+        cp "$OUT/maestro/$name.txt" "$OUT/maestro/$name.try1.txt"
+        echo "::warning::[lab] $name failed for another reason, retrying: $(grep -m1 -E '^\[Failed\]' "$OUT/maestro/$name.txt")"
+        continue
+      else
+        echo "::error::[lab] $name failed for another reason (not the missing popup): $(grep -m1 -E '^\[Failed\]' "$OUT/maestro/$name.txt")"
+        failed+=("$name")
+      fi
+      break
+    done
     continue
   fi
   if run_flow "$f"; then echo "[lab] PASS $name"; continue; fi
