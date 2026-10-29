@@ -72,6 +72,12 @@
       "describe": "DEV replica of the Lemvigh-Müller app popup (MF-3263): time_on_page 5 s, cooldown SHOWED/PARTIAL/COMPLETED 7 days, segments lang en + path /, centered. Survey 'Lemu replica · CSAT App DK (MF-3263)' 307a1410-d374-11f1-90cc-b367d26c08ff (da): rating 1-5 'Meget dårlig'/'Meget god', long text, yes/no, email; linear, without the branching of the original",
       "title": "Hvordan vil du vurdere din oplevelse med appen?"
     },
+    "lemu-da": {
+      "publicKey": "Ng2ry7jPUeLmbOIu1sxBo59jp7GwDuWz",
+      "popupOptionId": "f0db1500-d375-11f1-90cc-b367d26c08ff",
+      "describe": "same as lemu but segments.lang da (path /): with SDK >= 0.7.4 it shows with lang=da and not with lang=en",
+      "title": "Hvordan vil du vurdere din oplevelse med appen?"
+    },
     "fault-popups-error": {
       "publicKey": "invalid-key-mf3244",
       "describe": "fault: unknown public key, GET /sdk/{key}/popups answers 406 and no popup loads",
