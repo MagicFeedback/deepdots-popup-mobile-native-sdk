@@ -54,7 +54,7 @@ stop_recording() {
 run_flow() { # <flow file> -> exit code of maestro
   local name; name=$(basename "$1" .yaml)
   start_recording "$name"
-  maestro_cmd test -e SDK_VERSION="$SDK" --format junit --output "$OUT/junit/$name.xml" \
+  maestro_cmd test $DRIVER_OPTS -e SDK_VERSION="$SDK" --format junit --output "$OUT/junit/$name.xml" \
     --test-output-dir "$OUT/maestro/$name" "$1" > "$OUT/maestro/$name.txt" 2>&1
   local code=$?
   stop_recording "$name"
@@ -71,6 +71,11 @@ if [ "$PLATFORM" = android ]; then
 fi
 # Warm-up: the first cold start on a CI emulator/simulator is the slow one.
 maestro_cmd test -e SCENARIO=checkout-time subflows/launch.yaml > "$OUT/maestro/warm-up.txt" 2>&1 || true
+# Android: by default every `maestro test` reinstalls its driver apps, and the emulator only
+# started our app once the driver was removed at the end of the flow (+2 min, blank screen).
+# The warm-up installed it; keep it for the rest of the run.
+DRIVER_OPTS=""
+[ "$PLATFORM" = android ] && DRIVER_OPTS="--no-reinstall-driver"
 
 FLOWS=${FLOWS:-$(ls flows/*.yaml failures/*.yaml)}
 failed=()
