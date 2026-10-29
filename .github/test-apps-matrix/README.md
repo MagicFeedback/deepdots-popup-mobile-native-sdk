@@ -20,6 +20,7 @@ default branch. The `report` job writes the flows × rows table to the run summa
 | iOS | 17.5 | iPhone 15 simulator | Debug, Xcode 16.4 | macos-15, runtime downloaded |
 | iOS | 18.x | iPhone 16 Pro Max, iPad (A16) | Debug, Xcode 16.4 | macos-15 (18.5/18.6 preinstalled) |
 | iOS | 18.x | iPhone 16 | Release, Xcode 16.4 | macos-15 |
+| iOS | 18.x | iPhone 16 Pro, **no `CADisableMinimumFrameDurationOnPhone`** (scenario 12) | Debug, Xcode 16.4 | macos-15 |
 | iOS | 26.x | iPhone 17 | Debug, **Xcode 26.2** | macos-15 (26.x preinstalled) |
 
 Every row also fails when the device log shows `CalledFromWrongThreadException` (the 0.7.0

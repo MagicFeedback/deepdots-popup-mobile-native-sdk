@@ -162,6 +162,8 @@ jobs:
           - { ios: "18", device: "iPhone 16 Pro Max", config: Debug, xcode: /Applications/Xcode_16.4.app }
           - { ios: "18", device: "iPad (A16)", config: Debug, xcode: /Applications/Xcode_16.4.app }
           - { ios: "18", device: "iPhone 16", config: Release, xcode: /Applications/Xcode_16.4.app }
+          # Scenario 12: no CADisableMinimumFrameDurationOnPhone (0.7.0 crashed on presenting the popup; fixed in 0.7.2).
+          - { ios: "18", device: "iPhone 16 Pro", config: Debug, xcode: /Applications/Xcode_16.4.app, no_frame_key: true }
           # Since April 2026 App Store uploads need the iOS 26 SDK, so this is how Lemu builds today.
           - { ios: "26", device: "iPhone 17", config: Debug, xcode: /Applications/Xcode_26.2.app }
     env:
@@ -183,6 +185,10 @@ jobs:
         working-directory: test-apps/ios
         run: |
           SDK_VERSION=$SDK xcodegen generate
+          if [ "${{ matrix.no_frame_key }}" = true ]; then
+            /usr/libexec/PlistBuddy -c "Delete :CADisableMinimumFrameDurationOnPhone" NordlyTestApp/Info.plist
+            echo "::notice::[lab] Info.plist without CADisableMinimumFrameDurationOnPhone (scenario 12)"
+          fi
           # iPhone + iPad (the project is iPhone-only; on an iPad it would run in compatibility mode).
           xcodebuild -project NordlyTestApp.xcodeproj -scheme NordlyTestApp -configuration ${{ matrix.config }} \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
@@ -217,7 +223,7 @@ jobs:
           python3 - "$OUT" <<'PY'
           import json, os, sys
           json.dump({
-            "label": "iOS ${{ matrix.ios }} ${{ matrix.device }} ${{ matrix.config }}",
+            "label": "iOS ${{ matrix.ios }} ${{ matrix.device }} ${{ matrix.config }}${{ matrix.no_frame_key && ' no-frame-key' || '' }}",
             "platform": "iOS", "os": os.environ.get("RUNTIME", "iOS ${{ matrix.ios }}").split(".")[-1],
             "device": "${{ matrix.device }} (simulator)", "build": "${{ matrix.config }} · ${{ matrix.xcode }}".replace("/Applications/", "").replace(".app", ""),
             "sdk": os.environ["SDK"], "resolved": os.environ.get("RESOLVED", "?"), "engine": "",
