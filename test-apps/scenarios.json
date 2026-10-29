@@ -66,6 +66,12 @@
       "title": "This survey does not exist",
       "events": ["fault_survey"]
     },
+    "lemu": {
+      "publicKey": "exVoNYd63l1irjhOZ3lnx6ekGjPOVFWG",
+      "popupOptionId": "4cadc640-d374-11f1-90cc-b367d26c08ff",
+      "describe": "DEV replica of the Lemvigh-Müller app popup (MF-3263): time_on_page 5 s, cooldown SHOWED/PARTIAL/COMPLETED 7 days, segments lang en + path /, centered. Survey 'Lemu replica · CSAT App DK (MF-3263)' 307a1410-d374-11f1-90cc-b367d26c08ff (da): rating 1-5 'Meget dårlig'/'Meget god', long text, yes/no, email; linear, without the branching of the original",
+      "title": "Hvordan vil du vurdere din oplevelse med appen?"
+    },
     "fault-popups-error": {
       "publicKey": "invalid-key-mf3244",
       "describe": "fault: unknown public key, GET /sdk/{key}/popups answers 406 and no popup loads",
