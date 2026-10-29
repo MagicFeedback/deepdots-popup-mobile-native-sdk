@@ -78,6 +78,11 @@ jobs:
             git checkout FETCH_HEAD -- test-apps
             echo "::notice::test-apps/ taken from $APPS_REF ($(git rev-parse --short FETCH_HEAD)); drop this once MF-3244 is in the branch"
           fi
+          # Lemu flows (rating labels, segments.lang) run with the suite on every row.
+          mkdir -p test-apps/maestro/lemu && cp .github/test-apps-matrix/lemu/*.yaml test-apps/maestro/lemu/
+          if [ -z "$FLOWS" ]; then
+            echo "FLOWS=$(cd test-apps/maestro && ls flows/*.yaml failures/*.yaml lemu/*.yaml | tr '\n' ' ')" >> "$GITHUB_ENV"
+          fi
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

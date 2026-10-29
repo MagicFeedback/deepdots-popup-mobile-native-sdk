@@ -26,6 +26,13 @@ default branch. The `report` job writes the flows × rows table to the run summa
 Every row also fails when the device log shows `CalledFromWrongThreadException` (the 0.7.0
 invisible popup), a crash or an ANR (`check-device-log.sh`).
 
+## Lemu flows (every row)
+
+`lemu/*.yaml` are copied into `test-apps/maestro/lemu/` and run with the suite:
+- `rating-labels`: scenario `lemu`, Lemu's prod replica with segments.lang ["en"] and a Danish survey.
+- `lang-da-shows` and `lang-en-hidden`: scenario `lemu-da`, the same popup with segments.lang ["da"].
+  - `lang-en-hidden` is a known issue up to 0.7.3: until then the SDK ignored segments.lang (fixed in 0.7.4).
+
 ## Negative controls
 
 - **Rating labels** (`negative-control.sh` + `lemu/rating-labels.yaml`, Android API 34): on 0.7.0
