@@ -1,0 +1,12 @@
+# Waits until the survey inside the popup has loaded, so a tap on the X is not taken by a
+# survey that arrives late and re-lays out the card (see the late-survey tap fix, PR #51).
+# env: QUESTION (first question of the survey). Optional: Android does not always expose the
+# WebView text.
+appId: com.deepdots.testapp
+---
+- extendedWaitUntil:
+    visible: ${QUESTION}
+    timeout: 15000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000

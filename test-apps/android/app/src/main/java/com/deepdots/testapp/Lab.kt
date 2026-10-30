@@ -5,7 +5,10 @@ import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.setValue
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -80,10 +83,23 @@ object Lab {
     private val main = Handler(Looper.getMainLooper())
     private val clock = SimpleDateFormat("HH:mm:ss", Locale.US)
 
+    /** SDK events seen in this process (Lab bar `lab-counts`): the regression flows assert on them. */
+    var shown by mutableIntStateOf(0)
+        private set
+    var completed by mutableIntStateOf(0)
+        private set
+
+    fun countShown() = onMain { shown++ }
+    fun countCompleted() = onMain { completed++ }
+
+    private fun onMain(block: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) block() else main.post(block)
+    }
+
     fun log(tag: String, message: String) {
         Log.i("lab", "[lab] $tag $message")
         val line = "${clock.format(Date())} $tag $message"
-        if (Looper.myLooper() == Looper.getMainLooper()) append(line) else main.post { append(line) }
+        onMain { append(line) }
     }
 
     private fun append(line: String) {

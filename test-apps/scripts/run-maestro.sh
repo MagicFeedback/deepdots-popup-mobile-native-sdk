@@ -51,6 +51,13 @@ stop_recording() {
   fi
 }
 
+# `# network: <speed> <delay>` in a flow: the Android emulator runs it on a throttled network
+# (emulator console `network speed` / `network delay`, e.g. `gsm gprs`), then back to full.
+set_network() {
+  [ "$PLATFORM" = android ] || return 0
+  adb_cmd emu network speed "$1" > /dev/null 2>&1; adb_cmd emu network delay "$2" > /dev/null 2>&1
+}
+
 # `# text-size: large` in a flow: it runs with large system text (Android font_scale 1.3, iOS
 # Dynamic Type XXXL), so long titles wrap on any device; back to the default afterwards.
 set_text_size() {
@@ -63,6 +70,8 @@ set_text_size() {
 
 run_flow() { # <flow file> -> exit code of maestro
   local name; name=$(basename "$1" .yaml)
+  local net; net=$(sed -n 's/^# network: *//p' "$1")
+  [ -n "$net" ] && { echo "[lab] $name: network $net"; set_network $net; }
   local text; text=$(sed -n 's/^# text-size: *//p' "$1")
   [ -n "$text" ] && { echo "[lab] $name: text size $text"; set_text_size "$text"; }
   start_recording "$name"
@@ -70,6 +79,7 @@ run_flow() { # <flow file> -> exit code of maestro
     --test-output-dir "$OUT/maestro/$name" "$1" > "$OUT/maestro/$name.txt" 2>&1
   local code=$?
   stop_recording "$name"
+  [ -n "$net" ] && set_network full none
   [ -n "$text" ] && set_text_size default
   return $code
 }
@@ -90,7 +100,7 @@ maestro_cmd test -e SCENARIO=checkout-time subflows/launch.yaml > "$OUT/maestro/
 DRIVER_OPTS=""
 [ "$PLATFORM" = android ] && DRIVER_OPTS="--no-reinstall-driver"
 
-FLOWS=${FLOWS:-$(ls flows/*.yaml failures/*.yaml)}
+FLOWS=${FLOWS:-$(ls flows/*.yaml regression/*.yaml failures/*.yaml)}
 failed=()
 for f in $FLOWS; do
   name=$(basename "$f" .yaml)

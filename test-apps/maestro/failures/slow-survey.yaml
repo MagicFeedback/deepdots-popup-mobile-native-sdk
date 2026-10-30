@@ -1,0 +1,27 @@
+# Failure: slow survey load (Android emulator on a GSM-speed network with GPRS latency). The
+# popup opens after the SDK's 1.2 s reveal ceiling with the survey still loading; it can be
+# closed while loading, no second popup appears, and the host keeps working.
+# network: gsm gprs
+appId: com.deepdots.testapp
+tags: [failure, android-only]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: help-click
+- tapOn:
+    id: tab-account
+- tapOn:
+    id: help-button
+- extendedWaitUntil:
+    visible: "Can we help?"
+    timeout: 30000
+- takeScreenshot: slow-survey-loading
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Can we help?"
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 0"
+- runFlow: ../subflows/host-usable.yaml

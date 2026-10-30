@@ -142,6 +142,20 @@ struct ContentView: View {
                 showLab = false
                 Lab.log("host", "triggerEvent(\(e))")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { host.triggerEvent(e) }
+            }, onBurst: { e in
+                showLab = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { host.burst(e) }
+            }, onRapidCheckout: {
+                showLab = false
+                // Rapid navigation (faster than Maestro can tap): Cart → Checkout → Cart, three
+                // times, 250 ms per screen, ending on Cart.
+                Lab.log("host", "rapid nav: cart ⇄ checkout x3")
+                stack = [.cart]
+                for i in 0..<6 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6 + 0.25 * Double(i + 1)) {
+                        stack = i % 2 == 0 ? [.cart, .checkout] : [.cart]
+                    }
+                }
             })
         }
     }
@@ -169,6 +183,7 @@ struct ContentView: View {
             Text("\(sdkVersion) · SPM").foregroundColor(labText).accessibilityIdentifier("lab-sdk-version")
             Text("DEV").foregroundColor(Color(red: 0.43, green: 0.91, blue: 0.66)).accessibilityIdentifier("lab-env")
             Text(config.scenario).foregroundColor(Color(white: 0.62)).accessibilityIdentifier("lab-scenario")
+            Text("shown \(lab.shown) · done \(lab.completed)").foregroundColor(labText).accessibilityIdentifier("lab-counts")
             Spacer()
             Button { showLab = true } label: { Image(systemName: "gearshape.fill").foregroundColor(labText) }
                 .frame(width: 44, height: 36)
