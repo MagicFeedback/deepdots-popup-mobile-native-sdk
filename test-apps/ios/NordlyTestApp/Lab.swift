@@ -95,12 +95,17 @@ struct LabConfig: Equatable {
 final class Lab: ObservableObject {
     static let shared = Lab()
     @Published private(set) var lines: [String] = []
+    /// SDK events seen in this process (Lab bar `lab-counts`): the regression flows assert on them.
+    @Published private(set) var shown = 0
+    @Published private(set) var completed = 0
     private let logger = Logger(subsystem: "com.deepdots.testapp", category: "lab")
     private let clock: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "HH:mm:ss"; f.locale = Locale(identifier: "en_US_POSIX"); return f
     }()
 
     static func log(_ tag: String, _ message: String) { shared.append(tag, message) }
+    static func countShown() { DispatchQueue.main.async { shared.shown += 1 } }
+    static func countCompleted() { DispatchQueue.main.async { shared.completed += 1 } }
 
     private func append(_ tag: String, _ message: String) {
         logger.info("[lab] \(tag, privacy: .public) \(message, privacy: .public)")

@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -64,6 +65,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.deepdots.sdk.platform.PlatformContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val Ink = Color(0xFF111827)
 private val LabBg = Color(0xFF0F1115)
@@ -118,6 +121,7 @@ private fun NordlyApp(app: TestApp, askConsent: Boolean) {
     var showConfirm by remember { mutableStateOf(false) }
     var rateProduct by remember { mutableStateOf<Product?>(null) }
     var previousPath by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     fun push(route: Route) { stack = stack + route }
     fun tab(route: Route) { stack = listOf(route) }
@@ -232,7 +236,19 @@ private fun NordlyApp(app: TestApp, askConsent: Boolean) {
         )
     }
 
-    if (showLab) LabPanel(app, onClose = { showLab = false })
+    if (showLab) LabPanel(app, onClose = { showLab = false }, onRapidCheckout = {
+        showLab = false
+        // Rapid navigation (faster than Maestro can tap): Cart → Checkout → Cart, three times,
+        // 250 ms per screen, ending on Cart.
+        scope.launch {
+            Lab.log("host", "rapid nav: cart ⇄ checkout x3")
+            stack = listOf(Route.Cart)
+            repeat(3) {
+                delay(250); stack = listOf(Route.Cart, Route.Checkout)
+                delay(250); stack = listOf(Route.Cart)
+            }
+        }
+    })
 }
 
 private fun startStack(start: String): List<Route> = when (start) {
@@ -274,6 +290,7 @@ private fun LabBar(config: LabConfig, onOpen: () -> Unit) {
             color = LabText, fontSize = 12.sp, modifier = Modifier.testTag("lab-sdk-version"))
         Text("DEV", color = Color(0xFF6EE7A8), fontSize = 12.sp, modifier = Modifier.testTag("lab-env"))
         Text(config.scenario, color = Color(0xFF9CA3AF), fontSize = 12.sp, modifier = Modifier.testTag("lab-scenario"))
+        Text("shown ${Lab.shown} · done ${Lab.completed}", color = LabText, fontSize = 12.sp, modifier = Modifier.testTag("lab-counts"))
         Spacer(Modifier.weight(1f))
         IconButton(onClick = onOpen, modifier = Modifier.testTag("lab-open")) {
             Icon(Icons.Filled.Settings, contentDescription = "Open SDK Lab", tint = LabText)

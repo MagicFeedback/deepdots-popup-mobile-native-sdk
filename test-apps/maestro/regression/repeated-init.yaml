@@ -1,0 +1,37 @@
+# Repeated init: the host calls init() twice more with the same options. The SDK ignores it: one
+# popup per trigger, listeners not duplicated, the host keeps working.
+appId: com.deepdots.testapp
+tags: [regression]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: help-click
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-init-again
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-init-again
+- tapOn:
+    id: tab-account
+- tapOn:
+    id: help-button
+- extendedWaitUntil:
+    visible: "Can we help?"
+    timeout: 15000
+- runFlow:
+    file: ../subflows/wait-survey.yaml
+    env:
+      QUESTION: "How likely are you to recommend NORDLY to a friend?"
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Can we help?"
+# The Lab bar is under the popup (on iOS the modal hides it from accessibility): count after closing.
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 0"
+- runFlow: ../subflows/host-usable.yaml

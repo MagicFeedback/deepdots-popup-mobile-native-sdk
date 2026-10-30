@@ -1,0 +1,35 @@
+# Rapid navigation: in and out of /checkout three times, 250 ms per screen (Lab "Rapid nav",
+# faster than Maestro can tap). The exit popup (2 s) shows once, on Cart, and the host keeps
+# working.
+appId: com.deepdots.testapp
+tags: [regression]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: exit-checkout
+      START: cart
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-rapid-checkout
+- extendedWaitUntil:
+    visible: "Why did you leave the checkout?"
+    timeout: 12000
+# Let any late duplicate arrive before counting (after closing).
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    file: ../subflows/wait-survey.yaml
+    env:
+      QUESTION: "How likely are you to recommend NORDLY to a friend?"
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Why did you leave the checkout?"
+- assertVisible:
+    id: go-checkout
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 0"
+- runFlow: ../subflows/host-usable.yaml

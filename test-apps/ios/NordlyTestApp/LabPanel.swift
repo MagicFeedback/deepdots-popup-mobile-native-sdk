@@ -4,6 +4,8 @@ import SwiftUI
 struct LabPanel: View {
     let onClose: () -> Void
     let onEvent: (String) -> Void
+    let onBurst: (String) -> Void
+    let onRapidCheckout: () -> Void
     @ObservedObject private var host = SDKHost.shared
     @ObservedObject private var lab = Lab.shared
     @State private var draft = SDKHost.shared.config
@@ -31,11 +33,19 @@ struct LabPanel: View {
                     Button("Reset", role: .destructive) { host.reset(); restartNote = true }
                         .accessibilityIdentifier("lab-reset")
                 }
+                Section {
+                    Button("Init again (same options)") { onClose(); host.initAgain() }
+                        .disabled(!host.initialized)
+                        .accessibilityIdentifier("lab-init-again")
+                    Button("Rapid nav: cart ⇄ checkout ×3", action: onRapidCheckout)
+                        .accessibilityIdentifier("lab-rapid-checkout")
+                }
                 let events = Scenarios.events(host.config.scenario)
                 if !events.isEmpty {
                     Section("Host events") {
                         ForEach(events, id: \.self) { e in
                             Button(e) { onEvent(e) }.accessibilityIdentifier("lab-event-\(e)")
+                            Button("\(e) ×3") { onBurst(e) }.accessibilityIdentifier("lab-burst-\(e)")
                         }
                     }
                 }

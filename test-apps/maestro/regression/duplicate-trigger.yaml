@@ -1,0 +1,42 @@
+# Duplicate and concurrent triggers: rate_product twice in a row and once more 3 s later, while
+# its popup is open (Lab "×3"). Expected: ONE popup (Lab counter "shown 1"), and nothing left
+# behind after closing it.
+# KNOWN ISSUE (found by MF-3246, SDK 0.7.5): the SDK has no "a popup is already open" check, so
+# the trigger that arrives while the popup is open shows it again on top (popup_shown + SHOWED
+# twice, "shown 2"). The two back-to-back triggers are merged by the queue. Fix in a separate PR;
+# up to the version below the runner expects this flow to fail, after it (and `local`) it is a
+# normal flow.
+# known-issue-until: 0.7.5
+appId: com.deepdots.testapp
+tags: [regression, known-issue]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: rate-product
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-burst-rate_product
+- extendedWaitUntil:
+    visible: "Tell us what you think of this product"
+    timeout: 15000
+# Past the third trigger (3 s after the first two).
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    file: ../subflows/wait-survey.yaml
+    env:
+      QUESTION: "Did you find what you were looking for?"
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Tell us what you think of this product"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "Tell us what you think of this product"
+# Counted after closing: the Lab bar is under the popup (hidden from accessibility on iOS).
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 0"
+- runFlow: ../subflows/host-usable.yaml
