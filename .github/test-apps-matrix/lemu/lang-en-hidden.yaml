@@ -1,0 +1,20 @@
+# segments.lang (fixed in 0.7.4, MF-3263): the same "lemu-da" popup does NOT show when the app
+# language is English. Up to 0.7.3 the SDK ignored segments.lang and showed it to everyone.
+# known-issue-until: 0.7.3
+appId: com.deepdots.testapp
+tags: [lemu, known-issue]
+---
+- runFlow:
+    file: subflows/launch.yaml
+    env:
+      SCENARIO: lemu-da
+      LANG: en
+# time_on_page is 5 s: wait the full 15 s for the popup (optional, so not seeing it is fine),
+# then assert it never appeared.
+- extendedWaitUntil:
+    visible: ".*Meget dårlig.*"
+    timeout: 15000
+    optional: true
+- assertNotVisible: ".*Meget dårlig.*"
+- assertNotVisible: ".*Hvordan vil du vurdere.*"
+- takeScreenshot: lemu-en-hidden

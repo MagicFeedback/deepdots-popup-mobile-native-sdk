@@ -1,0 +1,157 @@
+# iOS test app against an SDK built FROM SOURCE (MF-3263): checks an iOS fix before it is
+# released, on an OS version the published matrix covers (test-apps-matrix.yml).
+#
+# One macOS job, two passes on the same simulator:
+#   1. the published `baseline` version (from SPM), expected to show `expect_in_baseline` in the
+#      device log (the bug is reproduced);
+#   2. the SDK built from `sdk_ref` (XCFramework via scripts/prepare_spm_release.sh, consumed as
+#      a local Swift package), expected to run the same flows with no crash.
+# First use: iOS 16.4, Compose Multiplatform 1.9.1 crash on popup close with accessibility on
+# ("-[AccessibilityElement setAutomationElements:]: unrecognized selector"), fixed by 1.9.3.
+name: Test apps iOS from source
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk_ref:
+        description: "SDK branch / sha to build"
+        default: "fix/compose-1.9.3-ios16-a11y"
+      baseline:
+        description: "Published version that must reproduce the bug"
+        default: "0.7.4"
+      ios:
+        description: "iOS runtime"
+        default: "16.4"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-apps-ios-source-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SDK_REF: ${{ github.event.inputs.sdk_ref || 'fix/compose-1.9.3-ios16-a11y' }}
+  BASELINE: ${{ github.event.inputs.baseline || '0.7.4' }}
+  IOS: ${{ github.event.inputs.ios || '16.4' }}
+  DEVICE_TYPE: "iPhone SE (3rd generation)"
+  # Flows that open and close popups (the crash is in the dispose of the popup's UI).
+  FLOWS: flows/exit-checkout.yaml flows/help-click.yaml flows/lifecycle.yaml flows/checkout-time.yaml lemu/rating-labels.yaml
+  CRASH: "setAutomationElements:]: unrecognized selector"
+  JAVA_VERSION: "21"
+
+jobs:
+  ios-source:
+    name: iOS ${{ github.event.inputs.ios || '16.4' }} · ${{ github.event.inputs.baseline || '0.7.4' }} vs source
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lemu flows
+        run: |
+          mkdir -p test-apps/maestro/lemu && cp -R .github/test-apps-matrix/lemu/. test-apps/maestro/lemu/
+      - name: SDK source (${{ env.SDK_REF }})
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SDK_REF }}
+          path: sdk-src
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Download iOS ${{ env.IOS }} runtime
+        # simctl first: it starts CoreSimulator, without it the download fails with
+        # "Unable to connect to simulator" (exit 70).
+        run: |
+          xcrun simctl runtime list || true
+          for i in 1 2 3; do
+            sudo xcodebuild -downloadPlatform iOS -buildVersion "$IOS" && exit 0
+            echo "::warning::runtime download failed (try $i)"; sleep 20; xcrun simctl list runtimes > /dev/null || true
+          done
+          exit 1
+      - name: Install tools
+        run: |
+          brew install xcodegen
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Build XCFramework from source
+        working-directory: sdk-src
+        run: |
+          scripts/prepare_spm_release.sh 0.0.0-src "file:///dev/null"
+          mkdir -p "$GITHUB_WORKSPACE/LocalSDK"
+          cp -R dist/spm/DeepdotsSDK.xcframework "$GITHUB_WORKSPACE/LocalSDK/"
+          echo "SRC_SHA=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+          grep -n composeMultiplatform gradle/libs.versions.toml
+      - name: Create simulator
+        run: |
+          RUNTIME=$(xcrun simctl list runtimes -j | python3 -c "
+          import json, sys
+          rs = [r for r in json.load(sys.stdin)['runtimes'] if r['platform'] == 'iOS' and r['isAvailable'] and (r['version'] + '.').startswith('$IOS.')]
+          print(rs[-1]['identifier'])")
+          UDID=$(xcrun simctl create lab "$DEVICE_TYPE" "$RUNTIME")
+          echo "DEVICE=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID" && xcrun simctl bootstatus "$UDID" -b
+
+      - name: "Pass 1: published ${{ env.BASELINE }} must reproduce the crash"
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "180000"
+        run: |
+          cd test-apps/ios
+          SDK_VERSION=$BASELINE xcodegen generate
+          xcodebuild -project NordlyTestApp.xcodeproj -scheme NordlyTestApp -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build-baseline -quiet build
+          xcrun simctl install "$DEVICE" build-baseline/Build/Products/Debug-iphonesimulator/NordlyTestApp.app
+          cd "$GITHUB_WORKSPACE"
+          test-apps/scripts/run-maestro.sh ios "$BASELINE" out/baseline-$BASELINE || true
+          n=$(grep -ac "$CRASH" out/baseline-$BASELINE/device.log || true)
+          echo "[lab] baseline $BASELINE: $n crash(es) '$CRASH'"
+          if [ "${n:-0}" -eq 0 ]; then
+            echo "::error::[lab] the crash did NOT reproduce on $BASELINE: this run cannot tell whether the source build fixes it"; exit 1
+          fi
+          xcrun simctl uninstall "$DEVICE" com.deepdots.testapp
+
+      - name: "Pass 2: SDK from source (${{ env.SDK_REF }}) must not crash"
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "180000"
+        run: |
+          cat > LocalSDK/Package.swift <<'SWIFT'
+          // swift-tools-version: 5.7
+          import PackageDescription
+          let package = Package(
+              name: "DeepdotsSDK",
+              platforms: [.iOS(.v13)],
+              products: [.library(name: "ComposeApp", targets: ["ComposeApp"])],
+              targets: [.binaryTarget(name: "ComposeApp", path: "DeepdotsSDK.xcframework")]
+          )
+          SWIFT
+          cd test-apps/ios
+          # Same project, the package swapped for the local one.
+          python3 - <<'PY'
+          import re
+          s = open("project.yml").read()
+          s = re.sub(r"(  DeepdotsSDK:\n)    url: .*\n    exactVersion: .*\n", r"\1    path: ../../LocalSDK\n", s)
+          open("project.yml", "w").write(s)
+          PY
+          grep -n -A2 "^packages" project.yml
+          SDK_VERSION=src-$SRC_SHA xcodegen generate
+          xcodebuild -project NordlyTestApp.xcodeproj -scheme NordlyTestApp -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build-src -quiet build
+          xcrun simctl install "$DEVICE" build-src/Build/Products/Debug-iphonesimulator/NordlyTestApp.app
+          cd "$GITHUB_WORKSPACE"
+          code=0
+          test-apps/scripts/run-maestro.sh ios "src-$SRC_SHA" out/source-$SRC_SHA || code=$?
+          n=$(grep -ac "$CRASH" out/source-$SRC_SHA/device.log || true)
+          echo "[lab] source $SDK_REF ($SRC_SHA): $n crash(es) '$CRASH', flows exit $code"
+          if [ "${n:-0}" -ne 0 ]; then echo "::error::[lab] the source build still crashes"; exit 1; fi
+          .github/test-apps-matrix/check-device-log.sh out/source-$SRC_SHA/device.log
+          exit $code
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-source-${{ env.IOS }}
+          path: out/
+          retention-days: 30
