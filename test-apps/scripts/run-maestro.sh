@@ -102,6 +102,8 @@ for f in $FLOWS; do
   known=0
   if grep -q 'tags:.*known-issue' "$f"; then
     known=1
+    # Marked only for the other platform: a normal flow here.
+    if [ -z "$until_v" ] && grep -q '^# known-issue-until-' "$f"; then known=0; fi
     if [ -n "$until_v" ] && { [ "$SDK" = local ] || [ "$(printf '%s\n%s\n' "$SDK" "$until_v" | sort -V | tail -1)" != "$until_v" ]; }; then
       known=0
     fi
