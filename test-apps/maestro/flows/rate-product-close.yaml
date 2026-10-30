@@ -1,0 +1,41 @@
+# The X of a popup whose title wraps to two lines: it has to be there and close the popup.
+# KNOWN ISSUE (found by MF-3270, SDK 0.7.5): the title took the whole header row and the X was
+# laid out 0 px wide. On iOS this title wraps, so the X was missing (Android fits it in one line).
+# Fixed after 0.7.5: the runner treats it as a known issue up to the version below and as a
+# normal flow after it.
+# known-issue-until: 0.7.5
+appId: com.deepdots.testapp
+tags: [known-issue]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: rate-product
+- tapOn:
+    id: tab-shop
+- tapOn:
+    id: product-fjell-jacket
+- tapOn:
+    id: rate-product
+- tapOn:
+    id: star-5
+- tapOn:
+    id: submit-rating
+- extendedWaitUntil:
+    visible: "Tell us what you think of this product"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "Close popup"
+    timeout: 10000
+# Wait for the survey before tapping: if it arrives later, the card grows and re-centres and the
+# X moves under the tap (PR #51). Optional: Android may not expose the WebView's text.
+- extendedWaitUntil:
+    visible: "Did you find what you were looking for?"
+    timeout: 15000
+    optional: true
+- takeScreenshot: rate-product-close
+- tapOn:
+    text: "Close popup"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "Tell us what you think of this product"

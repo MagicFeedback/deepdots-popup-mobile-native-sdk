@@ -4,6 +4,16 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **A popup whose title wraps to two lines shows its close (X) button again.** The title took
+  the whole width of the header row and the X was laid out 0 px wide, so it disappeared. On
+  iOS, where there is no system Back and taps outside the popup do nothing since 0.7.2, the user
+  could only leave by finishing the survey. It showed on any platform as soon as the title
+  wrapped (a long title, a narrow screen or a large system font); the native test apps found it
+  on iOS with "Tell us what you think of this product". The title now takes the space the X
+  leaves and wraps there.
+
 ## 0.7.5 - 2026-10-29
 
 ### Fixed
