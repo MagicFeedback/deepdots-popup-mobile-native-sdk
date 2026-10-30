@@ -230,6 +230,9 @@ actual object PopupRenderer {
         root.viewTreeObserver.addOnWindowFocusChangeListener(listener)
     }
 
+    /** ¿Hay un popup esperando en [root] a que el host cierre su modal? */
+    internal fun hasPending(root: View): Boolean = pending.containsKey(root)
+
     /** Olvida el popup que esperaba en [root] (`close()` / `Deepdots.dismiss` antes de mostrarse). */
     internal fun cancelPending(root: View) {
         val listener = pending.remove(root) ?: return
