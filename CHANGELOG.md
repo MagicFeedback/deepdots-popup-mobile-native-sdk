@@ -25,6 +25,14 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   question, since the WebView state does not survive. A popup closed by its actions or by
   `close()`, or an Activity that finishes for good, is not followed. iOS was not affected. Found by
   the native functional regression suite (MF-3246).
+- **A popup whose title wraps to two lines shows its close (X) button again.** The title took
+  the whole width of the header row and the X was drawn 0 px wide, so it disappeared. Its touch
+  area stayed in place, so a tap where the X should be still closed the popup, but nobody could
+  see it; on iOS, with no system Back and taps outside doing nothing since 0.7.2, the popup
+  looked impossible to close without finishing the survey. It showed on any platform as soon as the title
+  wrapped (a long title, a narrow screen or a large system font); the native test apps found it
+  on iOS with "Tell us what you think of this product". The title now takes the space the X
+  leaves and wraps there.
 
 ## 0.7.5 - 2026-10-29
 
