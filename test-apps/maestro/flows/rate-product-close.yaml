@@ -1,12 +1,13 @@
 # The X of a popup whose title wraps to two lines: it has to be there and close the popup.
 # Runs with large system text (`text-size`) so the title wraps on every device.
-# Found by MF-3270 (SDK 0.7.5): the title took the whole header row and the X was drawn 0 px
-# wide. Maestro cannot see that: Compose keeps the X's 48 pt touch target, so "Close popup" is in
-# the tree, at the same place, and closes the popup (checked: same result on 0.7.5 and on the fix).
-# This flow guards the close path with a wrapped title; the drawing itself is checked by eye
-# in its screenshot. Android 0.7.0 does not expose the X's "Close popup" label: known issue there.
+# KNOWN ISSUE (found by MF-3270, SDK 0.7.5): the title took the whole header row and the X was
+# drawn 0 px wide. Fixed after 0.7.5.
+# - Android: the 0 px X is not in the tree, so the flow fails up to 0.7.5 (known issue).
+# - iOS: Maestro cannot see it: Compose keeps the X's 48 pt touch target, so "Close popup" is in
+#   the tree, at the same place, and closes the popup (checked: same result on 0.7.5 and on the
+#   fix). There the flow guards the close path; the drawing is checked by eye in its screenshot.
 # text-size: large
-# known-issue-until-android: 0.7.0
+# known-issue-until-android: 0.7.5
 appId: com.deepdots.testapp
 tags: [known-issue]
 ---
