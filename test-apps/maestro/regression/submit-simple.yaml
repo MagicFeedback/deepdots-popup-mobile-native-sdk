@@ -2,8 +2,13 @@
 # answer, Send. The SDK reports survey_completed (Lab counter "done 1") and shows its thank-you
 # screen; after "Complete survey", the host app works. Leaves one answer in MAGICFEEDBACK_DEV per run,
 # like the web suite's submission test (MF-3245).
+# KNOWN ISSUE on Android 0.7.0: the survey ignores the app language (shows Spanish: "¿Qué
+# probabilidad…", "Enviar") and puts the scale labels inside the first and last chips (the
+# vendored survey bundle 2.2.4; 0.7.3 passes). iOS 0.7.0 is not affected.
+# known-issue-until: 0.7.0
+# known-issue-platform: android
 appId: com.deepdots.testapp
-tags: [regression]
+tags: [regression, known-issue]
 ---
 - runFlow:
     file: ../subflows/launch.yaml
