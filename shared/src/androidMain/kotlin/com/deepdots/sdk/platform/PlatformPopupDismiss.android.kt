@@ -13,6 +13,11 @@ actual fun dismissPopup(context: PlatformContext) {
     val target = (0 until root.childCount)
         .map { root.getChildAt(it) }
         .firstOrNull { it.tag == "DeepdotsPopupContainer" }
-    target?.let { root.removeView(it) }
+    // [failure test · do not merge] FAULT: the container is not removed; it stays on the window,
+    // empty, transparent and clickable (an invisible overlay over the host).
+    (target as? ViewGroup)?.let {
+        it.removeAllViews()
+        it.isClickable = true
+    }
 }
 

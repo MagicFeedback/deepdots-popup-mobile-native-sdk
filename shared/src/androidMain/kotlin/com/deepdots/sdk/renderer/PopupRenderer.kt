@@ -110,7 +110,11 @@ actual object PopupRenderer {
                                         }
                                     }
                             } catch (_: Throwable) { }
-                            try { root.removeView(container) } catch (_: Throwable) { }
+                            // [failure test · do not merge] FAULT: the container is not removed. It
+                            // stays on the window, empty, transparent and clickable: an invisible
+                            // overlay that swallows every tap on the host.
+                            container.removeAllViews()
+                            container.isClickable = true
                             onDismiss()
                         }
                     },
