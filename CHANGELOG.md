@@ -4,6 +4,19 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **One popup at a time: a trigger that arrives while a popup is open no longer shows it again.**
+  The SDK had no "a popup is already open" check. An event, click or exit trigger that matched
+  while its popup was on screen drew the same popup a second time on top of it, and reported
+  `PopupShown` and `SHOWED` twice. Back-to-back triggers were already merged by the queue; the
+  ones that arrived after the popup opened were not. Now, while a popup of the SDK is open (or
+  waiting for a host dialog to close), other shows are skipped without side effects: no
+  `PopupShown`, no `SHOWED`, no cooldown spent. The check looks at the window itself (the
+  popup's container on Android, its view controller on iOS), so a popup that went away without
+  its actions (Activity destroyed, `close()`) never blocks later ones. Same rule as the web SDK
+  since 1.17.2. Found by the native functional regression suite (MF-3246).
+
 ## 0.7.5 - 2026-10-29
 
 ### Fixed

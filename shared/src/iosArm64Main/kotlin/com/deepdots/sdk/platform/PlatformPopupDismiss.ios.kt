@@ -26,3 +26,14 @@ actual fun dismissPopup(context: PlatformContext) {
         current = current.presentedViewController
     }
 }
+
+actual fun isPopupShowing(context: PlatformContext): Boolean {
+    if (PopupPresenter.hasPendingPresentation()) return true
+    // El que se está cerrando ya no cuenta: el siguiente popup puede salir detrás de él.
+    var current: UIViewController? = context.viewController.presentedViewController
+    while (current != null) {
+        if (current.restorationIdentifier == DEEPDOTS_POPUP_VC_ID && !current.isBeingDismissed()) return true
+        current = current.presentedViewController
+    }
+    return false
+}
