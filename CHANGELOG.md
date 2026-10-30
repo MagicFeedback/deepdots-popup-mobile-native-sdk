@@ -4,6 +4,18 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **Android: the popup survives a rotation.** The popup is mounted on the Activity's window. When
+  the Activity was recreated by a configuration change (rotating the phone, resizing the window in
+  split screen, switching dark mode) the window went away with it and the popup disappeared
+  without being closed: `SHOWED` was already counted and the survey was lost. The SDK now follows
+  the Activity and mounts the same popup again on the recreated one, with the same callbacks: it
+  is not a new popup (no second `PopupShown` or `SHOWED`). The survey starts again from its first
+  question, since the WebView state does not survive. A popup closed by its actions or by
+  `close()`, or an Activity that finishes for good, is not followed. iOS was not affected. Found by
+  the native functional regression suite (MF-3246).
+
 ## 0.7.5 - 2026-10-29
 
 ### Fixed

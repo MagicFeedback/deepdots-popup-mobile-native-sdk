@@ -1,6 +1,8 @@
 package com.deepdots.sdk.renderer
 
 import android.app.Activity
+import android.app.Application
+import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
@@ -47,6 +49,19 @@ internal fun popupAttachDecision(hasWindowFocus: Boolean, finishing: Boolean): A
     else -> AttachDecision.WaitForFocus
 }
 
+/** Qué hacer con un popup abierto cuando su Activity se destruye. */
+internal enum class DestroyFollowUp {
+    /** Cambio de configuración (rotar, tamaño de ventana, modo oscuro…): montarlo en la Activity nueva. */
+    ShowOnRecreated,
+
+    /** Se cierra de verdad, o el popup ya no estaba montado: olvidarlo. */
+    Forget,
+}
+
+/** Lógica pura de [DestroyFollowUp], separada para poder testearla en JVM. */
+internal fun popupDestroyFollowUp(stillMounted: Boolean, changingConfigurations: Boolean): DestroyFollowUp =
+    if (stillMounted && changingConfigurations) DestroyFollowUp.ShowOnRecreated else DestroyFollowUp.Forget
+
 actual object PopupRenderer {
     actual fun show(
         popup: PopupDefinition,
@@ -57,13 +72,24 @@ actual object PopupRenderer {
     ) {
         // Cualquier Activity, no solo ComponentActivity: la FlutterActivity por defecto de Flutter
         // es una Activity a secas y antes el popup no salía (y no se logueaba nada).
-        val activity = context.activity
+        showOn(context.activity, popup, onAction, onSurveyEvent, onDismiss)
+    }
+
+    private fun showOn(
+        activity: Activity,
+        popup: PopupDefinition,
+        onAction: (Action) -> Unit,
+        onSurveyEvent: (name: String, payload: String?) -> Unit,
+        onDismiss: () -> Unit,
+    ) {
         val root = activity.window?.decorView as? ViewGroup
         if (root == null) {
             Log.w(LOG_TAG, "Popup ${popup.id} not shown: ${activity.javaClass.name} has no window/decorView yet")
             return
         }
         val dismissed = AtomicBoolean(false)
+        // Sigue la Activity por si se recrea con el popup abierto (ver [followRecreation]).
+        var follower: Application.ActivityLifecycleCallbacks? = null
         // PopupContainer: FrameLayout que además se come el Back legacy (ver PopupBackHandler).
         val container = PopupContainer(activity).apply {
             layoutParams = FrameLayout.LayoutParams(
@@ -90,6 +116,7 @@ actual object PopupRenderer {
                     popup = popup,
                     onAction = actionHandler@{ action ->
                         if (dismissed.getAndSet(true)) return@actionHandler
+                        follower?.let { activity.application.unregisterActivityLifecycleCallbacks(it) }
                         onAction(action)
                         // Defer teardown and removal to avoid detaching AndroidView during pointer event
                         container.post {
@@ -125,9 +152,62 @@ actual object PopupRenderer {
         when (popupAttachDecision(activity.hasWindowFocus(), activity.isFinishing)) {
             AttachDecision.Now -> root.addView(container)
             AttachDecision.WaitForFocus -> attachWhenFocused(activity, root, container)
-            AttachDecision.Drop ->
+            AttachDecision.Drop -> {
                 Log.w(LOG_TAG, "Popup ${popup.id} not shown: ${activity.javaClass.name} is finishing")
+                return
+            }
         }
+        follower = followRecreation(activity, popup, container, dismissed) {
+            showOn(it, popup, onAction, onSurveyEvent, onDismiss)
+        }
+    }
+
+    /**
+     * El popup va en la ventana de [activity]: si esta se recrea por un cambio de configuración
+     * (rotar es el caso típico), la ventana se va con ella y el popup desaparecía sin cerrarse
+     * (SHOWED ya contado, el survey perdido). Ahora se vuelve a montar en la Activity nueva de la
+     * misma clase, con los mismos callbacks: no es un popup nuevo (ni `PopupShown` ni SHOWED otra
+     * vez). El survey empieza de nuevo: el estado del WebView no sobrevive. Si se cierra por sus
+     * acciones o con `close()`, o la Activity se cierra de verdad, se deja de seguir.
+     */
+    private fun followRecreation(
+        activity: Activity,
+        popup: PopupDefinition,
+        container: View,
+        dismissed: AtomicBoolean,
+        showAgain: (Activity) -> Unit,
+    ): Application.ActivityLifecycleCallbacks {
+        val app = activity.application
+        val callbacks = object : Application.ActivityLifecycleCallbacks {
+            private var recreating = false
+
+            override fun onActivityDestroyed(a: Activity) {
+                if (a !== activity) return
+                // En onDestroy la ventana todavía tiene sus vistas: `parent` dice si el popup seguía
+                // montado (un `close()` o un cierre por acción ya lo habían quitado). Uno que aún
+                // esperaba a que el host cerrase su modal no está montado y se olvida.
+                val stillMounted = !dismissed.get() && container.parent != null
+                when (popupDestroyFollowUp(stillMounted, a.isChangingConfigurations)) {
+                    DestroyFollowUp.ShowOnRecreated -> recreating = true
+                    DestroyFollowUp.Forget -> app.unregisterActivityLifecycleCallbacks(this)
+                }
+            }
+
+            override fun onActivityResumed(a: Activity) {
+                if (!recreating || a === activity || a.javaClass != activity.javaClass) return
+                app.unregisterActivityLifecycleCallbacks(this)
+                Log.i(LOG_TAG, "Popup ${popup.id} shown again after ${a.javaClass.simpleName} was recreated")
+                showAgain(a)
+            }
+
+            override fun onActivityCreated(a: Activity, savedInstanceState: Bundle?) = Unit
+            override fun onActivityStarted(a: Activity) = Unit
+            override fun onActivityPaused(a: Activity) = Unit
+            override fun onActivityStopped(a: Activity) = Unit
+            override fun onActivitySaveInstanceState(a: Activity, outState: Bundle) = Unit
+        }
+        app.registerActivityLifecycleCallbacks(callbacks)
+        return callbacks
     }
 
     /** Popups esperando a que el host cierre su modal, uno por ventana. */
