@@ -25,7 +25,8 @@ tags: [smoke]
 - extendedWaitUntil:
     visible: "What could we improve\\?"
     timeout: 20000
-- tapOn: "Write your answer here..."
+# iOS exposes the placeholder as text; Android as hint text prefixed with the question.
+- tapOn: ".*Write your answer here.*"
 - inputText: "typing"
 - assertVisible: "typing"
 - runFlow:
