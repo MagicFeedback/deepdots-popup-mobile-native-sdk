@@ -74,7 +74,9 @@ jobs:
       - name: Run suite on the emulator
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          RECORD: ${{ github.event.inputs.record == 'true' && '1' || '0' }}
+          # [failure test · do not merge] videos for the evidence; the mandatory test + controls only.
+          RECORD: "1"
+          FLOWS: "regression/overlay-touches.yaml failures/survey-missing.yaml flows/help-click.yaml"
         with:
           api-level: 34
           target: google_apis
@@ -97,6 +99,8 @@ jobs:
 
   ios:
     name: iOS · SDK ${{ matrix.sdk }}
+    # [failure test · do not merge] the injected fault is Android-only (SDK built from this branch).
+    if: false
     runs-on: macos-15
     timeout-minutes: 60
     needs: versions
