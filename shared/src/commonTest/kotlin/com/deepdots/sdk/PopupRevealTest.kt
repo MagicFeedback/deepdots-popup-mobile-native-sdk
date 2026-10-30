@@ -1,6 +1,8 @@
 package com.deepdots.sdk
 
+import com.deepdots.sdk.ui.PageTransition
 import com.deepdots.sdk.ui.PopupReveal
+import com.deepdots.sdk.ui.SurveyBusy
 import com.deepdots.sdk.ui.SurveyPalette
 import com.deepdots.sdk.ui.buildMagicFeedbackHtml
 import kotlin.test.Test
@@ -157,6 +159,35 @@ class PopupRevealTest {
                 Regex("$evento[\\s\\S]{0,200}?ddSetSurveyBusy\\(document\\.body, false\\)").containsMatchIn(h),
                 "debe soltar en $evento, o la pantalla se queda muerta",
             )
+        }
+    }
+
+    @Test
+    fun el_survey_que_llega_tarde_no_acepta_el_toque_que_iba_a_la_x() {
+        // Revelado por el techo (spinner, tarjeta pequeña): al llegar el survey la tarjeta crece y
+        // se recentra, y un toque que iba a la X caía en el rating y lo respondía (iPad del CI).
+        val h = html()
+        assertTrue(h.contains("function ddGuardLateSurvey(el, ms, isSubmitting)"), "debe llevar el helper")
+        assertTrue(
+            Regex("ddCreateReveal\\(document, function\\(\\)\\{\\s*if \\(!mfReady\\) \\{ ddShownBeforeSurvey = true; \\}")
+                .containsMatchIn(h),
+            "debe recordar que el popup se abrió antes que el survey",
+        )
+        assertTrue(
+            h.contains(
+                "if (!ddSurveyLoaded && ddShownBeforeSurvey) { ddGuardLateSurvey(document.body, ${SurveyBusy.LATE_SURVEY_GUARD_MS}, " +
+                    "function(){ return ddSubmitting; }); }"
+            ),
+            "debe bloquear el survey un momento solo si llega con el popup abierto",
+        )
+        assertTrue(
+            SurveyBusy.LATE_SURVEY_GUARD_MS > PageTransition.HEIGHT_ANIMATION_MS,
+            "el bloqueo tiene que durar más que la animación del alto",
+        )
+        // El bloqueo del envío manda: si hay una página enviándose, el guard no la suelta.
+        assertTrue(Regex("beforeSubmitEvent[\\s\\S]{0,400}?ddSubmitting = true;").containsMatchIn(h))
+        for (evento in listOf("afterSubmitEvent", "onBackEvent")) {
+            assertTrue(Regex("$evento[\\s\\S]{0,80}?ddSubmitting = false;").containsMatchIn(h), "$evento")
         }
     }
 

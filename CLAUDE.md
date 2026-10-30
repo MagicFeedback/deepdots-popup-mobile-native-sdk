@@ -257,6 +257,26 @@ viajaba con ella: el usuario creía haber corregido su respuesta y no era así.
   y hit-testing de verdad), **no** en el simulador: el mecanismo es el mismo HTML.
   Ojo al comprobarlo, `element.click()` es sintético e **ignora `pointer-events`**.
 
+## Fix: un survey que llega tarde no se responde con el toque que iba a la X (2026-10-29)
+
+Fallo del iPad (A16) / iOS 18 en la matriz (run 40918433857, `redisplay`), que parecía "la X no
+cierra con el teclado abierto". No era eso (verificado en el simulador: con el teclado abierto la X
+cierra a la primera). Lo que pasó, según `device.log`: el WebContent tardó 4 s en arrancar, el popup
+se reveló por el techo (spinner, tarjeta pequeña) y Maestro leyó la X en y=385; el survey llegó
+antes del toque, la tarjeta creció y se recentró (la X pasó a y≈170) y el toque cayó en el WebView
+("WebKit: Single tap identified") sobre una opción del NPS, que auto-avanza: página 2 de texto
+libre, native la enfoca (`autofocus:'navigation'`) y sale el teclado. El foco de apertura del SDK
+(`pointer: fine`) no intervino. El fallback `X_POINT` del subflow está medido en iPhone y en iPad
+no cae en la X.
+
+- `SurveyBusy.LATE_SURVEY_GUARD_MS` (600) + `ddGuardLateSurvey`: si el survey carga con el popup ya
+  revelado (`ddShownBeforeSurvey`), el `<body>` ignora toques ese rato; no suelta un bloqueo de
+  envío en curso (`ddSubmitting`). Test: `PopupRevealTest`.
+- ⚠️ **Pendiente de paridad:** Web y RN tienen el mismo camino del techo y no llevan el guard.
+- Maestro: `flows/close-with-keyboard.yaml` (página 2 de texto, teclado, X), `redisplay` espera al
+  survey antes de cerrar, `close-popup` reintenta la etiqueta. `test-apps-ipad-source.yml`: un solo
+  job macOS con el SDK compilado desde la rama en un iPad (A16) / iOS 18.
+
 ## Fix: el popup sale en cualquier `Activity` (2026-10-06)
 
 Antes `PopupRenderer.show` (Android) hacía `context.activity as? ComponentActivity ?: return`:

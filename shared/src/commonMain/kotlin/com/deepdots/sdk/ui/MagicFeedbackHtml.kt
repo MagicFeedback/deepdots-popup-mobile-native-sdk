@@ -217,6 +217,12 @@ internal fun buildMagicFeedbackHtml(
               var mfReady = false; // becomes true when form onLoadedEvent fires
 ${SurveyPalette.PRIMARY_COLOR_JS}
 ${SurveyBusy.BUSY_JS}
+${SurveyBusy.LATE_SURVEY_GUARD_JS}
+              // Envío de una página en curso: el guard de llegada tardía no debe soltar su bloqueo.
+              var ddSubmitting = false;
+              // El techo de la revelación venció antes de que cargara el survey: el popup ya está
+              // a la vista (con spinner) y la tarjeta va a cambiar de tamaño cuando llegue.
+              var ddShownBeforeSurvey = false;
               // Foco en la primera pregunta si es de escribir. Al navegar lo pone
               // @magicfeedback/native (autofocus:'navigation'); al abrir lo pide el popup, y solo
               // con raton o trackpad: en un movil sacaria el teclado sin que el usuario haya tocado
@@ -232,6 +238,7 @@ ${PopupReveal.REVEAL_JS}
               // cuando el survey está montado y sus imágenes han llegado, o al vencer el techo
               // (survey que no carga: el popup se abre igual, con el spinner de siempre).
               var ddReveal = ddCreateReveal(document, function(){
+                if (!mfReady) { ddShownBeforeSurvey = true; }
                 ddReportHeight();
                 emit('${PopupReveal.READY_EVENT}');
               }, ${PopupReveal.REVEAL_TIMEOUT_MS});
@@ -353,6 +360,10 @@ ${PopupReveal.REVEAL_JS}
                           ddReportHeight(); // por si el WebView no trae ResizeObserver
                           ddReveal.whenPainted();
                           // La primera carga es la apertura; las siguientes (tras Start) las enfoca native.
+                          // Llega con el popup ya abierto: la tarjeta crece y se recoloca bajo el
+                          // dedo del usuario, que quiza iba a pulsar la X. Sin esto ese toque caia
+                          // en una opcion del survey y la respondia.
+                          if (!ddSurveyLoaded && ddShownBeforeSurvey) { ddGuardLateSurvey(document.body, ${SurveyBusy.LATE_SURVEY_GUARD_MS}, function(){ return ddSubmitting; }); }
                           if (!ddSurveyLoaded) { ddSurveyLoaded = true; ddAutofocusOnOpen(form); }
                         } catch(e){ console.error('[MagicFeedback] onLoadedEvent emit error', e); }
                       },
@@ -361,12 +372,14 @@ ${PopupReveal.REVEAL_JS}
                           // El spinner lo pinta Compose FUERA del WebView, asi que no protege al
                           // survey: sin esto el usuario sigue cambiando de opcion mientras se
                           // envia la pagina, y ese cambio ya no viaja con ella.
+                          ddSubmitting = true;
                           ddSetSurveyBusy(document.body, true);
                           emitJSON('before_submit');
                         } catch(e){ console.error('[MagicFeedback] before_submit emit error', e); }
                       },
                       afterSubmitEvent: function(payload){
                         try {
+                          ddSubmitting = false;
                           ddSetSurveyBusy(document.body, false);
                           var err = payload && payload.error ? String(payload.error) : '';
                           var completed = !!(payload && payload.completed);
@@ -383,6 +396,7 @@ ${PopupReveal.REVEAL_JS}
                       },
                       onBackEvent: function(args){
                         try {
+                          ddSubmitting = false;
                           ddSetSurveyBusy(document.body, false);
                           var progress = (args && args.progress) || 0;
                           var total = (args && args.total) || 0;

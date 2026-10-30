@@ -6,6 +6,15 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ### Fixed
 
+- **A tap aimed at the X no longer answers the survey when the survey loads late.** When the
+  survey takes longer than the 1.2 s reveal ceiling (cold WebView, slow network), the popup opens
+  with the spinner on a small card; when the survey arrives the card grows and re-centres, so the
+  X moves away from under the user's finger. A tap meant for the X could land on a rating option,
+  which moves on by itself: the popup sent an answer the user never gave, went to the next page
+  and, if that page was a free-text question, opened the keyboard. Seen on an iPad (A16) / iOS 18
+  simulator in the test-apps matrix. A survey that arrives after the popup is already visible now
+  ignores touches for 600 ms; surveys that load before the popup opens are not affected. Both
+  Android and iOS (the survey HTML is shared).
 - **One popup at a time: a trigger that arrives while a popup is open no longer shows it again.**
   The SDK had no "a popup is already open" check. An event, click or exit trigger that matched
   while its popup was on screen drew the same popup a second time on top of it, and reported

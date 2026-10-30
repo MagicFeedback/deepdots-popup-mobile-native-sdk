@@ -1,6 +1,7 @@
 # Closes the SDK popup. env: TITLE (the popup's title), X_POINT (optional, where its X is).
 # Taps its X ("Close popup" is the SDK's accessibility label). 0.7.0 does not always expose
-# that label, so if the popup is still there: Back on Android, a tap on X_POINT on iOS.
+# that label, so if the popup is still there: Back on Android, a tap on X_POINT on iOS (X_POINT is
+# measured on an iPhone: on an iPad the card is elsewhere, so the label is what closes it there).
 appId: com.deepdots.testapp
 ---
 - extendedWaitUntil:
@@ -12,6 +13,17 @@ appId: com.deepdots.testapp
     optional: true
 - waitForAnimationToEnd:
     timeout: 3000
+# Second try at the label: the first tap can be swallowed by a system sheet (the keyboard's
+# first-use tip) or land elsewhere if the card was still resizing.
+- runFlow:
+    when:
+      visible: ${TITLE}
+    commands:
+      - tapOn:
+          text: "Close popup"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 3000
 - runFlow:
     when:
       visible: ${TITLE}

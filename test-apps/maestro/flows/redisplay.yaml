@@ -12,6 +12,12 @@ tags: [smoke]
 - extendedWaitUntil:
     visible: "How is your account?"
     timeout: 15000
+# Close it once the survey is on screen: if the survey loads late the card grows and re-centres,
+# and a tap aimed at the X from an earlier hierarchy landed on the rating (iPad, run 40918433857).
+- extendedWaitUntil:
+    visible: "How likely are you to recommend.*"
+    timeout: 30000
+    optional: true
 - runFlow:
     file: ../subflows/close-popup.yaml
     env:
