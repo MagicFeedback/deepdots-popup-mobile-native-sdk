@@ -1,11 +1,11 @@
 # The X of a popup whose title wraps to two lines: it has to be there and close the popup.
 # KNOWN ISSUE (found by MF-3270, SDK 0.7.5): the title took the whole header row and the X was
-# laid out 0 px wide. On iOS this title wraps, so the X was missing (Android fits it in one line).
-# Fixed after 0.7.5. On Android this title fits in one line, but 0.7.0 does not expose the X's
-# "Close popup" label. The runner treats it as a known issue up to the version below for each
-# platform, and as a normal flow after it.
-# known-issue-until-ios: 0.7.5
-# known-issue-until-android: 0.7.0
+# laid out 0 px wide. Whether this title wraps depends on the screen width (it fits on an iPhone 16
+# and on Android), so the flow runs with large system text (`text-size`): it wraps on every
+# device. Fixed after 0.7.5. The runner treats it as a known issue up to the version below, and
+# as a normal flow after it.
+# text-size: large
+# known-issue-until: 0.7.5
 appId: com.deepdots.testapp
 tags: [known-issue]
 ---

@@ -51,13 +51,26 @@ stop_recording() {
   fi
 }
 
+# `# text-size: large` in a flow: it runs with large system text (Android font_scale 1.3, iOS
+# Dynamic Type XXXL), so long titles wrap on any device; back to the default afterwards.
+set_text_size() {
+  if [ "$PLATFORM" = android ]; then
+    adb_cmd shell settings put system font_scale "$([ "$1" = large ] && echo 1.3 || echo 1.0)" > /dev/null 2>&1
+  else
+    xcrun simctl ui "${DEVICE:-booted}" content_size "$([ "$1" = large ] && echo extra-extra-extra-large || echo large)" > /dev/null 2>&1
+  fi
+}
+
 run_flow() { # <flow file> -> exit code of maestro
   local name; name=$(basename "$1" .yaml)
+  local text; text=$(sed -n 's/^# text-size: *//p' "$1")
+  [ -n "$text" ] && { echo "[lab] $name: text size $text"; set_text_size "$text"; }
   start_recording "$name"
   maestro_cmd test $DRIVER_OPTS -e SDK_VERSION="$SDK" --format junit --output "$OUT/junit/$name.xml" \
     --test-output-dir "$OUT/maestro/$name" "$1" > "$OUT/maestro/$name.txt" 2>&1
   local code=$?
   stop_recording "$name"
+  [ -n "$text" ] && set_text_size default
   return $code
 }
 
