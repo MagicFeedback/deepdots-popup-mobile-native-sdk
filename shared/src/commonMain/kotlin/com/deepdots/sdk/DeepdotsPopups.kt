@@ -1505,6 +1505,16 @@ class DeepdotsPopups {
         if (!shouldShow(popup, pathOverride = sourcePath)) return
 
         val delayMs = (delaySeconds * 1000.0).toLong().coerceAtLeast(0L)
+        // [failure test · do not merge] FAULT: one timer per exit, no de-duplication: rapid
+        // navigation in and out of the source screen enqueues the popup once per exit, each one
+        // after the previous popup left the queue.
+        if (delayMs > 0) {
+            scope.launch {
+                delay(delayMs)
+                enqueuePopup(popup.id)
+            }
+            return
+        }
         val item = DeferredExitPopup(
             id = popup.id,
             surveyId = popup.surveyId,

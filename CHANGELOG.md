@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+- [failure test · do not merge] injected fault: exit popups without de-duplication.
+
 ## 0.7.5 - 2026-10-29
 
 ### Fixed
