@@ -23,9 +23,12 @@ tags: [regression]
 - extendedWaitUntil:
     visible: "0/500"
     timeout: 10000
+# The survey focuses the text answer after the page change (keyboard already open on the CI
+# emulator, where the textarea exposes no text); elsewhere a tap on it is needed.
 - tapOn:
     text: "What could we improve?"
     index: 1
+    optional: true
 - inputText: "MF-3246 native regression ${SDK_VERSION}"
 # The keyboard covers Send. Android: hideKeyboard. iOS: the WebView keyboard has no standard
 # dismiss action; its toolbar's "Done" closes it.
