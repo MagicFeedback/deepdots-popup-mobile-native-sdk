@@ -83,7 +83,9 @@ for f in $FLOWS; do
   name=$(basename "$f" .yaml)
   if grep -q 'android-only' "$f" && [ "$PLATFORM" != android ]; then echo "[lab] skip $name (android-only)"; continue; fi
   # `# known-issue-until: X.Y.Z`: a known issue only for SDK versions up to X.Y.Z.
-  until_v=$(sed -n 's/^# known-issue-until: *//p' "$f")
+  # `# known-issue-until-ios: X.Y.Z` / `-android:` overrides it on that platform.
+  until_v=$(sed -n "s/^# known-issue-until-$PLATFORM: *//p" "$f")
+  [ -n "$until_v" ] || until_v=$(sed -n 's/^# known-issue-until: *//p' "$f")
   known=0
   if grep -q 'tags:.*known-issue' "$f"; then
     known=1
