@@ -20,9 +20,10 @@ tags: [smoke]
       true: ${SDK_VERSION != '0.7.0'}
     commands:
       # Wait for the survey itself: before it loads the card is small and grows when it arrives.
+      # 90 s: on a cold CI runner WebKit's WebContent process has taken ~40 s to start.
       - extendedWaitUntil:
           visible: "How likely are you to recommend.*"
-          timeout: 30000
+          timeout: 90000
       # The first chip: the radio inputs behind the chips are exposed too (value "0", off screen), so
       # match the chip right under the scale label instead of a bare number.
       - tapOn:
