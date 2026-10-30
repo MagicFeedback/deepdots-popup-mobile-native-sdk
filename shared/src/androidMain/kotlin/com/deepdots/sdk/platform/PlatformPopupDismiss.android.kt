@@ -16,3 +16,9 @@ actual fun dismissPopup(context: PlatformContext) {
     target?.let { root.removeView(it) }
 }
 
+
+actual fun isPopupShowing(context: PlatformContext): Boolean {
+    val root = context.activity.window?.decorView as? ViewGroup ?: return false
+    if (PopupRenderer.hasPending(root)) return true
+    return (0 until root.childCount).any { root.getChildAt(it).tag == "DeepdotsPopupContainer" }
+}

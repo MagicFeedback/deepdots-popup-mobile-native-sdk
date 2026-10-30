@@ -27,6 +27,9 @@ internal object PopupPresenter {
         attempt(base, popup, token, logged = false)
     }
 
+    /** ¿Hay un popup esperando a que el host cierre su alerta? */
+    fun hasPendingPresentation(): Boolean = pending != null
+
     fun cancelPendingPresentation() {
         pending = null
     }
