@@ -124,7 +124,7 @@ named "Native Test Apps (MF-3244) · <scenario>").
   Counters are checked after closing the popup: on iOS the popup is a full-screen modal and the
   Lab bar under it is hidden from accessibility. Flows wait for the survey before tapping the X,
   so a late survey cannot take that tap. A known issue can be limited to one platform with
-  `# known-issue-platform: android|ios` next to `# known-issue-until:`.
+  `# known-issue-until-android:` / `-ios:` (on the other platform the flow is a normal one).
 
   The Lab buttons exist because Maestro needs 2–4 s per tap on a CI emulator: a double trigger or
   a quick in-and-out of a screen has to come from the app.

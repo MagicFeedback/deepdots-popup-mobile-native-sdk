@@ -16,6 +16,23 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   popup's container on Android, its view controller on iOS), so a popup that went away without
   its actions (Activity destroyed, `close()`) never blocks later ones. Same rule as the web SDK
   since 1.17.2. Found by the native functional regression suite (MF-3246).
+- **Android: the popup survives a rotation.** The popup is mounted on the Activity's window. When
+  the Activity was recreated by a configuration change (rotating the phone, resizing the window in
+  split screen, switching dark mode) the window went away with it and the popup disappeared
+  without being closed: `SHOWED` was already counted and the survey was lost. The SDK now follows
+  the Activity and mounts the same popup again on the recreated one, with the same callbacks: it
+  is not a new popup (no second `PopupShown` or `SHOWED`). The survey starts again from its first
+  question, since the WebView state does not survive. A popup closed by its actions or by
+  `close()`, or an Activity that finishes for good, is not followed. iOS was not affected. Found by
+  the native functional regression suite (MF-3246).
+- **A popup whose title wraps to two lines shows its close (X) button again.** The title took
+  the whole width of the header row and the X was drawn 0 px wide, so it disappeared. Its touch
+  area stayed in place, so a tap where the X should be still closed the popup, but nobody could
+  see it; on iOS, with no system Back and taps outside doing nothing since 0.7.2, the popup
+  looked impossible to close without finishing the survey. It showed on any platform as soon as the title
+  wrapped (a long title, a narrow screen or a large system font); the native test apps found it
+  on iOS with "Tell us what you think of this product". The title now takes the space the X
+  leaves and wraps there.
 
 ## 0.7.5 - 2026-10-29
 

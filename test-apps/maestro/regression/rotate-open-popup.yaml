@@ -4,8 +4,7 @@
 # popup, mounted on the old Activity's window, is gone (SHOWED already counted, the survey lost).
 # iOS keeps it. Fix in a separate PR; up to the version below the runner expects this flow to
 # fail on Android, after it (and `local`) it is a normal flow. On iOS it is always a normal flow.
-# known-issue-until: 0.7.5
-# known-issue-platform: android
+# known-issue-until-android: 0.7.5
 appId: com.deepdots.testapp
 tags: [regression, known-issue]
 onFlowComplete:

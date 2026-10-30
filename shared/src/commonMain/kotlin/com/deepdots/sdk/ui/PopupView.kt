@@ -230,8 +230,11 @@ fun PopupView(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // weight: un título que ocupa dos líneas se quedaba todo el ancho
+                            // de la fila y la X se medía a 0 px (desaparecía).
                             Text(
                                 text = popup.title,
+                                modifier = Modifier.weight(1f),
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = textColor,

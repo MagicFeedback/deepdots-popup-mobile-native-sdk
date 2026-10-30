@@ -5,8 +5,7 @@
 # KNOWN ISSUE on Android 0.7.0: the survey ignores the app language (shows Spanish: "¿Qué
 # probabilidad…", "Enviar") and puts the scale labels inside the first and last chips (the
 # vendored survey bundle 2.2.4; 0.7.3 passes). iOS 0.7.0 is not affected.
-# known-issue-until: 0.7.0
-# known-issue-platform: android
+# known-issue-until-android: 0.7.0
 appId: com.deepdots.testapp
 tags: [regression, known-issue]
 ---
