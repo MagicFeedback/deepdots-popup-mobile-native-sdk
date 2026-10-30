@@ -16,12 +16,13 @@ tags: [regression]
 - extendedWaitUntil:
     visible: "Why did you leave the checkout?"
     timeout: 12000
-# Let any late duplicate arrive before counting.
+# Let any late duplicate arrive before counting (after closing).
 - waitForAnimationToEnd:
     timeout: 5000
-- assertVisible:
-    id: lab-counts
-    text: "shown 1 · done 0"
+- runFlow:
+    file: ../subflows/wait-survey.yaml
+    env:
+      QUESTION: "How likely are you to recommend NORDLY to a friend?"
 - runFlow:
     file: ../subflows/close-popup.yaml
     env:

@@ -14,19 +14,23 @@ tags: [regression]
 - extendedWaitUntil:
     visible: "Can we help?"
     timeout: 15000
+- runFlow:
+    file: ../subflows/wait-survey.yaml
+    env:
+      QUESTION: "How likely are you to recommend NORDLY to a friend?"
 - pressKey: Home
 - waitForAnimationToEnd:
     timeout: 2000
 - launchApp:
     clearState: false
     stopApp: false
-- assertVisible:
-    text: ".*life foreground.*"
 - takeScreenshot: background-open-popup-back
 - runFlow:
     file: ../subflows/close-popup.yaml
     env:
       TITLE: "Can we help?"
+- assertVisible:
+    text: ".*life foreground.*"
 - assertVisible:
     id: lab-counts
     text: "shown 1 · done 0"

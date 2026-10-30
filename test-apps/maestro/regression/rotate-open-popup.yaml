@@ -1,7 +1,13 @@
 # Resizing / positioning: rotate the device with the popup open. The popup stays on screen with
 # its title and close button, and closes; the host works afterwards.
+# KNOWN ISSUE on Android (found by MF-3246, SDK 0.7.5): rotating recreates the Activity and the
+# popup, mounted on the old Activity's window, is gone (SHOWED already counted, the survey lost).
+# iOS keeps it. Fix in a separate PR; up to the version below the runner expects this flow to
+# fail on Android, after it (and `local`) it is a normal flow. On iOS it is always a normal flow.
+# known-issue-until: 0.7.5
+# known-issue-platform: android
 appId: com.deepdots.testapp
-tags: [regression]
+tags: [regression, known-issue]
 onFlowComplete:
   - setOrientation: PORTRAIT
 ---
@@ -16,6 +22,10 @@ onFlowComplete:
 - extendedWaitUntil:
     visible: "Can we help?"
     timeout: 15000
+- runFlow:
+    file: ../subflows/wait-survey.yaml
+    env:
+      QUESTION: "How likely are you to recommend NORDLY to a friend?"
 - setOrientation: LANDSCAPE_LEFT
 - waitForAnimationToEnd:
     timeout: 3000

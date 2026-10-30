@@ -1,4 +1,4 @@
-# Successful submission with a known-good survey (DEV «SDK Test App · Simple»): NPS 9, a text
+# Successful submission with a known-good survey (DEV «SDK Test App · Simple»): NPS 5, a text
 # answer, Send. The SDK reports survey_completed (Lab counter "done 1") and shows its thank-you
 # screen; after "Complete survey", the host app works. Leaves one answer in MAGICFEEDBACK_DEV per run,
 # like the web suite's submission test (MF-3245).
@@ -17,9 +17,9 @@ tags: [regression]
     visible: "How likely are you to recommend NORDLY to a friend?"
     timeout: 20000
 - scrollUntilVisible:
-    element: "9"
+    element: "5"
     direction: DOWN
-- tapOn: "9"
+- tapOn: "5"
 - extendedWaitUntil:
     visible: "0/500"
     timeout: 10000
@@ -27,19 +27,30 @@ tags: [regression]
     text: "What could we improve?"
     index: 1
 - inputText: "MF-3246 native regression ${SDK_VERSION}"
-- hideKeyboard
+# The keyboard covers Send. Android: hideKeyboard. iOS: the WebView keyboard has no standard
+# dismiss action; its toolbar's "Done" closes it.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: "Done"
 - tapOn: "Send"
 # The thank-you text is inside the WebView (not always in the accessibility tree); the native
 # "Complete survey" button replaces Send on the last screen.
 - extendedWaitUntil:
     visible: "Complete survey"
     timeout: 15000
-- assertVisible:
-    id: lab-counts
-    text: "shown 1 · done 1"
 - takeScreenshot: submit-simple-thanks
 - tapOn: "Complete survey"
 - waitForAnimationToEnd:
     timeout: 3000
 - assertNotVisible: "Can we help?"
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 1"
 - runFlow: ../subflows/host-usable.yaml

@@ -95,7 +95,9 @@ for f in $FLOWS; do
   # `# known-issue-until: X.Y.Z`: a known issue only for SDK versions up to X.Y.Z.
   until_v=$(sed -n 's/^# known-issue-until: *//p' "$f")
   known=0
-  if grep -q 'tags:.*known-issue' "$f"; then
+  # `# known-issue-platform: android|ios`: the known issue only affects that platform.
+  only_on=$(sed -n 's/^# known-issue-platform: *//p' "$f")
+  if grep -q 'tags:.*known-issue' "$f" && { [ -z "$only_on" ] || [ "$only_on" = "$PLATFORM" ]; }; then
     known=1
     if [ -n "$until_v" ] && { [ "$SDK" = local ] || [ "$(printf '%s\n%s\n' "$SDK" "$until_v" | sort -V | tail -1)" != "$until_v" ]; }; then
       known=0

@@ -106,6 +106,28 @@ named "Native Test Apps (MF-3244) · <scenario>").
 - `flows/`: version and environment; one flow per trigger and targeting type (time, path, exit,
   event, click, excludedPaths, language); re-display after relaunch; background/foreground;
   release fixtures.
+- `regression/`: the functional regression (MF-3246, native side of MF-3197; web: `apps/test-app/e2e/regression/`
+  in deepdots-popup-sdk). Each flow asserts on the Lab bar counters (`lab-counts`: `shown N · done N`,
+  the SDK's `PopupShown` / `SurveyCompleted` events in this process) and ends with real taps on the host.
+
+  | Flow | What it checks |
+  |---|---|
+  | `submit-simple` | Full answer to the «Simple» survey (NPS, text, Send): `survey_completed`, "Complete survey", host usable. Leaves one answer in MAGICFEEDBACK_DEV. |
+  | `repeated-init` | `init()` called twice more (Lab "Init again"): one popup per trigger, listeners not duplicated. |
+  | `duplicate-trigger` | `rate_product` twice in a row and once more with the popup open (Lab "×3"): one popup. Known issue up to 0.7.5. |
+  | `rapid-exit` | Cart ⇄ Checkout three times at 250 ms (Lab "Rapid nav"): the exit popup shows once, on Cart. |
+  | `time-cancel` | Same rapid navigation with the 3 s `time_on_page` on /checkout: never shows. |
+  | `overlay-touches` | After closing a popup, taps on the spot it covered reach the host (the popup shows again, `shown 2`). |
+  | `background-open-popup` | Background and back with the popup open: closable, no second popup, host usable. |
+  | `rotate-open-popup` | Rotate with the popup open: still on screen and closable. Known issue on Android up to 0.7.5 (the recreated Activity loses the popup). |
+
+  Counters are checked after closing the popup: on iOS the popup is a full-screen modal and the
+  Lab bar under it is hidden from accessibility. Flows wait for the survey before tapping the X,
+  so a late survey cannot take that tap. A known issue can be limited to one platform with
+  `# known-issue-platform: android|ios` next to `# known-issue-until:`.
+
+  The Lab buttons exist because Maestro needs 2–4 s per tap on a CI emulator: a double trigger or
+  a quick in-and-out of a screen has to come from the app.
 - `failures/`: the mandatory failure tests.
   - **Missing navigation event** (`missing-navigation.yaml`, `nav=silent`): the exit trigger does
     not fire. The flow is expected to fail; the runner reports it as detected and turns red if it
@@ -113,6 +135,12 @@ named "Native Test Apps (MF-3244) · <scenario>").
   - **Popup load failure**: survey that does not load (`survey-missing.yaml`), popups request
     rejected (`popups-error.yaml`), no network (`offline.yaml`, Android). After each one the flow
     checks the app with real taps: tabs, a product, add to cart, checkout.
+  - **Slow survey** (`slow-survey.yaml`, Android): the runner throttles the emulator network
+    (`# network: gsm gprs` in the flow → `adb emu network speed/delay`, back to full afterwards).
+    The popup opens after the 1.2 s reveal ceiling with the survey still loading, closes, and the
+    host works. iOS has no scriptable network throttling on CI.
+  - **Network lost with the popup open** (`offline-open-popup.yaml`, Android): airplane mode right
+    before the trigger; the popup closes and the host works.
 
 CI: `.github/workflows/test-apps.yml`, one job per platform and SDK version. The versions come
 from `sdk-versions.json` (latest published, the ones customers run in production, oldest

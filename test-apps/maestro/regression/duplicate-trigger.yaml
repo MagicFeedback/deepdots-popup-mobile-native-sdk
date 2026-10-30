@@ -24,9 +24,10 @@ tags: [regression, known-issue]
 # Past the third trigger (3 s after the first two).
 - waitForAnimationToEnd:
     timeout: 5000
-- assertVisible:
-    id: lab-counts
-    text: "shown 1 · done 0"
+- runFlow:
+    file: ../subflows/wait-survey.yaml
+    env:
+      QUESTION: "Did you find what you were looking for?"
 - runFlow:
     file: ../subflows/close-popup.yaml
     env:
@@ -34,4 +35,8 @@ tags: [regression, known-issue]
 - waitForAnimationToEnd:
     timeout: 3000
 - assertNotVisible: "Tell us what you think of this product"
+# Counted after closing: the Lab bar is under the popup (hidden from accessibility on iOS).
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 0"
 - runFlow: ../subflows/host-usable.yaml
