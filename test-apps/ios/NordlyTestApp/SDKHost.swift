@@ -15,12 +15,33 @@ final class SDKHost: ObservableObject {
         let c = config
         Lab.log("sdk", "init \(sdkVersion) (SPM) env=Development api=\(devAPI)")
         Lab.log("sdk", "scenario=\(c.scenario) key=\(c.publicKey) nav=\(c.nav) lang=\(c.lang)")
-        sdk.on(event: Events.shared.popupShown) { e in Lab.log("popup", "shown id=\(e.popupId) survey=\(e.surveyId)") }
+        sdk.on(event: Events.shared.popupShown) { e in
+            Lab.log("popup", "shown id=\(e.popupId) survey=\(e.surveyId)")
+            Lab.countShown()
+        }
         sdk.on(event: Events.shared.popupClicked) { e in Lab.log("popup", "clicked id=\(e.popupId) action=\(e.extra["action"] ?? "")") }
-        sdk.on(event: Events.shared.surveyCompleted) { e in Lab.log("popup", "survey_completed survey=\(e.surveyId)") }
+        sdk.on(event: Events.shared.surveyCompleted) { e in
+            Lab.log("popup", "survey_completed survey=\(e.surveyId)")
+            Lab.countCompleted()
+        }
+        sdk.initialize(options: initOptions())
+        if !c.user.isEmpty { sdk.setUserId(userId: c.user) }
+        attachContext()
+        Lab.log("sdk", "userId=\(sdk.getUserId() ?? "-")")
+    }
+
+    /// A host that calls init() again (e.g. from a second entry point): the SDK must ignore it.
+    func initAgain() {
+        guard initialized else { return }
+        Lab.log("sdk", "init again (same options)")
+        sdk.initialize(options: initOptions())
+    }
+
+    private func initOptions() -> InitOptions {
+        let c = config
         let lang = c.lang
         // Kotlin default arguments are not visible from Swift: every InitOptions parameter is passed.
-        sdk.initialize(options: InitOptions(
+        return InitOptions(
             debug: true,
             environment: Environment.development,
             mode: Mode.server,
@@ -36,10 +57,7 @@ final class SDKHost: ObservableObject {
             renderChrome: true,
             showProgressBar: nil,
             metadata: nil
-        ))
-        if !c.user.isEmpty { sdk.setUserId(userId: c.user) }
-        attachContext()
-        Lab.log("sdk", "userId=\(sdk.getUserId() ?? "-")")
+        )
     }
 
     /// The popup is presented from this controller.
@@ -55,6 +73,19 @@ final class SDKHost: ObservableObject {
     }
 
     func triggerEvent(_ name: String) { if initialized { sdk.triggerEvent(eventName: name) } }
+    /// Duplicate and concurrent triggers: the same event twice in a row (a double tap) and once
+    /// more 3 s later, while its popup is open. The SDK must show the popup once.
+    func burst(_ name: String) {
+        guard initialized else { return }
+        Lab.log("host", "triggerEvent(\(name)) x2 now + 1 in 3 s")
+        sdk.triggerEvent(eventName: name)
+        sdk.triggerEvent(eventName: name)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            Lab.log("host", "triggerEvent(\(name)) again (popup open)")
+            self.sdk.triggerEvent(eventName: name)
+        }
+    }
+
     func triggerClick(_ id: String) { if initialized { sdk.triggerClick(targetId: id) } }
 
     // scenePhase .background / back to .active, never .inactive: onBackground() ends the SDK session.

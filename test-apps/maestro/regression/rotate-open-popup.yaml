@@ -1,0 +1,34 @@
+# Resizing / positioning: rotate the device with the popup open. The popup stays on screen with
+# its title and close button, and closes; the host works afterwards.
+appId: com.deepdots.testapp
+tags: [regression]
+onFlowComplete:
+  - setOrientation: PORTRAIT
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: help-click
+- tapOn:
+    id: tab-account
+- tapOn:
+    id: help-button
+- extendedWaitUntil:
+    visible: "Can we help?"
+    timeout: 15000
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "Can we help?"
+- assertVisible: "Close popup"
+- takeScreenshot: rotate-landscape
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "Can we help?"
+- takeScreenshot: rotate-portrait
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Can we help?"
+- runFlow: ../subflows/host-usable.yaml

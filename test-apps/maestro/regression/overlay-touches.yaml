@@ -1,0 +1,35 @@
+# Host safety: once a popup is closed nothing invisible stays on top. Real taps on the spot the
+# popup card covered (Help, again: the popup shows a second time, "shown 2"), then the tabs,
+# a product and the cart. An invisible overlay left by the SDK swallows these taps (MF-3197
+# mandatory failure test 1; see the failure-test PR).
+appId: com.deepdots.testapp
+tags: [regression]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: help-click
+- tapOn:
+    id: tab-account
+- tapOn:
+    id: help-button
+- extendedWaitUntil:
+    visible: "Can we help?"
+    timeout: 15000
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Can we help?"
+- tapOn:
+    id: help-button
+- extendedWaitUntil:
+    visible: "Can we help?"
+    timeout: 15000
+- assertVisible:
+    id: lab-counts
+    text: "shown 2 · done 0"
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Can we help?"
+- runFlow: ../subflows/host-usable.yaml

@@ -42,7 +42,7 @@ import androidx.compose.ui.window.DialogProperties
 /** SDK Lab: what this run is (version, env, ids), what to test next, and the run log. */
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun LabPanel(app: TestApp, onClose: () -> Unit) {
+fun LabPanel(app: TestApp, onClose: () -> Unit, onRapidCheckout: () -> Unit) {
     val activity = LocalContext.current as Activity
     var draft by remember { mutableStateOf(app.config) }
 
@@ -81,6 +81,14 @@ fun LabPanel(app: TestApp, onClose: () -> Unit) {
                     }
                 }
 
+                OutlinedButton(onClick = { onClose(); app.initAgain() }, enabled = app.initialized,
+                    modifier = Modifier.fillMaxWidth().height(48.dp).testTag("lab-init-again")) {
+                    Text("Init again (same options)")
+                }
+                OutlinedButton(onClick = onRapidCheckout, modifier = Modifier.fillMaxWidth().height(48.dp).testTag("lab-rapid-checkout")) {
+                    Text("Rapid nav: cart ⇄ checkout ×3")
+                }
+
                 val events = Scenarios.events[app.config.scenario].orEmpty()
                 if (events.isNotEmpty()) {
                     Section("Host events")
@@ -91,6 +99,10 @@ fun LabPanel(app: TestApp, onClose: () -> Unit) {
                                 onClose()
                                 app.sdk.triggerEvent(e)
                             }, modifier = Modifier.testTag("lab-event-$e")) { Text(e) }
+                            OutlinedButton(onClick = {
+                                onClose()
+                                app.burst(e)
+                            }, modifier = Modifier.testTag("lab-burst-$e")) { Text("$e ×3") }
                         }
                     }
                 }
