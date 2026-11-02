@@ -4,6 +4,14 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **iOS: a popup triggered at app start is no longer lost.** When an event fired right after
+  `init()` (or a queued event was replayed when the popups arrived) before the host's view
+  controller was in a window, UIKit refused the presentation silently while the popup was already
+  counted as shown, so it was not shown again. The popup now waits until the view controller is in
+  a window, as it already did for a host alert.
+
 ## 0.7.6 - 2026-11-02
 
 ### Fixed

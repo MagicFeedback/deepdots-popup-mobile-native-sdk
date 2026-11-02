@@ -33,8 +33,18 @@ internal sealed class PresentationPlan {
  * Ahora se presenta desde lo más alto de la cadena. Excepciones: una alerta (no se tapa una alerta
  * del sistema; paridad con Android, que espera a que el host cierre sus modales) y un controlador
  * cerrándose (UIKit rechaza la presentación hasta que termina).
+ *
+ * [baseInWindow]: el controlador del contexto ya está en una ventana. En el arranque (un evento
+ * lanzado justo tras `init()`, o la cola de eventos reproducida al llegar los popups) el host puede
+ * dar su controlador raíz antes de que la ventana exista; UIKit también rechaza esa presentación en
+ * silencio ("whose view is not in the window hierarchy"), así que se espera a que esté.
  */
-internal fun presentationPlan(chain: List<PresentedKind>): PresentationPlan = when (chain.lastOrNull()) {
+internal fun presentationPlan(chain: List<PresentedKind>, baseInWindow: Boolean = true): PresentationPlan = when {
+    !baseInWindow -> PresentationPlan.Wait
+    else -> presentationPlanInWindow(chain)
+}
+
+private fun presentationPlanInWindow(chain: List<PresentedKind>): PresentationPlan = when (chain.lastOrNull()) {
     null -> PresentationPlan.PresentFrom(-1)
     PresentedKind.Alert, PresentedKind.Dismissing -> PresentationPlan.Wait
     PresentedKind.Screen, PresentedKind.Sheet -> PresentationPlan.PresentFrom(chain.lastIndex)
