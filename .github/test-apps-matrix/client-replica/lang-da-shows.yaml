@@ -1,14 +1,14 @@
-# segments.lang (fixed in 0.7.4, MF-3263): the "lemu-da" replica (segments.lang ["da"]) shows
+# segments.lang (fixed in 0.7.4, MF-3263): the "client-replica-da" replica (segments.lang ["da"]) shows
 # when the app language is Danish.
 appId: com.deepdots.testapp
-tags: [lemu]
+tags: [client-replica]
 ---
 - runFlow:
     file: subflows/launch.yaml
     env:
-      SCENARIO: lemu-da
+      SCENARIO: client-replica-da
       LANG: da
 - extendedWaitUntil:
     visible: ".*Meget dårlig.*"
     timeout: 30000
-- takeScreenshot: lemu-da-shows
+- takeScreenshot: client-replica-da-shows
