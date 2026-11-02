@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.6 - 2026-11-02
+
 ### Fixed
 
 - **A tap aimed at the X no longer answers the survey when the survey loads late.** When the
