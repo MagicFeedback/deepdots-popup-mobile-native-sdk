@@ -1,0 +1,4 @@
+{
+  "$comment": "SDK versions the test apps run against on every PR and by default on 'Run workflow' (.github/workflows/test-apps.yml). Keep: the latest published version, the versions customers run in production, and the oldest supported one. Add the new version after each release; the workflow warns when Maven Central has a newer one.",
+  "versions": ["0.7.5", "0.7.3", "0.7.0"]
+}

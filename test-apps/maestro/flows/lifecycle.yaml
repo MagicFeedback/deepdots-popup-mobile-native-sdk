@@ -1,0 +1,24 @@
+# App lifecycle: background and foreground reach the SDK (onBackground / onForeground), and the
+# app and its triggers keep working after coming back.
+appId: com.deepdots.testapp
+tags: [smoke]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: help-click
+- pressKey: Home
+- waitForAnimationToEnd:
+    timeout: 2000
+- launchApp:
+    clearState: false
+    stopApp: false
+- assertVisible:
+    text: ".*life foreground.*"
+- tapOn:
+    id: tab-account
+- tapOn:
+    id: help-button
+- extendedWaitUntil:
+    visible: "Can we help?"
+    timeout: 15000

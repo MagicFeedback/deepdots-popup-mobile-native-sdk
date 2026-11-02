@@ -69,6 +69,7 @@ release PR ──► dev       version bump + "## X.Y.Z - date"            (Vers
                          + release/compatibility.json version         + Release dry run)
 node scripts/release.mjs tag     tag vX.Y.Z on dev
 release.yml              gate ─► tests ─► build once ─► smoke ─► Maven Central + SPM ─► GitHub Release ─► merge to main
+                         └─► Slack notice in #sdk-releases (slack-notify.yml)
 ```
 
 - A pull request to `dev` that changes the SDK (`shared/src/*Main`, the build scripts, the
@@ -85,6 +86,11 @@ release.yml              gate ─► tests ─► build once ─► smoke ─►
 - Run the pull request check locally:
   `npm ci --prefix scripts/release && node scripts/release/check.mjs pr`.
   Tests of the gate: `npm test --prefix scripts/release`.
+- Once the GitHub Release exists, `slack-notify.yml` posts the version, where it was published
+  (Maven Central only if the POM is there), links and up to six changelog entries to
+  #sdk-releases. The webhook is the `SDK_RELEASES_SLACK_WEBHOOK_URL` secret; without it the job
+  only warns. Dry runs and releases that fail before publishing post nothing. To test it, run
+  the workflow by hand ("Run workflow"): it posts the latest release with a "🧪 TEST" prefix.
 
 ## Supported versions
 

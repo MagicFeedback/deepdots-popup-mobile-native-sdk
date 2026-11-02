@@ -1,0 +1,13 @@
+# MANDATORY FAILURE TEST 2b — the popup config does not load (unknown public key, the DEV API
+# answers 406). No popup shows and the host app keeps working.
+appId: com.deepdots.testapp
+tags: [failure]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: fault-popups-error
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow: ../subflows/host-usable.yaml
+- takeScreenshot: popups-error-host-usable

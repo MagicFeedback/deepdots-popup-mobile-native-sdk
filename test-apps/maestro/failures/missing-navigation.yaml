@@ -1,0 +1,25 @@
+# MANDATORY FAILURE TEST 1 — missing navigation event.
+# Same steps as flows/exit-checkout.yaml, but the app runs with nav=silent: it never calls
+# setPath(), so the SDK never learns that the user left /checkout and the exit popup cannot
+# fire. This flow is EXPECTED TO FAIL on its last step ("Why did you leave the checkout?" not
+# visible): that red result is the test system detecting the missing trigger. CI runs it with
+# `--include-tags expected-failure` and turns the job red if it ever passes.
+appId: com.deepdots.testapp
+tags: [expected-failure]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: exit-checkout
+      NAV: silent
+- tapOn:
+    id: tab-cart
+- tapOn:
+    id: go-checkout
+- assertVisible:
+    id: place-order
+- tapOn:
+    id: back
+- extendedWaitUntil:
+    visible: "Why did you leave the checkout?"
+    timeout: 12000

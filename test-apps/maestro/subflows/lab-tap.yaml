@@ -1,0 +1,11 @@
+# Opens the SDK Lab panel and taps one of its buttons. env: ID (its accessibility id)
+appId: com.deepdots.testapp
+---
+- tapOn:
+    id: lab-open
+- scrollUntilVisible:
+    element:
+      id: ${ID}
+    direction: DOWN
+- tapOn:
+    id: ${ID}

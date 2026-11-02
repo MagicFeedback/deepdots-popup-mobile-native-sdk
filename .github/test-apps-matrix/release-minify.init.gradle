@@ -1,0 +1,19 @@
+// Release build of the NORDLY test app as a customer ships it (MF-3263): R8 + resource shrinking
+// on, so the SDK's consumer ProGuard rules (inside the AAR since 0.7.2) are what keeps it working.
+// Signed with the debug key so it installs on the emulator. Applied from the outside so
+// test-apps/android/app/build.gradle.kts (release { isMinifyEnabled = false }) stays as it is:
+// finalizeDsl runs after the app's build script and before AGP locks the DSL.
+//
+//   ./gradlew :app:assembleRelease -PsdkVersion=0.7.3 --init-script <this file>
+allprojects {
+    plugins.withId("com.android.application") {
+        extensions.getByName("androidComponents").finalizeDsl { android ->
+            def release = android.buildTypes.getByName("release")
+            release.minifyEnabled = true
+            release.shrinkResources = true
+            release.proguardFiles(android.getDefaultProguardFile("proguard-android-optimize.txt"))
+            release.signingConfig = android.signingConfigs.getByName("debug")
+            println("[lab] release build: R8 minify + shrinkResources on, debug-signed")
+        }
+    }
+}

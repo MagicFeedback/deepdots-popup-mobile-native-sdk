@@ -1,0 +1,18 @@
+# The host app still works: real taps through the tabs, a product and the cart.
+appId: com.deepdots.testapp
+---
+- tapOn:
+    id: tab-shop
+- tapOn:
+    id: product-ull-socks
+- tapOn:
+    id: add-to-cart
+- tapOn:
+    id: tab-cart
+- assertVisible:
+    id: cart-count
+    text: 3 items
+- tapOn:
+    id: go-checkout
+- assertVisible:
+    id: place-order

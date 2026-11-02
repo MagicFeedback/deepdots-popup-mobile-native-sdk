@@ -4,6 +4,47 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.6 - 2026-11-02
+
+### Fixed
+
+- **A tap aimed at the X no longer answers the survey when the survey loads late.** When the
+  survey takes longer than the 1.2 s reveal ceiling (cold WebView, slow network), the popup opens
+  with the spinner on a small card; when the survey arrives the card grows and re-centres, so the
+  X moves away from under the user's finger. A tap meant for the X could land on a rating option,
+  which moves on by itself: the popup sent an answer the user never gave, went to the next page
+  and, if that page was a free-text question, opened the keyboard. Seen on an iPad (A16) / iOS 18
+  simulator in the test-apps matrix. A survey that arrives after the popup is already visible now
+  ignores touches for 600 ms; surveys that load before the popup opens are not affected. Both
+  Android and iOS (the survey HTML is shared).
+- **One popup at a time: a trigger that arrives while a popup is open no longer shows it again.**
+  The SDK had no "a popup is already open" check. An event, click or exit trigger that matched
+  while its popup was on screen drew the same popup a second time on top of it, and reported
+  `PopupShown` and `SHOWED` twice. Back-to-back triggers were already merged by the queue; the
+  ones that arrived after the popup opened were not. Now, while a popup of the SDK is open (or
+  waiting for a host dialog to close), other shows are skipped without side effects: no
+  `PopupShown`, no `SHOWED`, no cooldown spent. The check looks at the window itself (the
+  popup's container on Android, its view controller on iOS), so a popup that went away without
+  its actions (Activity destroyed, `close()`) never blocks later ones. Same rule as the web SDK
+  since 1.17.2. Found by the native functional regression suite (MF-3246).
+- **Android: the popup survives a rotation.** The popup is mounted on the Activity's window. When
+  the Activity was recreated by a configuration change (rotating the phone, resizing the window in
+  split screen, switching dark mode) the window went away with it and the popup disappeared
+  without being closed: `SHOWED` was already counted and the survey was lost. The SDK now follows
+  the Activity and mounts the same popup again on the recreated one, with the same callbacks: it
+  is not a new popup (no second `PopupShown` or `SHOWED`). The survey starts again from its first
+  question, since the WebView state does not survive. A popup closed by its actions or by
+  `close()`, or an Activity that finishes for good, is not followed. iOS was not affected. Found by
+  the native functional regression suite (MF-3246).
+- **A popup whose title wraps to two lines shows its close (X) button again.** The title took
+  the whole width of the header row and the X was drawn 0 px wide, so it disappeared. Its touch
+  area stayed in place, so a tap where the X should be still closed the popup, but nobody could
+  see it; on iOS, with no system Back and taps outside doing nothing since 0.7.2, the popup
+  looked impossible to close without finishing the survey. It showed on any platform as soon as the title
+  wrapped (a long title, a narrow screen or a large system font); the native test apps found it
+  on iOS with "Tell us what you think of this product". The title now takes the space the X
+  leaves and wraps there.
+
 ## 0.7.5 - 2026-10-29
 
 ### Fixed

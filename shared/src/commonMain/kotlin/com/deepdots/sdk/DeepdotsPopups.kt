@@ -48,6 +48,7 @@ import com.deepdots.sdk.models.Trigger
 import com.deepdots.sdk.models.TriggerConditionStatus
 import com.deepdots.sdk.platform.PlatformContext
 import com.deepdots.sdk.platform.dismissPopup
+import com.deepdots.sdk.platform.isPopupShowing
 import com.deepdots.sdk.renderer.PopupRenderer
 import com.deepdots.sdk.service.DefaultPopupsService
 import com.deepdots.sdk.service.PopupsService
@@ -1263,45 +1264,50 @@ class DeepdotsPopups {
         extra: Map<String, Any?> = emptyMap(),
     ) {
         initOptionsContextCache = context
-        surveyToPopupId[popup.surveyId] = popup.id
-        setLastShown(popup.id, currentTimeMillis())
+        // Un popup a la vez (paridad con Web 1.17.2, MF-3245/MF-3246): con otro abierto, este se
+        // salta SIN efectos (ni `PopupShown`, ni SHOWED, ni cooldown). Antes el mismo trigger con
+        // su popup abierto lo pintaba otra vez encima y contaba dos SHOWED. La comprobación mira
+        // la ventana real (contenedor / view controller del SDK), en el hilo principal, y en el
+        // mismo bloque que pinta: dos disparos seguidos no pueden pasar los dos.
+        scope.launch(Dispatchers.Main) {
+            if (isPopupShowing(context)) {
+                log("Another popup is open; skipped", popup.id)
+                return@launch
+            }
+            surveyToPopupId[popup.surveyId] = popup.id
+            setLastShown(popup.id, currentTimeMillis())
 
-        scope.launch {
-            eventBus.emit(
-                Event.PopupShown,
-                EventData(
-                    popupId = popup.id,
-                    surveyId = popup.surveyId,
-                    productId = popup.productId,
-                    extra = extra,
-                ),
-            )
-
-            val publicKey = initOptions?.popupOptions?.publicKey
-            if (!publicKey.isNullOrBlank()) {
-                try {
-                    val returnedSessionId = popupsService.postPopupEvent(
-                        publicKey = publicKey,
-                        status = "SHOWED",
+            scope.launch {
+                eventBus.emit(
+                    Event.PopupShown,
+                    EventData(
                         popupId = popup.id,
-                        userId = tracking?.getUserId() ?: SdkRuntime.userId,
-                    )
-                    // El backend devuelve el sessionId (lo cose por user_id); lo cacheamos.
-                    if (returnedSessionId != null) {
-                        tracking?.setSessionId(returnedSessionId)
-                        SdkRuntime.sessionId = tracking?.getSessionId()
+                        surveyId = popup.surveyId,
+                        productId = popup.productId,
+                        extra = extra,
+                    ),
+                )
+
+                val publicKey = initOptions?.popupOptions?.publicKey
+                if (!publicKey.isNullOrBlank()) {
+                    try {
+                        val returnedSessionId = popupsService.postPopupEvent(
+                            publicKey = publicKey,
+                            status = "SHOWED",
+                            popupId = popup.id,
+                            userId = tracking?.getUserId() ?: SdkRuntime.userId,
+                        )
+                        // El backend devuelve el sessionId (lo cose por user_id); lo cacheamos.
+                        if (returnedSessionId != null) {
+                            tracking?.setSessionId(returnedSessionId)
+                            SdkRuntime.sessionId = tracking?.getSessionId()
+                        }
+                    } catch (t: Throwable) {
+                        log("Error posting showed event", t.message ?: "unknown")
                     }
-                } catch (t: Throwable) {
-                    log("Error posting showed event", t.message ?: "unknown")
                 }
             }
-        }
 
-        renderPopup(popup, context)
-    }
-
-    private fun renderPopup(popup: PopupDefinition, context: PlatformContext) {
-        scope.launch(Dispatchers.Main) {
             PopupRenderer.show(
                 popup = popup,
                 context = context,

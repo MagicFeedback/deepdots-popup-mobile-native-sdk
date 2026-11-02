@@ -1,0 +1,63 @@
+# Successful submission with a known-good survey (DEV «SDK Test App · Simple»): NPS 5, a text
+# answer, Send. The SDK reports survey_completed (Lab counter "done 1") and shows its thank-you
+# screen; after "Complete survey", the host app works. Leaves one answer in MAGICFEEDBACK_DEV per run,
+# like the web suite's submission test (MF-3245).
+# KNOWN ISSUE on Android 0.7.0: the survey ignores the app language (shows Spanish: "¿Qué
+# probabilidad…", "Enviar") and puts the scale labels inside the first and last chips (the
+# vendored survey bundle 2.2.4; 0.7.3 passes). iOS 0.7.0 is not affected.
+# known-issue-until-android: 0.7.0
+appId: com.deepdots.testapp
+tags: [regression, known-issue]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: help-click
+- tapOn:
+    id: tab-account
+- tapOn:
+    id: help-button
+- extendedWaitUntil:
+    visible: "How likely are you to recommend NORDLY to a friend?"
+    timeout: 20000
+- scrollUntilVisible:
+    element: "5"
+    direction: DOWN
+- tapOn: "5"
+- extendedWaitUntil:
+    visible: "0/500"
+    timeout: 10000
+# The survey focuses the text answer after the page change (keyboard already open on the CI
+# emulator, where the textarea exposes no text); elsewhere a tap on it is needed.
+- tapOn:
+    text: "What could we improve?"
+    index: 1
+    optional: true
+- inputText: "MF-3246 native regression ${SDK_VERSION}"
+# The keyboard covers Send. Android: hideKeyboard. iOS: the WebView keyboard has no standard
+# dismiss action; its toolbar's "Done" closes it.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: "Done"
+- tapOn: "Send"
+# The thank-you text is inside the WebView (not always in the accessibility tree); the native
+# "Complete survey" button replaces Send on the last screen.
+- extendedWaitUntil:
+    visible: "Complete survey"
+    timeout: 15000
+- takeScreenshot: submit-simple-thanks
+- tapOn: "Complete survey"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "Can we help?"
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 1"
+- runFlow: ../subflows/host-usable.yaml

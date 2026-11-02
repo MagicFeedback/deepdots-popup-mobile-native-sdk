@@ -21,4 +21,27 @@ object SurveyBusy {
           if('inert' in el){ el.inert = busy; }
         }
     """.trimIndent()
+
+    /**
+     * Cuánto ignora toques un survey que llega con el popup ya a la vista.
+     *
+     * Si el survey tarda más que el techo de la revelación (WebView en frío, red lenta), el popup
+     * se abre con el spinner y una tarjeta pequeña; cuando el survey llega, la tarjeta crece y se
+     * vuelve a centrar, y lo que había bajo el dedo cambia. Un toque que iba a la X caía en una
+     * opción del rating, que auto-avanza: se enviaba una respuesta que nadie había dado (visto en
+     * el iPad del CI, run 40918433857). Cubre la animación del alto
+     * ([PageTransition.HEIGHT_ANIMATION_MS]) más el tiempo de reaccionar al cambio.
+     */
+    const val LATE_SURVEY_GUARD_MS: Int = 600
+
+    /**
+     * Bloquea [el] durante `ms` y lo suelta, salvo que para entonces se esté enviando una página
+     * (`isSubmitting()`): ese bloqueo lo suelta `afterSubmitEvent`/`onBackEvent`.
+     */
+    val LATE_SURVEY_GUARD_JS: String = """
+        function ddGuardLateSurvey(el, ms, isSubmitting){
+          ddSetSurveyBusy(el, true);
+          setTimeout(function(){ if(!isSubmitting()){ ddSetSurveyBusy(el, false); } }, ms);
+        }
+    """.trimIndent()
 }

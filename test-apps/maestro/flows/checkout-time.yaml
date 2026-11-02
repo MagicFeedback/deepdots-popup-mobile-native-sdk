@@ -1,0 +1,16 @@
+# time_on_page 3 s + segments.path /checkout.
+appId: com.deepdots.testapp
+tags: [smoke]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: checkout-time
+- tapOn:
+    id: tab-cart
+- tapOn:
+    id: go-checkout
+- extendedWaitUntil:
+    visible: "Did anything stop you from completing your order?"
+    timeout: 15000
+- takeScreenshot: checkout-time

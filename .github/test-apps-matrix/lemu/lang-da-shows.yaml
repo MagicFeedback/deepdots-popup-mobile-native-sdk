@@ -1,0 +1,14 @@
+# segments.lang (fixed in 0.7.4, MF-3263): the "lemu-da" replica (segments.lang ["da"]) shows
+# when the app language is Danish.
+appId: com.deepdots.testapp
+tags: [lemu]
+---
+- runFlow:
+    file: subflows/launch.yaml
+    env:
+      SCENARIO: lemu-da
+      LANG: da
+- extendedWaitUntil:
+    visible: ".*Meget dårlig.*"
+    timeout: 30000
+- takeScreenshot: lemu-da-shows

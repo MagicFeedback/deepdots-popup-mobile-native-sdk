@@ -1,0 +1,103 @@
+# NORDLY test app on an iPad simulator against the SDK built FROM SOURCE (this ref): checks an
+# iPad fix before it is released. One macOS job; test-apps.yml covers published versions on an
+# iPhone, the matrix (test-apps-matrix.yml) every device against a published version.
+# First use: iPad (A16) / iOS 18, the X tapped while a late survey re-sized the card landed on the
+# rating, the survey moved to its free-text page and opened the keyboard (run 40918433857).
+name: Test apps iPad from source
+
+on:
+  workflow_dispatch:
+    inputs:
+      flows:
+        description: "Flow files relative to test-apps/maestro, space-separated"
+        default: "flows/close-with-keyboard.yaml flows/redisplay.yaml flows/help-click.yaml"
+      device:
+        description: "Simulator device type (iOS 18 runtime)"
+        default: "iPad (A16)"
+  pull_request:
+    paths:
+      - ".github/workflows/test-apps-ipad-source.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-apps-ipad-source-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLOWS: ${{ github.event.inputs.flows || 'flows/close-with-keyboard.yaml flows/redisplay.yaml flows/help-click.yaml' }}
+  DEVICE_TYPE: ${{ github.event.inputs.device || 'iPad (A16)' }}
+  JAVA_VERSION: "21"
+
+jobs:
+  ipad-source:
+    name: iOS 18 · ${{ github.event.inputs.device || 'iPad (A16)' }} · SDK from source
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install tools
+        run: |
+          brew install xcodegen
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Build XCFramework from source
+        run: |
+          scripts/prepare_spm_release.sh 0.0.0-src "file:///dev/null"
+          mkdir -p LocalSDK && cp -R dist/spm/DeepdotsSDK.xcframework LocalSDK/
+          cat > LocalSDK/Package.swift <<'SWIFT'
+          // swift-tools-version: 5.7
+          import PackageDescription
+          let package = Package(
+              name: "DeepdotsSDK",
+              platforms: [.iOS(.v13)],
+              products: [.library(name: "ComposeApp", targets: ["ComposeApp"])],
+              targets: [.binaryTarget(name: "ComposeApp", path: "DeepdotsSDK.xcframework")]
+          )
+          SWIFT
+          echo "SRC_SHA=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+      - name: Generate and build app (iPhone + iPad)
+        working-directory: test-apps/ios
+        run: |
+          # Same project, the published package swapped for the local one.
+          python3 - <<'PY'
+          import re
+          s = open("project.yml").read()
+          s, n = re.subn(r"(  DeepdotsSDK:\n)    url: .*\n    exactVersion: .*\n", r"\1    path: ../../LocalSDK\n", s)
+          assert n == 1, "DeepdotsSDK package not found in project.yml"
+          open("project.yml", "w").write(s)
+          PY
+          SDK_VERSION=src-$SRC_SHA xcodegen generate
+          # The project is iPhone-only; on an iPad it would run in compatibility mode.
+          xcodebuild -project NordlyTestApp.xcodeproj -scheme NordlyTestApp -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            TARGETED_DEVICE_FAMILY=1,2 -quiet build
+      - name: Create and boot simulator
+        run: |
+          RUNTIME=$(xcrun simctl list runtimes -j | python3 -c "
+          import json, sys
+          rs = [r for r in json.load(sys.stdin)['runtimes'] if r['platform'] == 'iOS' and r['isAvailable'] and r['version'].startswith('18.')]
+          print(sorted(rs, key=lambda r: [int(x) for x in r['version'].split('.')])[-1]['identifier'])")
+          UDID=$(xcrun simctl create lab "$DEVICE_TYPE" "$RUNTIME")
+          echo "DEVICE=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID" && xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" test-apps/ios/build/Build/Products/Debug-iphonesimulator/NordlyTestApp.app
+      - name: Run flows
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "180000"
+          RECORD: "1"
+        run: test-apps/scripts/run-maestro.sh ios "src-$SRC_SHA" out/ipad-source
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-apps-ipad-source
+          path: out/ipad-source
+          retention-days: 14

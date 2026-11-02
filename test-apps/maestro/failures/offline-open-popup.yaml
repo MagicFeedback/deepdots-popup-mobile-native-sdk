@@ -1,0 +1,29 @@
+# Failure: the network drops right after a popup is triggered (Android airplane mode), so its
+# survey cannot load. The popup can be closed and the host keeps working.
+appId: com.deepdots.testapp
+tags: [failure, android-only]
+onFlowComplete:
+  - setAirplaneMode: disabled
+  - waitForAnimationToEnd:
+      timeout: 8000
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: help-click
+- tapOn:
+    id: tab-account
+- setAirplaneMode: enabled
+- tapOn:
+    id: help-button
+- extendedWaitUntil:
+    visible: "Can we help?"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: offline-open-popup
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Can we help?"
+- runFlow: ../subflows/host-usable.yaml

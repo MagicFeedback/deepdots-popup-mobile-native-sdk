@@ -1,0 +1,21 @@
+# Launch for the Lemu flows: like test-apps/maestro/subflows/launch.yaml but without its DEV / scenario label
+# checks. Lemu's popup fires after 5 s on any path ("/"), so on a slow simulator (seen on the
+# iPad) it can already cover those labels when they are checked. The scenario label is not checked
+# either: on iOS 16 the cookies alert hides the app's accessibility tree, so the header is not
+# "visible" to Maestro (seen on the iPhone SE 16.4). The Lemu flows check the scenario indirectly:
+# its Danish survey only exists in the Lemu replicas.
+# env: SCENARIO (required), LANG
+appId: com.deepdots.testapp
+---
+- launchApp:
+    clearState: true
+    arguments:
+      scenario: ${SCENARIO}
+      nav: history
+      lang: ${LANG || 'en'}
+      start: home
+      load: immediate
+- extendedWaitUntil:
+    visible: "Accept all"
+    timeout: 120000
+- tapOn: "Accept all"

@@ -1,0 +1,21 @@
+# Cancellation: in and out of /checkout three times, 250 ms per screen (Lab "Rapid nav"). None
+# of the visits reaches the 3 s time_on_page, so the popup never shows, not even later.
+appId: com.deepdots.testapp
+tags: [regression]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: checkout-time
+      START: cart
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-rapid-checkout
+- waitForAnimationToEnd:
+    timeout: 6000
+- assertNotVisible: "Did anything stop you from completing your order?"
+- assertVisible:
+    id: lab-counts
+    text: "shown 0 · done 0"
+- runFlow: ../subflows/host-usable.yaml

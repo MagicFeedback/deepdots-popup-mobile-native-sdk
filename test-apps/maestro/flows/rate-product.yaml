@@ -1,0 +1,22 @@
+# event: the bottom sheet's "Submit rating" calls triggerEvent(rate_product) -> complex survey.
+appId: com.deepdots.testapp
+tags: [smoke]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: rate-product
+- tapOn:
+    id: tab-shop
+- tapOn:
+    id: product-fjell-jacket
+- tapOn:
+    id: rate-product
+- tapOn:
+    id: star-5
+- tapOn:
+    id: submit-rating
+- extendedWaitUntil:
+    visible: "Tell us what you think of this product"
+    timeout: 15000
+- takeScreenshot: rate-product

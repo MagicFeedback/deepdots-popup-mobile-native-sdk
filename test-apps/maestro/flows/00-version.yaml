@@ -1,0 +1,23 @@
+# The run shows the SDK version under test and the DEV environment.
+# env: SDK_VERSION (the version the app was built with)
+appId: com.deepdots.testapp
+tags: [smoke]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: checkout-time
+- assertVisible:
+    id: lab-sdk-version
+    text: "${SDK_VERSION}.*"
+- tapOn:
+    id: lab-open
+- assertVisible:
+    id: lab-info-version
+    text: "${SDK_VERSION}.*"
+- assertVisible:
+    id: lab-info-env
+    text: "DEV · api-dev.deepdots.com"
+- takeScreenshot: version
+- tapOn:
+    id: lab-close

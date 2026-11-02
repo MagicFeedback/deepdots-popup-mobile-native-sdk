@@ -1,0 +1,17 @@
+# excludedPaths /cart, /checkout: shows on Home, not on Cart.
+appId: com.deepdots.testapp
+tags: [smoke]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: not-on-cart
+      START: cart
+- waitForAnimationToEnd:
+    timeout: 6000
+- assertNotVisible: "Like what you see?"
+- tapOn:
+    id: tab-home
+- extendedWaitUntil:
+    visible: "Like what you see?"
+    timeout: 12000
