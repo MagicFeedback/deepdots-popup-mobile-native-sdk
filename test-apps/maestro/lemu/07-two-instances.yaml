@@ -1,0 +1,22 @@
+# A host that creates the SDK twice with the same key (both get init, setPath and the
+# Activity / view controller): still ONE popup at app start.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
+appId: com.deepdots.testapp
+tags: [lemu]
+---
+- runFlow:
+    file: subflows/open-popup.yaml
+    env:
+      INSTANCES: "2"
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Hvordan vil du vurdere din oplevelse med appen?"
+      CLOSE_LABEL: "Luk pop op"
+- extendedWaitUntil:
+    visible: "Hvordan vil du vurdere din oplevelse med appen?"
+    timeout: 10000
+    optional: true
+- assertNotVisible: "Hvordan vil du vurdere din oplevelse med appen?"
+- runFlow: ../subflows/host-usable.yaml

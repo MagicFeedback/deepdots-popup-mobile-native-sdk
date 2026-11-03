@@ -1,0 +1,47 @@
+# Rating 3, then Back: the first question comes back with the survey intact; picking 3 again
+# goes to the question for ratings 3–4, which is skipped (optional), then no / no → thank you.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
+appId: com.deepdots.testapp
+tags: [lemu]
+---
+- runFlow: subflows/open-popup.yaml
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "3"
+- runFlow: subflows/send.yaml
+- extendedWaitUntil:
+    visible: "Er der noget, vi kan gøre anderledes for at forbedre din oplevelse?"
+    timeout: 15000
+- tapOn: "Tilbage"
+- extendedWaitUntil:
+    visible: "Hvordan vil du vurdere din oplevelse med appen?"
+    timeout: 15000
+- assertNotVisible: "Tilbage"
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "3"
+- runFlow: subflows/send.yaml
+- extendedWaitUntil:
+    visible: "Er der noget, vi kan gøre anderledes for at forbedre din oplevelse?"
+    timeout: 15000
+- runFlow: subflows/send.yaml
+- extendedWaitUntil:
+    visible: "Er der andet, vi kan gøre for at forbedre din oplevelse?"
+    timeout: 20000
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "Nej"
+- runFlow: subflows/send.yaml
+- extendedWaitUntil:
+    visible: "Må vi kontakte dig, hvis vi gerne vil høre mere om din feedback?"
+    timeout: 15000
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "Nej"
+- runFlow: subflows/send.yaml
+- runFlow: subflows/finish.yaml

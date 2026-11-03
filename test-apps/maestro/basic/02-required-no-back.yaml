@@ -1,0 +1,19 @@
+# Minimal host: Send with nothing selected asks for an answer and shows no Back button.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
+# KNOWN ISSUE up to 0.7.6: a failed Send showed Back on the first screen (fixed in 0.7.7, #62).
+# known-issue-until: 0.7.6
+appId: com.deepdots.basicapp
+tags: [basic, known-issue]
+---
+- runFlow: subflows/launch.yaml
+- runFlow: ../lemu/subflows/send.yaml
+- assertVisible: "Please answer the required question to continue."
+- assertVisible: "Hvordan vil du vurdere din oplevelse med appen?"
+- assertNotVisible: "Tilbage"
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Hvordan vil du vurdere din oplevelse med appen?"
+      CLOSE_LABEL: "Luk pop op"
+- assertVisible: "Basic app · SDK.*"

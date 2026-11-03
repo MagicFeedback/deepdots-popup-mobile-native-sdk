@@ -19,6 +19,8 @@ dependencyResolutionManagement {
 }
 
 include(":app")
+// Minimal host: init + attachContext + setPath("/") and nothing else (a client app that only loads the SDK).
+include(":basic")
 
 val sdkVersion = providers.gradleProperty("sdkVersion").getOrElse("0.7.3")
 if (sdkVersion == "local") {

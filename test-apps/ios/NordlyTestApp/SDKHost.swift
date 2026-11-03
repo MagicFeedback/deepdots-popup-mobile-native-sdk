@@ -6,6 +6,11 @@ final class SDKHost: ObservableObject {
     static let shared = SDKHost()
 
     let sdk = DeepdotsSDK.DeepdotsPopups()
+    /// `event <name>`: fired once, right after the first setPath() (the screen is known, as the
+    /// integration guide asks), usually before the popups have loaded.
+    private var startEvent = ""
+    /// `instances 2`: a second instance fed the same calls (a host that creates the SDK twice).
+    private lazy var second: DeepdotsSDK.DeepdotsPopups? = config.instances == "2" ? DeepdotsSDK.DeepdotsPopups() : nil
     let config = LabConfig.resolve()
     @Published private(set) var initialized = false
 
@@ -25,8 +30,13 @@ final class SDKHost: ObservableObject {
             Lab.countCompleted()
         }
         sdk.initialize(options: initOptions())
+        if let second {
+            Lab.log("sdk", "second instance (same options)")
+            second.initialize(options: initOptions())
+        }
         if !c.user.isEmpty { sdk.setUserId(userId: c.user) }
         attachContext()
+        startEvent = c.startEvent
         Lab.log("sdk", "userId=\(sdk.getUserId() ?? "-")")
     }
 
@@ -65,14 +75,30 @@ final class SDKHost: ObservableObject {
         guard let root = UIApplication.shared.connectedScenes
             .compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first?.rootViewController else { return }
         sdk.attachContext(context: PlatformContext(viewController: root))
+        second?.attachContext(context: PlatformContext(viewController: root))
     }
 
     func setPath(_ path: String) {
         guard initialized else { return }
         sdk.setPath(path: path)
+        second?.setPath(path: path)
+        if !startEvent.isEmpty {
+            Lab.log("host", "triggerEvent(\(startEvent)) right after the first setPath")
+            sdk.triggerEvent(eventName: startEvent)
+            startEvent = ""
+        }
     }
 
-    func triggerEvent(_ name: String) { if initialized { sdk.triggerEvent(eventName: name) } }
+    /// A Lab host event. `scroll:NN` is the host reporting how far the screen is scrolled (onScroll).
+    func triggerEvent(_ name: String) {
+        guard initialized else { return }
+        if name.hasPrefix("scroll:"), let pct = Int32(name.dropFirst("scroll:".count)) {
+            Lab.log("host", "onScroll(\(pct))")
+            sdk.onScroll(percentage: pct)
+        } else {
+            sdk.triggerEvent(eventName: name)
+        }
+    }
     /// Duplicate and concurrent triggers: the same event twice in a row (a double tap) and once
     /// more 3 s later, while its popup is open. The SDK must show the popup once.
     func burst(_ name: String) {

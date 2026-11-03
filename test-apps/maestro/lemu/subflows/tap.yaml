@@ -1,0 +1,8 @@
+# Taps an option inside the survey. Android exposes the WebView's text late (or only after the
+# page settles), so it is waited for first. env: OPTION
+appId: com.deepdots.testapp
+---
+- extendedWaitUntil:
+    visible: ${OPTION}
+    timeout: 20000
+- tapOn: ${OPTION}

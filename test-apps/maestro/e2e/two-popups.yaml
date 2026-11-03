@@ -1,0 +1,30 @@
+# Two popups on the same event: ONE shows (the other is skipped while it is open), and nothing
+# else appears after closing it.
+# E2E scenario in MAGICFEEDBACK_DEV (scenarios.json). Needs the scenario in the app build.
+# min-sdk: 0.7.6
+appId: com.deepdots.testapp
+tags: [e2e]
+---
+- runFlow:
+    file: ../subflows/launch-no-dialog.yaml
+    env:
+      SCENARIO: e2e-two-popups
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-event-e2e_two
+- extendedWaitUntil:
+    visible: "E2E · Popup [AB]"
+    timeout: 20000
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "E2E · Popup [AB]"
+- extendedWaitUntil:
+    visible: "E2E · Popup [AB]"
+    timeout: 8000
+    optional: true
+- assertNotVisible: "E2E · Popup [AB]"
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 0"

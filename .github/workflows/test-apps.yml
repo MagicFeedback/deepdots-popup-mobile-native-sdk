@@ -92,9 +92,10 @@ jobs:
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
-      - name: Build app (SDK ${{ matrix.sdk }})
+      - name: Build apps (SDK ${{ matrix.sdk }})
         working-directory: test-apps/android
-        run: ./gradlew :app:assembleDebug :app:labSdkInfo -PsdkVersion=${{ matrix.sdk }}
+        # :basic is the minimal host app (init + attachContext + setPath only), for maestro/basic.
+        run: ./gradlew :app:assembleDebug :basic:assembleDebug :app:labSdkInfo -PsdkVersion=${{ matrix.sdk }}
       - name: Install Maestro
         run: |
           curl -fsSL "https://get.maestro.mobile.dev" | bash
@@ -116,6 +117,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: |
             adb install -r test-apps/android/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r test-apps/android/basic/build/outputs/apk/debug/basic-debug.apk
             test-apps/scripts/run-maestro.sh android ${{ matrix.sdk }} out/android-${{ matrix.sdk }}
       - uses: actions/upload-artifact@v4
         if: always()
@@ -168,12 +170,22 @@ jobs:
             echo "[lab] sdk requested=${{ matrix.sdk }} resolved=$RESOLVED source=SPM (DeepdotsSDK-SPM)"
             test "$RESOLVED" = "${{ matrix.sdk }}"
           fi
+      - name: Generate and build the minimal host app (SDK ${{ matrix.sdk }})
+        if: matrix.sdk != 'local'
+        working-directory: test-apps/basic-ios
+        run: |
+          SDK_VERSION=${{ matrix.sdk }} xcodegen generate
+          xcodebuild -project BasicApp.xcodeproj -scheme BasicApp -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build -quiet build
       - name: Boot simulator and install
         run: |
           UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for r,v in d.items() if 'iOS' in r for x in v if x['name']=='iPhone 16'))")
           echo "DEVICE=$UDID" >> "$GITHUB_ENV"
           xcrun simctl boot "$UDID" && xcrun simctl bootstatus "$UDID" -b
           xcrun simctl install "$UDID" test-apps/ios/build/Build/Products/Debug-iphonesimulator/NordlyTestApp.app
+          # The minimal host app is only built for published versions (not on `local`).
+          BASIC=test-apps/basic-ios/build/Build/Products/Debug-iphonesimulator/BasicApp.app
+          if [ -d "$BASIC" ]; then xcrun simctl install "$UDID" "$BASIC"; fi
       - name: Run suite on the simulator
         env:
           RECORD: ${{ inputs.record && '1' || '0' }}

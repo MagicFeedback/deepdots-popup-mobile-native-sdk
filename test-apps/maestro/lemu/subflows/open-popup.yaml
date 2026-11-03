@@ -1,0 +1,19 @@
+# Fresh launch with no dialog in front and the client's popup on its 5 s timer (its setup until
+# 30-oct), as in the client app: the popup must open by itself with the first question.
+# env: INSTANCES (optional)
+appId: com.deepdots.testapp
+---
+- runFlow:
+    file: ../../subflows/launch-no-dialog.yaml
+    env:
+      SCENARIO: client-exact-launch
+      INSTANCES: ${INSTANCES || '1'}
+# The X is native and always in the accessibility tree; Android exposes the survey's WebView
+# text later and not always, so the question is only waited for.
+- extendedWaitUntil:
+    visible: "Luk pop op"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: "Hvordan vil du vurdere din oplevelse med appen?"
+    timeout: 10000
+    optional: true

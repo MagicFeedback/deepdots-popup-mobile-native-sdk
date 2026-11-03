@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (!app.initialized) app.config = LabConfig.resolve(this, intent)
-        app.sdk.attachContext(PlatformContext(this))
+        app.attachContext(PlatformContext(this))
         val config = app.config
         val consent = LabConfig.prefs(this).getString("consent", null)
         if (config.load == "immediate" || consent == "all") app.initSdk()
@@ -128,7 +128,7 @@ private fun NordlyApp(app: TestApp, askConsent: Boolean) {
 
     LaunchedEffect(current.path) {
         Lab.log("nav", "${previousPath ?: "launch"} → ${current.path}${if (config.nav == "silent") " (silent: no setPath)" else ""}")
-        if (config.nav != "silent") app.sdk.setPath(current.path)
+        if (config.nav != "silent") app.setPath(current.path)
         previousPath = current.path
     }
     BackHandler(enabled = stack.size > 1) { stack = stack.dropLast(1) }
@@ -204,7 +204,7 @@ private fun NordlyApp(app: TestApp, askConsent: Boolean) {
                     showConsent = false
                     Lab.log("host", "consent accepted")
                     app.initSdk()
-                    if (config.nav != "silent") app.sdk.setPath(current.path)
+                    if (config.nav != "silent") app.setPath(current.path)
                 }, modifier = Modifier.testTag("consent-accept")) { Text("Accept all") }
             },
             dismissButton = {

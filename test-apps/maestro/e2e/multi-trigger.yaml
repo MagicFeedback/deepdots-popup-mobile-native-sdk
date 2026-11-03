@@ -1,0 +1,35 @@
+# One popup with two triggers: the event shows it, and after closing it the click on Help shows it again.
+# E2E scenario in MAGICFEEDBACK_DEV (scenarios.json). Needs the scenario in the app build.
+# min-sdk: 0.7.6
+appId: com.deepdots.testapp
+tags: [e2e]
+---
+- runFlow:
+    file: ../subflows/launch-no-dialog.yaml
+    env:
+      SCENARIO: e2e-multi-trigger
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-event-e2e_multi
+- extendedWaitUntil:
+    visible: "E2E · Event or click"
+    timeout: 20000
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "E2E · Event or click"
+- tapOn:
+    id: tab-account
+- tapOn:
+    id: help-button
+- extendedWaitUntil:
+    visible: "E2E · Event or click"
+    timeout: 20000
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "E2E · Event or click"
+- assertVisible:
+    id: lab-counts
+    text: "shown 2 · done 0"
