@@ -9,6 +9,12 @@ on:
     paths:
       - "test-apps/**"
       - ".github/workflows/test-apps.yml"
+  # release-check.yml calls it on release PRs with ["local"] (DD-25).
+  workflow_call:
+    inputs:
+      versions:
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       versions:
@@ -20,7 +26,7 @@ on:
         default: false
 
 concurrency:
-  group: test-apps-${{ github.ref }}
+  group: test-apps-${{ github.ref }}-${{ inputs.versions }}
   cancel-in-progress: true
 
 jobs:
@@ -33,7 +39,7 @@ jobs:
       - uses: actions/checkout@v4
       - id: pick
         env:
-          INPUT: ${{ github.event.inputs.versions }}
+          INPUT: ${{ inputs.versions }}
         run: |
           LIST=${INPUT:-$(jq -c .versions test-apps/sdk-versions.json)}
           echo "list=$LIST" >> "$GITHUB_OUTPUT"
@@ -74,7 +80,7 @@ jobs:
       - name: Run suite on the emulator
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          RECORD: ${{ github.event.inputs.record == 'true' && '1' || '0' }}
+          RECORD: ${{ inputs.record && '1' || '0' }}
         with:
           api-level: 34
           target: google_apis
@@ -136,7 +142,7 @@ jobs:
       - name: Run suite on the simulator
         if: matrix.sdk != 'local'
         env:
-          RECORD: ${{ github.event.inputs.record == 'true' && '1' || '0' }}
+          RECORD: ${{ inputs.record && '1' || '0' }}
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "180000"
         run: test-apps/scripts/run-maestro.sh ios ${{ matrix.sdk }} out/ios-${{ matrix.sdk }}
       - uses: actions/upload-artifact@v4

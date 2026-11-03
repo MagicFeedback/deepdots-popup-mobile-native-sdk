@@ -21,6 +21,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { pathToFileURL } from 'node:url';
+import { failingChecks, requiredChecksFrom } from './release/required-checks.mjs';
 
 const REPO = 'MagicFeedback/deepdots-popup-mobile-native-sdk';
 const SPM_REPO = 'MagicFeedback/DeepdotsSDK-SPM';
@@ -223,8 +224,10 @@ async function tagRelease({ yes, watch }) {
   if (pr.ok && pr.out) {
     const { number, state, headRefOid } = JSON.parse(pr.out);
     if (state !== 'MERGED') fail(`La PR #${number} (release/${version}) esta ${state}: fusionala antes de etiquetar.`);
-    const dryRun = tryRun('gh', ['api', `repos/${REPO}/commits/${headRefOid}/check-runs`, '--jq', '[.check_runs[] | select(.name == "Release dry run")] | sort_by(.started_at) | last | .conclusion // empty']);
-    if (dryRun.out !== 'success') fail(`El "Release dry run" de la PR #${number} no esta en verde (${dryRun.out || 'sin ejecutar'}): release.yml no publicaria.`);
+    // "Release dry run" + test app de Android con la SDK de la PR (DD-25), como release.yml.
+    const runs = tryRun('gh', ['api', `repos/${REPO}/commits/${headRefOid}/check-runs?per_page=100`, '--jq', '.check_runs']);
+    const failing = failingChecks(requiredChecksFrom(runs.ok ? JSON.parse(runs.out) : []));
+    if (failing.length) fail(`Checks de la PR #${number} no en verde (${failing.join('; ')}): release.yml no publicaria.`);
   }
 
   // Avisos, no bloqueos: el workflow se salta lo que ya existe o lo que no tiene secrets.
