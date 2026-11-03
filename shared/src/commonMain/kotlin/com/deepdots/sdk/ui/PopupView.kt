@@ -509,11 +509,13 @@ fun PopupView(
                                                     errorHint = null
                                                     // Previously we called onAction(complete/decline) here, which closed the popup before user could read the message.
                                                 } else if (name == "after_submit") {
-                                                    pageDepth += 1
+                                                    val submitError = payloadValue("error")
+                                                    pageDepth = pageDepthAfterSubmit(pageDepth, submitError)
                                                     payloadNumber("progress")?.let { progressValue = it }
                                                     payloadNumber("total")?.let { if (it > 0) progressTotal = it.toInt() }
                                                     viewState = navState()
-                                                    errorHint = null
+                                                    // Un envío fallido llega aquí detrás de su aviso: no se borra.
+                                                    if (submitError.isNullOrBlank()) errorHint = null
                                                 } else if (name == "back") {
                                                     if (pageDepth > 0) pageDepth -= 1
                                                     payloadNumber("progress")?.let { progressValue = it }
