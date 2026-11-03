@@ -103,11 +103,9 @@ jobs:
 
   ios:
     name: iOS · SDK ${{ matrix.sdk }}
-    # The iOS app only consumes published versions: a list with just "local" (release-check.yml)
-    # would wait for a macOS runner to skip every step.
-    if: needs.versions.outputs.list != '["local"]'
     runs-on: macos-15
-    timeout-minutes: 60
+    # `local` builds the SDK from this commit first (Kotlin/Native): longer than a published version.
+    timeout-minutes: 90
     needs: versions
     strategy:
       fail-fast: false
@@ -115,41 +113,51 @@ jobs:
         sdk: ${{ fromJSON(needs.versions.outputs.list) }}
     steps:
       - uses: actions/checkout@v4
-        if: matrix.sdk != 'local'
       - name: Select Xcode
-        if: matrix.sdk != 'local'
         run: sudo xcode-select -s /Applications/Xcode_16.4.app
+      - uses: actions/setup-java@v4
+        if: matrix.sdk == 'local'
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+        if: matrix.sdk == 'local'
       - name: Install tools
-        if: matrix.sdk != 'local'
         run: |
           brew install xcodegen
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      # The release PR (release-check.yml, versions ["local"]): the iOS test app on the SDK built
+      # from this commit, as a local Swift package, instead of a published DeepdotsSDK-SPM version.
+      - name: Build the SDK from this commit (local)
+        if: matrix.sdk == 'local'
+        run: test-apps/scripts/ios-local-sdk.sh
       - name: Generate and build app (SDK ${{ matrix.sdk }})
-        if: matrix.sdk != 'local'
         working-directory: test-apps/ios
         run: |
           SDK_VERSION=${{ matrix.sdk }} xcodegen generate
           xcodebuild -project NordlyTestApp.xcodeproj -scheme NordlyTestApp -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath build -quiet build
-          RESOLVED=$(python3 -c "import json;print(next(p['state']['version'] for p in json.load(open('NordlyTestApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved'))['pins'] if p['identity']=='deepdotssdk-spm'))")
-          echo "[lab] sdk requested=${{ matrix.sdk }} resolved=$RESOLVED source=SPM (DeepdotsSDK-SPM)"
-          test "$RESOLVED" = "${{ matrix.sdk }}"
+          if [ "${{ matrix.sdk }}" = local ]; then
+            echo "[lab] sdk requested=local resolved=$(git rev-parse --short HEAD) source=local spm-local (built from this commit)"
+          else
+            RESOLVED=$(python3 -c "import json;print(next(p['state']['version'] for p in json.load(open('NordlyTestApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved'))['pins'] if p['identity']=='deepdotssdk-spm'))")
+            echo "[lab] sdk requested=${{ matrix.sdk }} resolved=$RESOLVED source=SPM (DeepdotsSDK-SPM)"
+            test "$RESOLVED" = "${{ matrix.sdk }}"
+          fi
       - name: Boot simulator and install
-        if: matrix.sdk != 'local'
         run: |
           UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for r,v in d.items() if 'iOS' in r for x in v if x['name']=='iPhone 16'))")
           echo "DEVICE=$UDID" >> "$GITHUB_ENV"
           xcrun simctl boot "$UDID" && xcrun simctl bootstatus "$UDID" -b
           xcrun simctl install "$UDID" test-apps/ios/build/Build/Products/Debug-iphonesimulator/NordlyTestApp.app
       - name: Run suite on the simulator
-        if: matrix.sdk != 'local'
         env:
           RECORD: ${{ inputs.record && '1' || '0' }}
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "180000"
         run: test-apps/scripts/run-maestro.sh ios ${{ matrix.sdk }} out/ios-${{ matrix.sdk }}
       - uses: actions/upload-artifact@v4
-        if: always() && matrix.sdk != 'local'
+        if: always()
         with:
           name: test-apps-ios-${{ matrix.sdk }}
           path: out/ios-${{ matrix.sdk }}
