@@ -103,6 +103,9 @@ jobs:
 
   ios:
     name: iOS · SDK ${{ matrix.sdk }}
+    # The iOS app only consumes published versions: a list with just "local" (release-check.yml)
+    # would wait for a macOS runner to skip every step.
+    if: needs.versions.outputs.list != '["local"]'
     runs-on: macos-15
     timeout-minutes: 60
     needs: versions
