@@ -446,8 +446,8 @@ jobs:
           git -C pages commit -qm "validation report $SDK (run ${{ github.run_id }}, attempt ${{ github.run_attempt }})"
           git -C pages push origin HEAD:refs/heads/validation-reports
           gh workflow run docs-pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+      # Without notify/publish the message is only printed in the log.
       - name: Slack
-        if: inputs.notify || inputs.publish
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SDK_RELEASES_SLACK_WEBHOOK_URL }}
           PAGES: https://magicfeedback.github.io/deepdots-popup-mobile-native-sdk/validation/${{ env.SDK }}
@@ -464,4 +464,5 @@ jobs:
           FLAGS=()
           # Only a release (push of the tag) sends the real notice; anything else is marked TEST.
           [ "${{ github.event_name }}" = push ] || FLAGS+=(--test)
+          [ "${{ inputs.notify || inputs.publish }}" = true ] || FLAGS+=(--print)
           node scripts/release/validation-report.mjs slack --summary "validation/$SDK/summary.json" "${LINKS[@]}" "${FLAGS[@]}"
