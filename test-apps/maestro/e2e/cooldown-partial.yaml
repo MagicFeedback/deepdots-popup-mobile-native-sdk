@@ -1,0 +1,41 @@
+# Cooldown PARTIAL (1 day): first page answered, popup closed; the same event does not show it again.
+# E2E scenario in MAGICFEEDBACK_DEV (scenarios.json). Needs the scenario in the app build.
+# min-sdk: 0.7.6
+appId: com.deepdots.testapp
+tags: [e2e]
+---
+- runFlow:
+    file: ../subflows/launch-no-dialog.yaml
+    env:
+      SCENARIO: e2e-cooldown-partial
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-event-e2e_partial
+- extendedWaitUntil:
+    visible: "Did you find what you were looking for?"
+    timeout: 20000
+- runFlow:
+    file: ../lemu/subflows/tap.yaml
+    env:
+      OPTION: "Partly"
+- runFlow: ../lemu/subflows/send.yaml
+- extendedWaitUntil:
+    visible: "Rate the product page"
+    timeout: 20000
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Rate the product page"
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-event-e2e_partial
+- extendedWaitUntil:
+    visible: "Did you find what you were looking for?"
+    timeout: 10000
+    optional: true
+- assertNotVisible: "Did you find what you were looking for?"
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 0"

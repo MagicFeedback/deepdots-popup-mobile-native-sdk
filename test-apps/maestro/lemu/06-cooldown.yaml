@@ -1,0 +1,35 @@
+# Answer the first question and close: the popup does not open again on the next app start
+# (cooldown PARTIAL 30 days), with the same storage.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
+appId: com.deepdots.testapp
+tags: [lemu]
+---
+- runFlow: subflows/open-popup.yaml
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "4"
+- runFlow: subflows/send.yaml
+- extendedWaitUntil:
+    visible: "Er der noget, vi kan gøre anderledes for at forbedre din oplevelse?"
+    timeout: 15000
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Er der noget, vi kan gøre anderledes for at forbedre din oplevelse?"
+      CLOSE_LABEL: "Luk pop op"
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: lab-scenario
+      text: client-exact-launch
+    timeout: 60000
+- extendedWaitUntil:
+    visible: "Hvordan vil du vurdere din oplevelse med appen?"
+    timeout: 12000
+    optional: true
+- assertNotVisible: "Hvordan vil du vurdere din oplevelse med appen?"
+- runFlow: ../subflows/host-usable.yaml

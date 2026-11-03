@@ -13,10 +13,37 @@ import com.deepdots.sdk.models.Event
 import com.deepdots.sdk.models.InitOptions
 import com.deepdots.sdk.models.Mode
 import com.deepdots.sdk.models.PopupOptions
+import com.deepdots.sdk.platform.PlatformContext
 
 /** Owns the SDK for the whole process, as a host app would, and feeds it the app lifecycle. */
 class TestApp : Application() {
     val sdk: DeepdotsPopupsSdk = Deepdots.create()
+    /** `instances 2`: a second instance fed the same calls (a host that creates the SDK twice). */
+    var second: DeepdotsPopupsSdk? = null
+        private set
+    private var context: PlatformContext? = null
+    /**
+     * `event <name>`: fired once, right after the first setPath() (the screen is known, as the
+     * integration guide asks), usually before the popups have loaded.
+     */
+    private var startEvent = ""
+
+    /** The popup is shown on this Activity (both instances, when there are two). */
+    fun attachContext(context: PlatformContext) {
+        this.context = context
+        sdk.attachContext(context)
+        second?.attachContext(context)
+    }
+
+    fun setPath(path: String) {
+        sdk.setPath(path)
+        second?.setPath(path)
+        if (startEvent.isNotBlank()) {
+            Lab.log("host", "triggerEvent($startEvent) right after the first setPath")
+            sdk.triggerEvent(startEvent)
+            startEvent = ""
+        }
+    }
     var initialized = false
         private set
     lateinit var config: LabConfig
@@ -58,8 +85,28 @@ class TestApp : Application() {
             Lab.countCompleted()
         }
         sdk.init(initOptions())
+        if (c.instances == "2") {
+            Lab.log("sdk", "second instance (same options)")
+            second = Deepdots.create().also { s ->
+                s.init(initOptions())
+                context?.let(s::attachContext)
+            }
+        }
         if (c.user.isNotBlank()) sdk.setUserId(c.user)
+        startEvent = c.startEvent
         Lab.log("sdk", "userId=${sdk.getUserId()}")
+    }
+
+    /** A Lab host event. `scroll:NN` is the host reporting how far the screen is scrolled (onScroll). */
+    fun hostEvent(name: String) {
+        val pct = name.removePrefix("scroll:").takeIf { name.startsWith("scroll:") }?.toIntOrNull()
+        if (pct != null) {
+            Lab.log("host", "onScroll($pct)")
+            sdk.onScroll(pct)
+        } else {
+            Lab.log("host", "triggerEvent($name)")
+            sdk.triggerEvent(name)
+        }
     }
 
     /** A host that calls init() again (e.g. from a second entry point): the SDK must ignore it. */

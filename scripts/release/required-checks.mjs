@@ -2,8 +2,9 @@
 /**
  * Checks de la PR de release que tienen que estar en verde antes de publicar (DD-25):
  *   - "Release dry run": gate + tests + build + smoke en macOS (MF-3242);
- *   - el test app de Android con la SDK compilada desde ese commit ("Android · SDK local" de
- *     test-apps.yml, llamado por release-check.yml): un flujo de Maestro roto bloquea la release.
+ *   - los test apps de Android e iOS con la SDK compilada desde ese commit ("Android · SDK local"
+ *     e "iOS · SDK local" de test-apps.yml, llamado por release-check.yml): un flujo de Maestro
+ *     roto en cualquiera de las dos plataformas bloquea la release.
  *
  *   required-checks.mjs --sha <commit etiquetado>
  *
@@ -18,6 +19,7 @@ export const REQUIRED_CHECKS = [
   { name: 'Release dry run', match: (n) => n === 'Release dry run' },
   // Como job de un workflow reutilizable, GitHub lo llama "<job que llama> / Android · SDK local".
   { name: 'Test apps (release build) · Android', match: (n) => n.endsWith('Android · SDK local') },
+  { name: 'Test apps (release build) · iOS', match: (n) => n.endsWith('iOS · SDK local') },
 ];
 
 /** El check-run más reciente de cada check requerido, o `missing`. */

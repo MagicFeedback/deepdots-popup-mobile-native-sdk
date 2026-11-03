@@ -11,6 +11,18 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   the title and the X went out of view, so the popup could not be closed without scrolling back
   up. The title row and the buttons now stay fixed and only the content in between scrolls.
   Found by the end-to-end tests on iOS.
+- **The popup's Send, Back, close and Start work on older WebViews.** The native buttons ran
+  `window.DeepdotsActions?.send()` in the survey; a WebView older than Chrome 80 (Android 8–10
+  phones whose WebView was never updated) and iOS 13.0–13.3 reject optional chaining with a
+  `SyntaxError`, so the button did nothing and pages that need Send never moved on (the rating
+  page worked because it advances by itself). The calls are now plain ES5, and a test fails if
+  the survey's scripts use `?.` or `??` again. Found by the local device matrix on Android 8.
+- **Android 8–10: the keyboard no longer covers the popup's Back and Send.** The popup is mounted
+  on the window's decor view, outside the content the Activity resizes, and before Android 11 the
+  keyboard was not reported to it as an inset, so `imePadding()` was 0 and the footer stayed
+  under the keyboard. On those versions the popup now measures the keyboard from the window's
+  visible frame and moves above it; Android 11+ keeps using the IME inset.
+
 - **iOS: a popup at the top no longer goes under the status bar.** With a top position and a tall
   survey, the card was laid out from the very top of the screen: the title sat on the clock and
   the close button (X) under the battery icon, where it could not be tapped. The card now stays
