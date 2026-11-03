@@ -45,6 +45,17 @@ jobs:
           DOCS_SITE_URL: ${{ steps.pages.outputs.origin }}
         run: npm run build:pages
 
+      # Release validation reports (DD-25): the validation-reports branch, one folder per version,
+      # written by test-apps-matrix.yml. Served under /validation/.
+      - name: Add release validation reports
+        run: |
+          if git fetch --depth=1 origin validation-reports; then
+            mkdir -p docs/.site/validation
+            git archive FETCH_HEAD | tar -x -C docs/.site/validation
+          else
+            echo "No validation-reports branch yet"
+          fi
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

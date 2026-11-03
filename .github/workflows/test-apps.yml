@@ -2,6 +2,11 @@
 # (Android: Maven Central, iOS: MagicFeedback/DeepdotsSDK-SPM), runs the Maestro suite on an
 # emulator / simulator against DEV (MAGICFEEDBACK_DEV) and keeps logs, JUnit and videos.
 # Docs: test-apps/README.md
+#
+# On a pull request it runs a SHORT suite: the latest version in sdk-versions.json only, and only
+# the flows the PR adds or changes plus a smoke test (00-version, checkout-time). The apps use the
+# published SDK, so the other flows would re-test the same binaries that already passed on dev.
+# The full suite (every flow, every version) runs from "Run workflow" or locally (README, "Run").
 name: Test apps
 
 on:
@@ -35,15 +40,32 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       list: ${{ steps.pick.outputs.list }}
+      flows: ${{ steps.pick.outputs.flows }}
     steps:
       - uses: actions/checkout@v4
       - id: pick
         env:
           INPUT: ${{ inputs.versions }}
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
           LIST=${INPUT:-$(jq -c .versions test-apps/sdk-versions.json)}
+          FLOWS=""
+          # A caller passing versions (release-check on a release PR: ["local"]) gets the full suite.
+          if [ -n "$PR" ] && [ -z "$INPUT" ]; then
+            # Short suite: latest version, smoke + the flows this PR adds or changes (subflows are
+            # shared, so a change there only gets the smoke test: run the full suite locally).
+            LIST=$(jq -c '.versions[:1]' test-apps/sdk-versions.json)
+            CHANGED=$(gh api "repos/${{ github.repository }}/pulls/$PR/files" --paginate \
+              --jq '.[] | select(.status != "removed") | .filename' \
+              | sed -n 's#^test-apps/maestro/##p' | grep -E '\.yaml$' | grep -vE '(^|/)subflows/|^config\.yaml$' || true)
+            FLOWS=$(printf '%s\n' flows/00-version.yaml flows/checkout-time.yaml $CHANGED | awk 'NF && !seen[$0]++' | tr '\n' ' ')
+            echo "[lab] pull request: short suite. Full suite: Run workflow, or locally (test-apps/README.md)"
+          fi
           echo "list=$LIST" >> "$GITHUB_OUTPUT"
+          echo "flows=$FLOWS" >> "$GITHUB_OUTPUT"
           echo "[lab] SDK versions: $LIST"
+          echo "[lab] flows: ${FLOWS:-all}"
           # A new release that nobody added to the list yet.
           LATEST=$(curl -fsS https://repo1.maven.org/maven2/com/deepdots/sdk/shared-android/maven-metadata.xml | sed -n 's:.*<release>\(.*\)</release>.*:\1:p')
           if [ -n "$LATEST" ] && ! jq -e --arg v "$LATEST" '.versions | index($v)' test-apps/sdk-versions.json > /dev/null; then
@@ -81,6 +103,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         env:
           RECORD: ${{ inputs.record && '1' || '0' }}
+          FLOWS: ${{ needs.versions.outputs.flows }}
         with:
           api-level: 34
           target: google_apis
@@ -155,6 +178,7 @@ jobs:
         env:
           RECORD: ${{ inputs.record && '1' || '0' }}
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "180000"
+          FLOWS: ${{ needs.versions.outputs.flows }}
         run: test-apps/scripts/run-maestro.sh ios ${{ matrix.sdk }} out/ios-${{ matrix.sdk }}
       - uses: actions/upload-artifact@v4
         if: always()
