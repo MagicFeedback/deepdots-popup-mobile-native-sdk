@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { aggregate, buildIndex, buildMarkdown, buildSlackMessage, evaluate, STATUS } from './validation-report.mjs';
+import { aggregate, buildIndex, buildMarkdown, buildSlackMessage, categoryOf, evaluate, STATUS } from './validation-report.mjs';
 
 const row = (platform, label, status, extra = {}) => ({
   label, platform, os: 'x', device: 'd', build: 'debug', sdk: '0.7.8', resolved: '0.7.8', engine: '',
@@ -96,7 +96,7 @@ test('markdown: release notes of that version from the CHANGELOG', () => {
 });
 
 test('every Maestro flow counts for a report category', () => {
-  const { categories } = JSON.parse(readFileSync(new URL('./validation/flows.json', import.meta.url), 'utf8'));
+  const { categories } = JSON.parse(readFileSync(new URL('./validation/report.json', import.meta.url), 'utf8'));
   const mapped = new Set(categories.flatMap((c) => c.flows));
   const dirs = ['../../test-apps/maestro/flows', '../../test-apps/maestro/regression', '../../test-apps/maestro/failures', '../../.github/test-apps-matrix/client-replica'];
   const flows = dirs.flatMap((d) => readdirSync(new URL(d, import.meta.url)).filter((f) => f.endsWith('.yaml')).map((f) => f.replace(/\.yaml$/, '')));
@@ -109,7 +109,7 @@ test('slack: a failed validation says FAILED and lists the failure', () => {
   const summary = { version: '0.7.8', ...evaluate(rows, { ...jobs, android: 'failure' }) };
   const { text } = buildSlackMessage(summary, { links: [{ label: 'Report', url: 'https://x/0.7.8/' }], test: true });
   assert.match(text, /^🧪 TEST — ❌ \*Deepdots native popup SDK 0\.7\.8\* · release validation \*FAILED\*/);
-  assert.match(text, /Android: FAILED · iOS: PASSED/);
+  assert.match(text, /iOS: PASSED · Android: FAILED/);
   assert.match(text, /<https:\/\/x\/0\.7\.8\/\|Report>/);
   assert.match(text, /• ❌ Android · A34 · rate-product: popup &lt;not&gt; shown/);
 });
@@ -126,4 +126,18 @@ test('index: newest version first', () => {
     { version: '0.7.10', status: 'FAILED', pdf: 'b.pdf' },
   ]);
   assert.ok(html.indexOf('0.7.10') < html.indexOf('0.7.8'));
+});
+
+test('categoryOf: by name, by regex, otherwise Other checks', () => {
+  const config = { categories: [{ name: 'A', flows: ['x'] }, { name: 'B', match: ['^smoke › time'] }] };
+  assert.equal(categoryOf('x', config), 'A');
+  assert.equal(categoryOf('smoke › time_on_page 3 s', config), 'B');
+  assert.equal(categoryOf('y', config), 'Other checks');
+});
+
+test('two platforms on one red job: only the one with the failing test fails', () => {
+  const config = { platforms: [{ name: 'Desktop', job: 'web' }, { name: 'Mobile', job: 'web' }], categories: [], controls: {} };
+  const rows = [row('Desktop', 'D', { a: 'fail' }), row('Mobile', 'M', { a: 'pass' })];
+  const r = evaluate(rows, { web: 'failure' }, config);
+  assert.deepEqual(r.platforms, { Desktop: STATUS.failed, Mobile: STATUS.passed });
 });

@@ -79,7 +79,7 @@ Central) with `publish` and `notify` on. The `report` job:
    `report.md` / `report.html` / `summary.json`; Chrome prints the PDF. Nothing in it is typed by
    hand: any failed or not-run flow, red job (device log, prod isolation, cancelled) or failed
    control makes the platform and the report **FAILED**. Flows map to report rows in
-   `scripts/release/validation/flows.json` (a test fails if a flow is missing there).
+   `scripts/release/validation/report.json` (a test fails if a flow is missing there).
 3. `publish`: pushes the folder to the `validation-reports` branch (`<version>/`, last attempt
    wins) and runs `docs-pages.yml`, which serves it at
    `https://magicfeedback.github.io/deepdots-popup-mobile-native-sdk/validation/<version>/report.html`

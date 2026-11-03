@@ -1,46 +1,44 @@
 #!/usr/bin/env node
 /**
- * Informe de validación de release (DD-25, antes MF-3210). Lo genera el job `report` de
- * test-apps-matrix.yml a partir de los resultados REALES de la matriz (results.json de
- * summarize.py) y del resultado de cada job: no hay forma de marcar nada como pasado a mano.
+ * Informe de validación de release (DD-25, antes MF-3210). Lo genera el workflow de test apps
+ * a partir de los resultados REALES de sus tests (results.json) y del resultado de cada job: no
+ * hay forma de marcar nada como pasado a mano.
  *
- *   validation-report.mjs --results results.json --version 0.7.8 --out out/ \
- *     [--jobs android=success,ios=success,negative-control=success,r8-control=success] \
- *     [--changelog CHANGELOG.md] [--flows-dir test-apps/maestro] [--run-url URL] \
- *     [--release-url URL] [--date YYYY-MM-DD] [--control 0.7.0]
+ *   validation-report.mjs --results results.json --version X.Y.Z --out out/ \
+ *     [--jobs job=success,...] [--changelog CHANGELOG.md] [--flows-dir dir] [--run-url URL] \
+ *     [--release-url URL] [--date YYYY-MM-DD] [--control X.Y.Z]
+ *
+ * results.json: una fila por configuración probada
+ *   {label, platform, os, device, build, sdk, resolved, engine, outcome, status: {test: s}, messages: {test: msg}}
+ * con s = pass | retry | fail | error (no llegó a correr) | skip | known (bug conocido) | expected (falla a propósito).
+ * La config del repo (producto, plataformas, controles, categorías) está en validation/report.json.
  *
  * Escribe out/report.md, out/report.html (el PDF lo imprime el workflow con Chrome) y
  * out/summary.json ({status, platforms, counts, failures, knownIssues}) para el aviso de Slack.
  *
  *   validation-report.mjs slack --summary out/summary.json --link "Report=URL"... [--test] [--print]
- *     aviso de Slack con el resultado (SLACK_WEBHOOK_URL, como slack-notify.mjs: sin webhook avisa y sale con 0)
+ *     aviso de Slack con el resultado (SLACK_WEBHOOK_URL; sin webhook avisa y sale con 0)
  *   validation-report.mjs index <dir>
  *     index.html de los informes publicados (una carpeta por versión con su summary.json)
+ *
  * El informe es genérico (sin cliente): un anexo de cliente se añade a mano sobre el PDF.
+ * Mismo fichero en deepdots-popup-sdk y deepdots-popup-mobile-native-sdk: cambiarlo en los dos.
  */
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { marked } from 'marked';
-import { parseChangelog } from './rules.mjs';
+import { extractSection } from './slack-notify.mjs';
 
-const FLOWS = JSON.parse(readFileSync(new URL('./validation/flows.json', import.meta.url), 'utf8'));
-const REPO = 'https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk';
-const PLATFORMS = [
-  { name: 'Android', job: 'android' },
-  { name: 'iOS', job: 'ios' },
-];
-const CONTROL_JOBS = {
-  'negative-control': 'Negative control: the bug customers saw on the control version is detected',
-  'r8-control': 'R8 control: the control version fails a minified release build, the tested one builds',
-};
+export const CONFIG = JSON.parse(readFileSync(new URL('./validation/report.json', import.meta.url), 'utf8'));
 export const STATUS = { passed: 'PASSED', known: 'PASSED WITH KNOWN ISSUES', failed: 'FAILED' };
 
 const PASSING = new Set(['pass', 'retry', 'expected']);
 const FAILING = new Set(['fail', 'error']);
+const fill = (text, version) => String(text ?? '').replaceAll('{version}', version);
 
-/** Estado de una celda (varias filas de la matriz, un flujo o una categoría). */
+/** Estado de una celda (varias filas, un test o una categoría). */
 export function aggregate(statuses) {
   const ran = statuses.filter(Boolean);
   if (!ran.length) return 'NOT RUN';
@@ -50,15 +48,18 @@ export function aggregate(statuses) {
   return 'PASS';
 }
 
+/** Categoría de un test: por nombre exacto (`flows`) o por regex sobre su id (`match`). */
+export function categoryOf(test, config = CONFIG) {
+  return config.categories.find((c) => c.flows?.includes(test) || c.match?.some((m) => new RegExp(m).test(test)))?.name ?? 'Other checks';
+}
+
 /** Resultado global: cualquier fallo, error, job rojo o plataforma sin filas = FAILED. */
-export function evaluate(rows, jobs = {}) {
+export function evaluate(rows, jobs = {}, config = CONFIG) {
   const failures = [];
   const knownIssues = new Map();
-  const platforms = {};
-  for (const { name, job } of PLATFORMS) {
+  const known = new Set();
+  for (const { name } of config.platforms) {
     const mine = rows.filter((r) => r.platform === name);
-    const before = failures.length;
-    let known = false;
     if (!mine.length) failures.push({ platform: name, row: '—', flow: '—', message: 'No results: the platform did not run' });
     for (const r of mine) {
       let rowFailed = false;
@@ -68,23 +69,30 @@ export function evaluate(rows, jobs = {}) {
           failures.push({ platform: name, row: r.label, flow, message: r.messages?.[flow] ?? '' });
         }
         if (s === 'known') {
-          known = true;
+          known.add(name);
           knownIssues.set(flow, [...(knownIssues.get(flow) ?? []), r.label]);
         }
       }
-      // Todos los flujos en verde pero el job en rojo: device log (crash/ANR) o aislamiento de prod.
+      // Todos los tests en verde pero la fila en rojo: device log (crash/ANR), aislamiento de prod...
       if (!rowFailed && r.outcome !== 'success') {
-        failures.push({ platform: name, row: r.label, flow: '—', message: `Job ${r.outcome ?? 'did not finish'}: device log or production-isolation check failed` });
+        failures.push({ platform: name, row: r.label, flow: '—', message: `Configuration ${r.outcome ?? 'did not finish'}: device log or production-isolation check failed` });
       }
     }
-    if (jobs[job] && jobs[job] !== 'success' && failures.length === before) {
-      failures.push({ platform: name, row: '—', flow: '—', message: `Job ${jobs[job]} without a failing row (cancelled or timed out)` });
+  }
+  // Un job rojo (cancelado, timeout) sin ningún test rojo en sus plataformas.
+  for (const job of new Set(config.platforms.map((p) => p.job))) {
+    const names = config.platforms.filter((p) => p.job === job).map((p) => p.name);
+    if (jobs[job] && jobs[job] !== 'success' && !failures.some((f) => names.includes(f.platform))) {
+      for (const name of names) failures.push({ platform: name, row: '—', flow: '—', message: `Job ${jobs[job]} without a failing test (cancelled or timed out)` });
     }
-    platforms[name] = failures.length > before ? STATUS.failed : known ? STATUS.known : STATUS.passed;
   }
-  for (const [job, label] of Object.entries(CONTROL_JOBS)) {
-    if (jobs[job] && jobs[job] !== 'success') failures.push({ platform: 'Android', row: 'control', flow: job, message: `${label}: ${jobs[job]}` });
+  const controlPlatform = config.platforms.at(-1).name;
+  for (const [job, label] of Object.entries(config.controls ?? {})) {
+    if (jobs[job] && jobs[job] !== 'success') failures.push({ platform: controlPlatform, row: 'control', flow: job, message: `${label}: ${jobs[job]}` });
   }
+  const platforms = Object.fromEntries(
+    config.platforms.map(({ name }) => [name, failures.some((f) => f.platform === name) ? STATUS.failed : known.has(name) ? STATUS.known : STATUS.passed]),
+  );
   const status = failures.length ? STATUS.failed : knownIssues.size ? STATUS.known : STATUS.passed;
   const counts = { executions: 0, passed: 0, retried: 0, failed: 0, skipped: 0, known: 0 };
   for (const r of rows) {
@@ -100,13 +108,12 @@ export function evaluate(rows, jobs = {}) {
   return { status, platforms, failures, knownIssues: Object.fromEntries(knownIssues), counts };
 }
 
-/** Descripción de un flujo: la primera frase de su comentario de cabecera. */
+/** Descripción de un flujo de Maestro: la primera frase de su comentario de cabecera. */
 function flowDescription(flowsDir, flow) {
   if (!flowsDir || !existsSync(flowsDir)) return '';
   for (const dir of readdirSync(flowsDir, { withFileTypes: true }).filter((d) => d.isDirectory())) {
     const file = join(flowsDir, dir.name, `${flow}.yaml`);
     if (!existsSync(file)) continue;
-    // El primer bloque de comentarios, hasta el final de su primera frase.
     const block = (readFileSync(file, 'utf8').match(/^(?:#[^\n]*\n)+/)?.[0] ?? '').replace(/^# ?/gm, '').replace(/\s+/g, ' ').trim();
     return block.split(/(?<=\.)\s/)[0];
   }
@@ -116,113 +123,102 @@ function flowDescription(flowsDir, flow) {
 const cell = (s) => (s === 'FAIL' ? '**FAIL**' : s);
 const esc = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
 
-export function buildMarkdown({ rows, jobs = {}, version, date, changelog = '', runUrl, releaseUrl, control, flowsDir, digest }) {
-  const result = evaluate(rows, jobs);
+export function buildMarkdown({ rows, jobs = {}, version, date, changelog = '', runUrl, releaseUrl, control, flowsDir, digest, config = CONFIG }) {
+  const result = evaluate(rows, jobs, config);
   const { status, platforms, failures, knownIssues, counts } = result;
+  const P = config.platforms.map((p) => p.name);
   const byPlatform = (name) => rows.filter((r) => r.platform === name);
-  const flowStatus = (name, flow) => byPlatform(name).map((r) => r.status?.[flow]);
-  const allFlows = new Set(rows.flatMap((r) => Object.keys(r.status ?? {})));
-  const mapped = new Set(FLOWS.categories.flatMap((c) => c.flows));
-  const categories = [...FLOWS.categories, { name: 'Other checks', flows: [...allFlows].filter((f) => !mapped.has(f)).sort() }]
-    .filter((c) => c.flows.some((f) => allFlows.has(f)));
-  const releaseLink = releaseUrl ?? `${REPO}/releases/tag/v${version}`;
-  const notes = parseChangelog(changelog).find((s) => s.version === version)?.body ?? '';
-  const configs = PLATFORMS.map(({ name }) => `${byPlatform(name).length} ${name}`).join(', ');
+  const testStatus = (name, test) => byPlatform(name).map((r) => r.status?.[test]);
+  const allTests = [...new Set(rows.flatMap((r) => Object.keys(r.status ?? {})))].sort();
+  const categories = [...config.categories.map((c) => c.name), 'Other checks']
+    .map((name) => ({ name, tests: allTests.filter((t) => categoryOf(t, config) === name) }))
+    .filter((c) => c.tests.length);
+  const releaseLink = releaseUrl ?? `${config.repo}/releases/tag/${config.tagPrefix ?? 'v'}${version}`;
+  const notes = extractSection(changelog, version);
+  const row = (cells) => `| ${cells.join(' | ')} |`;
   const L = [];
 
   L.push('# Deepdots | Popup SDK Release Validation Report', '');
-  L.push(`**SDK:** Deepdots native popup SDK **${version}** (Android \`com.deepdots.sdk:shared-android:${version}\` · iOS \`DeepdotsSDK-SPM\` ${version})  `);
+  L.push(`**SDK:** ${config.product} **${version}** (${fill(config.packages, version)})  `);
   L.push(`**Validation date:** ${date}  `);
-  L.push('**Platforms:** iOS / Android  ');
+  L.push(`**Platforms:** ${P.join(' / ')}  `);
   L.push(`**Overall status:** **${status}**  `);
   L.push('**Report type:** Automated release validation, generated from the CI test results (no manual edits)', '');
-  L.push('---', '', '## 1. Executive Summary', '');
-  L.push(`SDK ${version} was validated as published (Maven Central and Swift Package Manager) inside dedicated native test applications that integrate the SDK the same way a customer app does.`, '');
+  L.push('---', '', '## 1. Executive Summary', '', fill(config.intro, version), '');
   L.push(`Results${runUrl ? ` ([CI run](${runUrl}))` : ''}:`, '');
-  L.push(`- **${counts.executions}** automated test executions on **${rows.length}** configurations (${configs})`);
+  L.push(`- **${counts.executions}** automated test executions on **${rows.length}** configurations (${P.map((p) => `${byPlatform(p).length} ${p}`).join(', ')})`);
   L.push(`- **${counts.passed}** passed${counts.retried ? ` (${counts.retried} on the automatic retry)` : ''}`);
   L.push(`- **${counts.failed}** failed`);
   if (counts.known) L.push(`- **${counts.known}** known non-blocking issues (section 6)`);
   if (counts.skipped) L.push(`- **${counts.skipped}** not applicable on that platform`);
-  L.push('- Manual pass on real devices: **pending** (section 7)', '');
-  L.push(PLATFORMS.map(({ name }) => `**${name}:** ${platforms[name]}`).join(' · '), '');
+  L.push(`- Manual pass on real devices: **pending** (section 7)`, '');
+  L.push(P.map((p) => `**${p}:** ${platforms[p]}`).join(' · '), '');
   L.push(`**Validation status:** **${status}**`, '');
-
   if (failures.length) {
     L.push('### Failures', '', '| Platform | Configuration | Test | Detail |', '|---|---|---|---|');
-    for (const f of failures) L.push(`| ${f.platform} | ${esc(f.row)} | ${esc(f.flow)} | ${esc(f.message).slice(0, 200)} |`);
+    for (const f of failures) L.push(row([f.platform, esc(f.row), esc(f.flow), esc(f.message).slice(0, 200)]));
     L.push('');
   }
 
-  L.push('## 2. Test Results', '', '| Test category | iOS | Android |', '|---|---|---|');
-  for (const c of categories) {
-    const ios = aggregate(c.flows.flatMap((f) => flowStatus('iOS', f)));
-    const android = aggregate(c.flows.flatMap((f) => flowStatus('Android', f)));
-    L.push(`| ${c.name} | ${cell(ios)} | ${cell(android)} |`);
-  }
-  L.push('| Visual regression | NOT YET AUTOMATED | NOT YET AUTOMATED |', '');
+  L.push('## 2. Test Results', '', row(['Test category', ...P]), `|---|${P.map(() => '---|').join('')}`);
+  for (const c of categories) L.push(row([c.name, ...P.map((p) => cell(aggregate(c.tests.flatMap((t) => testStatus(p, t)))))]));
+  L.push(row(['Visual regression', ...P.map(() => config.visualRegression ?? 'NOT YET AUTOMATED')]), '');
   L.push('<details><summary>Every test on every configuration</summary>', '');
-  L.push(`| Test | ${rows.map((r) => esc(r.label)).join(' | ')} |`, `|---|${rows.map(() => '---|').join('')}`);
-  for (const f of [...allFlows].sort()) L.push(`| ${f} | ${rows.map((r) => r.status?.[f] ?? '–').join(' | ')} |`);
+  L.push(row(['Test', ...rows.map((r) => esc(r.label))]), `|---|${rows.map(() => '---|').join('')}`);
+  for (const t of allTests) L.push(row([esc(t), ...rows.map((r) => r.status?.[t] ?? '–')]));
   L.push('', '</details>', '');
 
-  L.push('## 3. Tested Environments', '', '| Platform | OS version | Device | Build | SDK resolved | WebView | Result |', '|---|---|---|---|---|---|---|');
+  L.push('## 3. Tested Environments', '', '| Platform | OS version | Device | Build | SDK resolved | Engine | Result |', '|---|---|---|---|---|---|---|');
   for (const r of rows) {
     const ok = !Object.values(r.status ?? {}).some((s) => FAILING.has(s)) && r.outcome === 'success';
-    L.push(`| ${r.platform} | ${esc(r.os)} | ${esc(r.device)} | ${esc(r.build)} | ${esc(r.resolved)} | ${esc(r.engine) || '—'} | ${ok ? 'PASS' : '**FAIL**'} |`);
+    L.push(row([r.platform, esc(r.os), esc(r.device), esc(r.build), esc(r.resolved), esc(r.engine) || '—', ok ? 'PASS' : '**FAIL**']));
   }
-  L.push('', 'All automated tests ran against the Deepdots development environment with test companies only. No customer data was used, and each configuration fails if any request reaches the production API.', '');
+  L.push('', config.environmentNote ?? '', '');
 
-  L.push('## 4. Critical Safety Validation', '', '| Scenario | iOS | Android |', '|---|---|---|');
-  for (const s of FLOWS.safety.filter((s) => allFlows.has(s.flow))) {
-    L.push(`| ${s.label} | ${cell(aggregate(flowStatus('iOS', s.flow)))} | ${cell(aggregate(flowStatus('Android', s.flow)))} |`);
+  L.push('## 4. Critical Safety Validation', '', row(['Scenario', ...P]), `|---|${P.map(() => '---|').join('')}`);
+  for (const s of config.safety ?? []) {
+    const tests = allTests.filter((t) => t === s.flow || (s.match && new RegExp(s.match).test(t)));
+    if (tests.length) L.push(row([s.label, ...P.map((p) => cell(aggregate(tests.flatMap((t) => testStatus(p, t)))))]));
   }
-  // Una fila con todos los flujos en verde y el job en rojo: lo ha tumbado el device log o el aislamiento.
+  // Una fila con todos sus tests en verde y en rojo igualmente: la ha tumbado su comprobación global.
   const logFailed = (r) => r.outcome !== 'success' && !Object.values(r.status ?? {}).some((s) => FAILING.has(s));
-  const logOk = (name) => (byPlatform(name).some(logFailed) ? '**Check failed**' : 'None detected');
-  L.push(`| Crash, freeze (ANR) or threading errors in the device log, and no request to production (every configuration) | ${logOk('iOS')} | ${logOk('Android')} |`, '');
+  if (config.deviceLogCheck) L.push(row([config.deviceLogCheck, ...P.map((p) => (byPlatform(p).some(logFailed) ? '**Check failed**' : 'None detected'))]));
+  L.push('');
 
   L.push('## 5. Detection Controls and Backward Compatibility', '');
   L.push('The test system has to prove it catches real problems. These controls run in every validation:', '', '| Control | Result |', '|---|---|');
-  for (const [job, label] of Object.entries(CONTROL_JOBS)) {
+  for (const [job, label] of Object.entries(config.controls ?? {})) {
     const res = jobs[job];
-    L.push(`| ${label}${control ? ` (control ${control})` : ''} | ${res ? (res === 'success' ? 'PASS' : `**FAIL** (${res})`) : 'NOT RUN'} |`);
+    L.push(row([`${label}${control ? ` (control ${control})` : ''}`, res ? (res === 'success' ? 'PASS' : `**FAIL** (${res})`) : 'NOT RUN']));
   }
-  if (allFlows.has('missing-navigation')) {
-    L.push(`| A missing navigation event is detected (the test must fail) | iOS ${aggregate(flowStatus('iOS', 'missing-navigation'))} · Android ${aggregate(flowStatus('Android', 'missing-navigation'))} |`);
+  for (const t of allTests.filter((t) => rows.some((r) => r.status?.[t] === 'expected'))) {
+    L.push(row([`Expected failure detected: ${esc(t)}`, P.map((p) => `${p} ${aggregate(testStatus(p, t))}`).join(' · ')]));
   }
   L.push('');
 
   L.push('## 6. Known Issues & Limitations', '');
-  const known = Object.entries(knownIssues);
   L.push(`**Known blocking issues:** ${failures.length ? 'see Failures in section 1.' : 'none identified.'}`, '');
   L.push('**Known non-blocking issues:**', '');
+  const known = Object.entries(knownIssues);
   if (!known.length) L.push('- None.');
-  for (const [flow, labels] of known) L.push(`- \`${flow}\`: ${flowDescription(flowsDir, flow) || 'known issue'} (seen on: ${labels.join(', ')})`);
-  L.push('', '**Test limitations:**', '');
-  L.push('- Emulators and simulators cover the OS versions, not every manufacturer; real devices are checked by hand (section 7).');
-  L.push('- Visual regression (screenshot comparison) is not yet automated for the native SDK.');
-  L.push('- Tests marked as known issues are expected to fail until their fix ships; if one passes, the run fails so the mark is removed.', '');
+  for (const [flow, labels] of known) {
+    const desc = flowDescription(flowsDir, flow) || rows.find((r) => r.notes?.[flow])?.notes[flow] || 'known issue';
+    L.push(`- \`${flow}\`: ${desc} (seen on: ${labels.join(', ')})`);
+  }
+  L.push('', '**Test limitations:**', '', ...(config.limitations ?? []).map((l) => `- ${l}`), '');
 
-  L.push('## 7. Real Devices (manual)', '');
-  L.push('**Status: PENDING.** Filled in by hand after this report is generated: release build of the test app with this exact version on one Android phone, one iPhone and one iPad.', '');
-  L.push('| Check | Android phone | iPhone | iPad |', '|---|---|---|---|');
-  for (const check of [
-    'Popup appears complete, once',
-    'Survey answered and sent to the end',
-    'Not shown again within its cooldown',
-    'Taps outside the popup do not reach the app; X closes it',
-    'Background / foreground with the popup open',
-    'Rotation with the popup open',
-    'Keyboard does not cover Send',
-    'No network: notice, can be closed, app usable',
-  ]) L.push(`| ${check} | pending | pending | pending |`);
-  L.push('');
+  const rd = config.realDevices;
+  if (rd) {
+    L.push('## 7. Real Devices (manual)', '', `**Status: PENDING.** ${rd.intro}`, '');
+    L.push(row(['Check', ...rd.devices]), `|---|${rd.devices.map(() => '---|').join('')}`);
+    for (const c of rd.checks) L.push(row([c, ...rd.devices.map(() => 'pending')]));
+    L.push('');
+  }
 
   L.push('## 8. Release Information', '');
   L.push(`- **SDK version:** ${version}`);
-  L.push(`- **Release:** [GitHub release v${version}](${releaseLink})`);
-  L.push(`- **Changelog:** [CHANGELOG](${REPO}/blob/main/CHANGELOG.md)`);
+  L.push(`- **Release:** [GitHub release ${config.tagPrefix ?? 'v'}${version}](${releaseLink})`);
+  L.push(`- **Changelog:** [CHANGELOG](${config.repo}/blob/main/CHANGELOG.md)`);
   if (runUrl) L.push(`- **Test execution:** [CI run](${runUrl}) (logs, screenshots and per-configuration artifacts)`);
   L.push(`- **Validation date:** ${date}`);
   if (digest) L.push(`- **Results file SHA-256:** \`${digest}\``);
@@ -233,15 +229,15 @@ export function buildMarkdown({ rows, jobs = {}, version, date, changelog = '', 
 }
 
 const CSS = `@page { size: A4; margin: 18mm 16mm; }
-body { font: 10.5pt/1.5 -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1a1d24; max-width: 180mm; margin: auto; }
+body { font: 10.5pt/1.5 -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1a1d24; background: #fff; max-width: 180mm; margin: auto; padding: 0 16px; }
 h1 { font-size: 20pt; margin: 0 0 4pt; } h2 { font-size: 14pt; margin-top: 20pt; border-bottom: 1px solid #ddd; padding-bottom: 3pt; }
 h3 { font-size: 11.5pt; margin-top: 14pt; } code { font-size: 9pt; background: #f2f3f5; padding: 0 3px; border-radius: 3px; }
-table { border-collapse: collapse; width: 100%; font-size: 8.5pt; margin: 8pt 0; page-break-inside: avoid; }
+table { border-collapse: collapse; width: 100%; font-size: 8.5pt; margin: 8pt 0; page-break-inside: avoid; display: block; overflow-x: auto; }
 th, td { border: 1px solid #d6d8dc; padding: 3pt 4pt; text-align: left; vertical-align: top; } th { background: #f2f3f5; }
 details table { font-size: 7pt; } summary { cursor: pointer; color: #1f5fbf; }
-@media print { details { display: none; } }
+@media print { details { display: none; } table { display: table; } body { padding: 0; } }
 hr { border: 0; border-top: 1px solid #ddd; margin: 16pt 0; } h2:has(+ *) { page-break-after: avoid; }
-a { color: #1f5fbf; } strong { color: inherit; }`;
+a { color: #1f5fbf; }`;
 
 export function toHtml(markdown, title) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -258,7 +254,7 @@ const slackEscape = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'
 export const MAX_FAILURES = 5;
 
 /** Aviso de Slack del resultado: estado, plataformas, enlaces y los primeros fallos. */
-export function buildSlackMessage(summary, { links = [], test = false, product = 'Deepdots native popup SDK' } = {}) {
+export function buildSlackMessage(summary, { links = [], test = false, product = CONFIG.product } = {}) {
   const { version, status, platforms, counts, failures = [], knownIssues = {} } = summary;
   const lines = [
     `${test ? '🧪 TEST — ' : ''}${ICON[status]} *${slackEscape(product)} ${slackEscape(version)}* · release validation *${status}*`,
@@ -274,22 +270,24 @@ export function buildSlackMessage(summary, { links = [], test = false, product =
 }
 
 /** Índice de los informes publicados, el más nuevo primero. */
-export function buildIndex(entries) {
+export function buildIndex(entries, product = CONFIG.product) {
   const key = (v) => v.split(/[.-]/).map((n) => Number(n) || 0);
   const sorted = [...entries].sort((a, b) => {
     const [x, y] = [key(a.version), key(b.version)];
     for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (y[i] ?? 0) - (x[i] ?? 0);
     return 0;
   });
-  const md = ['# Deepdots native popup SDK · Release validation reports', '', '| Version | Status | Report |', '|---|---|---|'];
+  const md = [`# ${product} · Release validation reports`, '', '| Version | Status | Report |', '|---|---|---|'];
   for (const e of sorted) md.push(`| ${e.version} | ${e.status} | [HTML](${e.version}/report.html) · [PDF](${e.version}/${e.pdf}) |`);
   md.push('', 'Generated automatically from the CI test results of each release.');
-  return toHtml(md.join('\n'), 'Popup SDK release validation reports');
+  return toHtml(md.join('\n'), 'Release validation reports');
 }
 
 async function slack(argv) {
   const links = [];
-  let summaryFile, test = false, print = false;
+  let summaryFile;
+  let test = false;
+  let print = false;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--summary') summaryFile = argv[++i];
     else if (argv[i] === '--link') {
@@ -353,7 +351,7 @@ function main() {
   });
   mkdirSync(a.out, { recursive: true });
   writeFileSync(join(a.out, 'report.md'), markdown);
-  writeFileSync(join(a.out, 'report.html'), toHtml(markdown, `Deepdots Popup SDK ${a.version} Release Validation Report`));
+  writeFileSync(join(a.out, 'report.html'), toHtml(markdown, `${CONFIG.product} ${a.version} Release Validation Report`));
   writeFileSync(join(a.out, 'summary.json'), JSON.stringify({ version: a.version, ...result }, null, 2));
   console.log(`[report] ${a.version}: ${result.status} (${result.counts.passed}/${result.counts.executions} passed, ${result.failures.length} failures)`);
 }
