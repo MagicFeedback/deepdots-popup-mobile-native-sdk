@@ -159,6 +159,13 @@ videos. Android runs on an
 `ubuntu-latest` emulator (API 34), iOS on `macos-15` (Xcode 16.4, iPhone 16). Each job uploads
 the device log, the `[lab]` lines, JUnit, Maestro output and, with recording, one MP4 per flow.
 
+**Pull requests run a short suite:** only the first version of `sdk-versions.json`, and only the
+flows the PR adds or changes plus a smoke test (`00-version`, `checkout-time`). The apps use the
+published SDK, so the rest of the suite would re-test binaries that already passed. A change to a
+subflow only gets the smoke test. Run the **full suite** (every flow, both versions, ~50 min per
+iOS run on CI) on your Mac before merging changes to the app, the runner or subflows, with the
+commands under "Run" (`run-maestro.sh` without `FLOWS`), or from *Run workflow* when it has to be CI.
+
 ## Versions
 
 - `0.7.0` and `0.7.3` have the same `InitOptions`, so both apps build with either. iOS from Swift
