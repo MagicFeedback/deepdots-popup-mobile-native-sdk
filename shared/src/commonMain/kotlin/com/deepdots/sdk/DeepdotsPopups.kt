@@ -1029,6 +1029,9 @@ class DeepdotsPopups {
     /** Solo test: carga definiciones directamente (los popups vienen de la API en producción). */
     internal fun debugLoadPopups(defs: List<PopupDefinition>) = loadPopupDefinitions(defs)
 
+    /** Solo test: la definición tal como quedó cargada (tras la normalización de la carga). */
+    internal fun debugLoadedPopup(popupId: String): PopupDefinition? = popupDefinitions[popupId]
+
     /** Solo test: reloj del latido y del engagement (null = reloj real). */
     internal var debugNow: (() -> Long)? = null
 
@@ -1200,8 +1203,11 @@ class DeepdotsPopups {
             return null
         }
 
+        // `distinct()`: el parser ya da `conditions` y `legacyConditions` con la misma lista, y una
+        // definición normalizada vuelve a pasar por aquí al cargarse.
         val normalizedLegacyConditions = (definition.legacyConditions + definition.conditions)
             .filter { it.cooldownDays >= 0 }
+            .distinct()
         val normalizedCooldown = definition.cooldown.filter { it.cooldownDays >= 0 }
 
         return definition.copy(
@@ -1214,8 +1220,13 @@ class DeepdotsPopups {
     }
 
     private fun normalizeTriggers(definition: PopupDefinition): List<Trigger> {
+        // La normalización tiene que ser idempotente: `parseServerPopups` ya devuelve el popup
+        // normalizado (con `trigger` = el primero de `triggers`) y `loadPopupDefinitions` lo
+        // normaliza otra vez. Antes `trigger` se sumaba de nuevo a `triggers`: un `time_on_page`
+        // que la API manda una vez programaba dos temporizadores que saltaban a la vez, y sin la
+        // comprobación de "un popup a la vez" (≤ 0.7.5) el popup salía dos veces al arrancar.
         val rawTriggers = buildList {
-            definition.trigger?.let(::add)
+            definition.trigger?.takeIf { it !in definition.triggers }?.let(::add)
             addAll(definition.triggers)
         }
 
