@@ -44,7 +44,7 @@ data class LabConfig(
     val start: String = "home",
     /** `2`: a second SDK instance with the same options, like a host that creates two (one-shot). */
     val instances: String = "1",
-    /** An event fired right after init(), before the popups have loaded (one-shot). */
+    /** An event fired right after the first setPath(), before the popups have loaded (one-shot). */
     val startEvent: String = "",
 ) {
     val publicKey: String get() = Scenarios.keys[scenario] ?: error("Unknown scenario $scenario")

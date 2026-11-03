@@ -1,5 +1,7 @@
 # Full answer, rating 5 and every "yes": rating → its text question (+ AI follow-up) → yes/no →
 # text → yes/no → email (invalid first: the survey refuses it) → thank you → done.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
 appId: com.deepdots.testapp
 tags: [lemu]
 ---

@@ -1,5 +1,7 @@
 # A host that creates the SDK twice with the same key (both get init, setPath and the
 # Activity / view controller): still ONE popup at app start.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
 appId: com.deepdots.testapp
 tags: [lemu]
 ---

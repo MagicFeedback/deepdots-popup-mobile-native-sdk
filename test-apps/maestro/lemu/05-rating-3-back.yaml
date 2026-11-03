@@ -1,5 +1,7 @@
 # Rating 3, then Back: the first question comes back with the survey intact; picking 3 again
 # goes to the question for ratings 3–4, which is skipped (optional), then no / no → thank you.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
 appId: com.deepdots.testapp
 tags: [lemu]
 ---

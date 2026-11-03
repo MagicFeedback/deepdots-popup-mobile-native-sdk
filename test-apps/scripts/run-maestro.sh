@@ -19,6 +19,10 @@ mkdir -p "$OUT/maestro" "$OUT/junit" "$OUT/videos"
 
 maestro_cmd() { if [ -n "$DEVICE" ]; then maestro --device "$DEVICE" "$@"; else maestro "$@"; fi; }
 adb_cmd() { if [ -n "$DEVICE" ]; then adb -s "$DEVICE" "$@"; else adb "$@"; fi; }
+basic_installed() {
+  if [ "$PLATFORM" = android ]; then adb_cmd shell pm path com.deepdots.basicapp > /dev/null 2>&1
+  else xcrun simctl get_app_container "${DEVICE:-booted}" com.deepdots.basicapp > /dev/null 2>&1; fi
+}
 
 # Device log: what CI keeps as "the run's log".
 if [ "$PLATFORM" = android ]; then
@@ -100,11 +104,19 @@ maestro_cmd test -e SCENARIO=checkout-time subflows/launch.yaml > "$OUT/maestro/
 DRIVER_OPTS=""
 [ "$PLATFORM" = android ] && DRIVER_OPTS="--no-reinstall-driver"
 
-FLOWS=${FLOWS:-$(ls flows/*.yaml regression/*.yaml failures/*.yaml)}
+# lemu/: a client popup and survey, exact copies in DEV. basic/: the minimal host app (com.deepdots.basicapp,
+# installed next to NORDLY): skipped when it is not installed.
+FLOWS=${FLOWS:-$(ls flows/*.yaml regression/*.yaml failures/*.yaml lemu/*.yaml basic/*.yaml)}
 failed=()
 for f in $FLOWS; do
   name=$(basename "$f" .yaml)
   if grep -q 'android-only' "$f" && [ "$PLATFORM" != android ]; then echo "[lab] skip $name (android-only)"; continue; fi
+  # `# min-sdk: X.Y.Z`: the flow covers a setup that only exists from that version (always run on `local`).
+  min_v=$(sed -n 's/^# min-sdk: *//p' "$f")
+  if [ -n "$min_v" ] && [ "$SDK" != local ] && [ "$(printf '%s\n%s\n' "$SDK" "$min_v" | sort -V | head -1)" != "$min_v" ]; then
+    echo "[lab] skip $name (SDK $SDK < $min_v)"; continue
+  fi
+  if [ "${f%%/*}" = basic ] && ! basic_installed; then echo "[lab] skip $name (minimal host app not installed)"; continue; fi
   # `# known-issue-until: X.Y.Z`: a known issue only for SDK versions up to X.Y.Z.
   # `# known-issue-until-ios: X.Y.Z` / `-android:` overrides it on that platform.
   until_v=$(sed -n "s/^# known-issue-until-$PLATFORM: *//p" "$f")

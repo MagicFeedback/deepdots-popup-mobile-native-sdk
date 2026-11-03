@@ -1,7 +1,7 @@
 # Fresh launch (clean state) of one scenario with the cookie choice already made: no dialog in
 # front at app start, like a host app without one (a popup at start shows right away).
 # env: SCENARIO (required), NAV, LANG, START, INSTANCES (2: a second SDK instance), EVENT (fired
-# right after init, before the popups load)
+# right after the first setPath, before the popups load)
 appId: com.deepdots.testapp
 ---
 - launchApp:

@@ -6,6 +6,9 @@ final class SDKHost: ObservableObject {
     static let shared = SDKHost()
 
     let sdk = DeepdotsSDK.DeepdotsPopups()
+    /// `event <name>`: fired once, right after the first setPath() (the screen is known, as the
+    /// integration guide asks), usually before the popups have loaded.
+    private var startEvent = ""
     /// `instances 2`: a second instance fed the same calls (a host that creates the SDK twice).
     private lazy var second: DeepdotsSDK.DeepdotsPopups? = config.instances == "2" ? DeepdotsSDK.DeepdotsPopups() : nil
     let config = LabConfig.resolve()
@@ -33,10 +36,7 @@ final class SDKHost: ObservableObject {
         }
         if !c.user.isEmpty { sdk.setUserId(userId: c.user) }
         attachContext()
-        if !c.startEvent.isEmpty {
-            Lab.log("host", "triggerEvent(\(c.startEvent)) right after init")
-            sdk.triggerEvent(eventName: c.startEvent)
-        }
+        startEvent = c.startEvent
         Lab.log("sdk", "userId=\(sdk.getUserId() ?? "-")")
     }
 
@@ -82,6 +82,11 @@ final class SDKHost: ObservableObject {
         guard initialized else { return }
         sdk.setPath(path: path)
         second?.setPath(path: path)
+        if !startEvent.isEmpty {
+            Lab.log("host", "triggerEvent(\(startEvent)) right after the first setPath")
+            sdk.triggerEvent(eventName: startEvent)
+            startEvent = ""
+        }
     }
 
     func triggerEvent(_ name: String) { if initialized { sdk.triggerEvent(eventName: name) } }

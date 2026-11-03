@@ -1,5 +1,7 @@
 # Minimal host (init + attachContext + setPath("/") only): the client popup opens by itself at
 # app start, ONCE, and closes; the app is left as it was.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
 appId: com.deepdots.basicapp
 tags: [basic]
 ---

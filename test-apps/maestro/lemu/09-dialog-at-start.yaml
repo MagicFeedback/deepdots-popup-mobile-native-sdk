@@ -1,5 +1,7 @@
 # A host dialog in front at app start (the cookie dialog), left there longer than the popup's
 # 5 s timer: the popup waits behind it and opens ONCE after the dialog is answered.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
 appId: com.deepdots.testapp
 tags: [lemu]
 ---

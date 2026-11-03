@@ -1,7 +1,11 @@
 # Send on the first screen with nothing selected: the survey asks for an answer, stays on the
 # first question and shows NO Back button (reported by the client on 0.7.5).
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
+# KNOWN ISSUE up to 0.7.6: a failed Send showed Back on the first screen (fixed in 0.7.7, #62).
+# known-issue-until: 0.7.6
 appId: com.deepdots.testapp
-tags: [lemu]
+tags: [lemu, known-issue]
 ---
 - runFlow: subflows/open-popup.yaml
 - runFlow: subflows/send.yaml

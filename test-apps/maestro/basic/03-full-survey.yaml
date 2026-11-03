@@ -1,4 +1,6 @@
 # Minimal host: the whole client survey (rating 5, every yes, email) to the thank-you screen.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
 appId: com.deepdots.basicapp
 tags: [basic]
 ---

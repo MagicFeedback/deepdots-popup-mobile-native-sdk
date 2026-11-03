@@ -1,5 +1,7 @@
 # Answer the first question and close: the popup does not open again on the next app start
 # (cooldown PARTIAL 30 days), with the same storage.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
 appId: com.deepdots.testapp
 tags: [lemu]
 ---

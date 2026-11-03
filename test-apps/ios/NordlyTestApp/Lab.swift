@@ -42,7 +42,7 @@ struct LabConfig: Equatable {
     var start = "home"
     /// `2`: a second SDK instance with the same options, like a host that creates two (one-shot).
     var instances = "1"
-    /// An event fired right after init(), before the popups have loaded (one-shot).
+    /// An event fired right after the first setPath(), before the popups have loaded (one-shot).
     var startEvent = ""
 
     var publicKey: String { Scenarios.publicKey(scenario) ?? "" }

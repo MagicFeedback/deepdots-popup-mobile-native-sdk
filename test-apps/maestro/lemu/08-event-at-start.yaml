@@ -1,5 +1,8 @@
-# The client's current setup: the popup on an event. The app fires it right after init(),
-# before the popups have arrived: the SDK keeps it and shows the popup once they load.
+# The client's current setup: the popup on an event, fired at app start right after the first
+# setPath() (the screen must be known first, as the integration guide asks), before the popups
+# have arrived: the SDK keeps it and shows the popup once they load.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
 appId: com.deepdots.testapp
 tags: [lemu]
 ---

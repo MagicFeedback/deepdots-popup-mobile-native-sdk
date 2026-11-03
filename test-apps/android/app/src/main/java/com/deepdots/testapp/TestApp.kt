@@ -22,6 +22,11 @@ class TestApp : Application() {
     var second: DeepdotsPopupsSdk? = null
         private set
     private var context: PlatformContext? = null
+    /**
+     * `event <name>`: fired once, right after the first setPath() (the screen is known, as the
+     * integration guide asks), usually before the popups have loaded.
+     */
+    private var startEvent = ""
 
     /** The popup is shown on this Activity (both instances, when there are two). */
     fun attachContext(context: PlatformContext) {
@@ -33,6 +38,11 @@ class TestApp : Application() {
     fun setPath(path: String) {
         sdk.setPath(path)
         second?.setPath(path)
+        if (startEvent.isNotBlank()) {
+            Lab.log("host", "triggerEvent($startEvent) right after the first setPath")
+            sdk.triggerEvent(startEvent)
+            startEvent = ""
+        }
     }
     var initialized = false
         private set
@@ -83,10 +93,7 @@ class TestApp : Application() {
             }
         }
         if (c.user.isNotBlank()) sdk.setUserId(c.user)
-        if (c.startEvent.isNotBlank()) {
-            Lab.log("host", "triggerEvent(${c.startEvent}) right after init")
-            sdk.triggerEvent(c.startEvent)
-        }
+        startEvent = c.startEvent
         Lab.log("sdk", "userId=${sdk.getUserId()}")
     }
 
