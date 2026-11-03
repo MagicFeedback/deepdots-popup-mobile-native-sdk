@@ -180,7 +180,11 @@ fun PopupView(
             // el usuario podía pulsar botones del host que ni siquiera veía bien.
             .pointerInput(Unit) { consumeAllTouches() }
             // El velo cubre toda la pantalla; la tarjeta se centra en lo que deja el teclado.
-            .avoidKeyboard(),
+            .avoidKeyboard()
+            // ...y en la zona segura: sin esto, en iOS un popup arriba con un survey alto se metía
+            // bajo la barra de estado y la isla, y su X quedaba bajo la batería, sin poder pulsarse.
+            // El teclado ya lo resuelve avoidKeyboard(), por eso no va safeDrawing (incluye el IME).
+            .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout)),
         contentAlignment = mapPosition(popup.style.position)
     ) {
         Surface(
