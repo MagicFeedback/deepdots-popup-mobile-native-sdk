@@ -1,0 +1,23 @@
+# A popup set to inactive in the panel: the API does not return it, its event shows nothing.
+# E2E scenario in MAGICFEEDBACK_DEV (scenarios.json). Needs the scenario in the app build.
+# min-sdk: 0.7.6
+appId: com.deepdots.testapp
+tags: [e2e]
+---
+- runFlow:
+    file: ../subflows/launch-no-dialog.yaml
+    env:
+      SCENARIO: e2e-inactive
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-event-e2e_inactive
+- extendedWaitUntil:
+    visible: "E2E · Inactive popup"
+    timeout: 10000
+    optional: true
+- assertNotVisible: "E2E · Inactive popup"
+- assertVisible:
+    id: lab-counts
+    text: "shown 0 · done 0"
+- runFlow: ../subflows/host-usable.yaml

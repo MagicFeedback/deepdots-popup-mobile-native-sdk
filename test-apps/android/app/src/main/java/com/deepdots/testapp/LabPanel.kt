@@ -95,9 +95,8 @@ fun LabPanel(app: TestApp, onClose: () -> Unit, onRapidCheckout: () -> Unit) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         events.forEach { e ->
                             OutlinedButton(onClick = {
-                                Lab.log("host", "triggerEvent($e)")
                                 onClose()
-                                app.sdk.triggerEvent(e)
+                                app.hostEvent(e)
                             }, modifier = Modifier.testTag("lab-event-$e")) { Text(e) }
                             OutlinedButton(onClick = {
                                 onClose()

@@ -99,8 +99,9 @@
     "e2e-scroll": {
       "publicKey": "HvCsLnjP6GKmWPCr2eIdCqQOb5TQM08X",
       "popupOptionId": "579129f0-d79b-11f1-a3ed-61e4c5f76af9",
-      "describe": "scroll trigger 50 % on /shop, simple survey",
-      "title": "E2E · Scroll 50%"
+      "describe": "scroll trigger 50 % on /shop, simple survey. The Lab buttons scroll:30 / scroll:60 are the host reporting onScroll()",
+      "title": "E2E · Scroll 50%",
+      "events": ["scroll:30", "scroll:60"]
     },
     "e2e-multi-trigger": {
       "publicKey": "CLEm9sDMAXtNgjGP81HjHPHEfuxNENwd",

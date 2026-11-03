@@ -1,0 +1,34 @@
+# Scroll trigger (50 % on /shop): the host reports 30 % (no popup), then 60 % (popup).
+# E2E scenario in MAGICFEEDBACK_DEV (scenarios.json). Needs the scenario in the app build.
+# min-sdk: 0.7.6
+appId: com.deepdots.testapp
+tags: [e2e]
+---
+- runFlow:
+    file: ../subflows/launch-no-dialog.yaml
+    env:
+      SCENARIO: e2e-scroll
+      START: shop
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-event-scroll:30
+- extendedWaitUntil:
+    visible: "E2E · Scroll 50%"
+    timeout: 8000
+    optional: true
+- assertNotVisible: "E2E · Scroll 50%"
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-event-scroll:60
+- extendedWaitUntil:
+    visible: "E2E · Scroll 50%"
+    timeout: 20000
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "E2E · Scroll 50%"
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 0"

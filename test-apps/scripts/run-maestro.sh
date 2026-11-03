@@ -104,9 +104,9 @@ maestro_cmd test -e SCENARIO=checkout-time subflows/launch.yaml > "$OUT/maestro/
 DRIVER_OPTS=""
 [ "$PLATFORM" = android ] && DRIVER_OPTS="--no-reinstall-driver"
 
-# lemu/: a client popup and survey, exact copies in DEV. basic/: the minimal host app (com.deepdots.basicapp,
+# lemu/: a client popup and survey, exact copies in DEV. e2e/: the E2E scenarios in DEV. basic/: the minimal host app (com.deepdots.basicapp,
 # installed next to NORDLY): skipped when it is not installed.
-FLOWS=${FLOWS:-$(ls flows/*.yaml regression/*.yaml failures/*.yaml lemu/*.yaml basic/*.yaml)}
+FLOWS=${FLOWS:-$(ls flows/*.yaml regression/*.yaml failures/*.yaml lemu/*.yaml basic/*.yaml e2e/*.yaml)}
 failed=()
 for f in $FLOWS; do
   name=$(basename "$f" .yaml)

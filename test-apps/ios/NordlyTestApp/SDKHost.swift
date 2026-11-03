@@ -89,7 +89,16 @@ final class SDKHost: ObservableObject {
         }
     }
 
-    func triggerEvent(_ name: String) { if initialized { sdk.triggerEvent(eventName: name) } }
+    /// A Lab host event. `scroll:NN` is the host reporting how far the screen is scrolled (onScroll).
+    func triggerEvent(_ name: String) {
+        guard initialized else { return }
+        if name.hasPrefix("scroll:"), let pct = Int32(name.dropFirst("scroll:".count)) {
+            Lab.log("host", "onScroll(\(pct))")
+            sdk.onScroll(percentage: pct)
+        } else {
+            sdk.triggerEvent(eventName: name)
+        }
+    }
     /// Duplicate and concurrent triggers: the same event twice in a row (a double tap) and once
     /// more 3 s later, while its popup is open. The SDK must show the popup once.
     func burst(_ name: String) {

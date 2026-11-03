@@ -97,6 +97,18 @@ class TestApp : Application() {
         Lab.log("sdk", "userId=${sdk.getUserId()}")
     }
 
+    /** A Lab host event. `scroll:NN` is the host reporting how far the screen is scrolled (onScroll). */
+    fun hostEvent(name: String) {
+        val pct = name.removePrefix("scroll:").takeIf { name.startsWith("scroll:") }?.toIntOrNull()
+        if (pct != null) {
+            Lab.log("host", "onScroll($pct)")
+            sdk.onScroll(pct)
+        } else {
+            Lab.log("host", "triggerEvent($name)")
+            sdk.triggerEvent(name)
+        }
+    }
+
     /** A host that calls init() again (e.g. from a second entry point): the SDK must ignore it. */
     fun initAgain() {
         if (!initialized) return
