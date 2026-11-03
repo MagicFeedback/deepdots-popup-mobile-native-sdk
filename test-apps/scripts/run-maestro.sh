@@ -102,7 +102,10 @@ run_flow() { # <flow file> -> exit code of maestro
   # Maestro writes no JUnit when it cannot start (e.g. the iOS driver did not come up): write one
   # with the error, so the flow reads as failed and not as "not run" in the results.
   if [ "$code" != 0 ] && [ ! -s "$OUT/junit/$name.xml" ]; then
-    junit_case "$name" error "$(grep -m1 -E 'Exception|Error' "$OUT/maestro/$name.txt" | sed 's/^ *//')"
+    # The exception line, else the first line Maestro printed (e.g. "Unknown Property: ...").
+    local msg; msg=$(grep -m1 -E 'Exception|Error' "$OUT/maestro/$name.txt" | sed 's/^ *//')
+    [ -n "$msg" ] || msg=$(grep -m1 -v '^[[:space:]]*$' "$OUT/maestro/$name.txt" | sed 's/^ *//')
+    junit_case "$name" error "${msg:-Maestro exited with code $code and no output}"
   fi
   stop_recording "$name"
   [ -n "$net" ] && set_network full none
