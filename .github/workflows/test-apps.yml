@@ -14,6 +14,12 @@ on:
     paths:
       - "test-apps/**"
       - ".github/workflows/test-apps.yml"
+  # release-check.yml calls it on release PRs with ["local"] (DD-25).
+  workflow_call:
+    inputs:
+      versions:
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       versions:
@@ -25,7 +31,7 @@ on:
         default: false
 
 concurrency:
-  group: test-apps-${{ github.ref }}
+  group: test-apps-${{ github.ref }}-${{ inputs.versions }}
   cancel-in-progress: true
 
 jobs:
@@ -39,13 +45,14 @@ jobs:
       - uses: actions/checkout@v4
       - id: pick
         env:
-          INPUT: ${{ github.event.inputs.versions }}
+          INPUT: ${{ inputs.versions }}
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           LIST=${INPUT:-$(jq -c .versions test-apps/sdk-versions.json)}
           FLOWS=""
-          if [ -n "$PR" ]; then
+          # A caller passing versions (release-check on a release PR: ["local"]) gets the full suite.
+          if [ -n "$PR" ] && [ -z "$INPUT" ]; then
             # Short suite: latest version, smoke + the flows this PR adds or changes (subflows are
             # shared, so a change there only gets the smoke test: run the full suite locally).
             LIST=$(jq -c '.versions[:1]' test-apps/sdk-versions.json)
@@ -95,7 +102,7 @@ jobs:
       - name: Run suite on the emulator
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          RECORD: ${{ github.event.inputs.record == 'true' && '1' || '0' }}
+          RECORD: ${{ inputs.record && '1' || '0' }}
           FLOWS: ${{ needs.versions.outputs.flows }}
         with:
           api-level: 34
@@ -119,6 +126,9 @@ jobs:
 
   ios:
     name: iOS · SDK ${{ matrix.sdk }}
+    # The iOS app only consumes published versions: a list with just "local" (release-check.yml)
+    # would wait for a macOS runner to skip every step.
+    if: needs.versions.outputs.list != '["local"]'
     runs-on: macos-15
     timeout-minutes: 60
     needs: versions
@@ -158,7 +168,7 @@ jobs:
       - name: Run suite on the simulator
         if: matrix.sdk != 'local'
         env:
-          RECORD: ${{ github.event.inputs.record == 'true' && '1' || '0' }}
+          RECORD: ${{ inputs.record && '1' || '0' }}
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "180000"
           FLOWS: ${{ needs.versions.outputs.flows }}
         run: test-apps/scripts/run-maestro.sh ios ${{ matrix.sdk }} out/ios-${{ matrix.sdk }}

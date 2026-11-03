@@ -107,6 +107,13 @@ jobs:
           fi
           node scripts/release/check.mjs release --tag "$GITHUB_REF_NAME" --notes-out "$RUNNER_TEMP/changelog.md"
 
+      # Checks de la PR de release (DD-25): "Release dry run" y el test app de Android con la SDK
+      # de este commit. En rojo, no se publica nada.
+      - name: Release PR checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release/required-checks.mjs --sha "$GITHUB_SHA"
+
       - name: Check what is already published
         id: state
         env:
