@@ -84,8 +84,8 @@ Central) with `publish` and `notify` on. The `report` job:
    wins) and runs `docs-pages.yml`, which serves it at
    `https://magicfeedback.github.io/deepdots-popup-mobile-native-sdk/validation/<version>/report.html`
    (the GitHub Release links there: releases are immutable, the report can't be attached later).
-4. `notify`: Slack with the status, the report and the first failures. Only a release (tag push)
-   sends the real notice; a manual run is marked `🧪 TEST`.
+4. `notify`: Slack with the status, the report and the first failures, only from a release (tag
+   push). A manual run prints the message in the log and posts nothing.
 
 A row lost to the runner (emulator image download, simulator driver) also reads FAILED: re-run the
 failed jobs and the report job runs again and replaces the report. The real-device section stays
