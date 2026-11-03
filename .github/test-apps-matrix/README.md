@@ -67,3 +67,26 @@ invisible popup), a crash or an ANR (`check-device-log.sh`).
 - **Physical devices:** none on GitHub runners. Covered by the manual real-device checklist.
 - **Not covered:** x86_64 iOS simulators (the XCFramework has no x86_64 slice), Android 7 (API
   24–25: the SDK's minSdk is 24, but they're not in the promised matrix).
+
+## Release validation report (DD-25)
+
+`release.yml` calls this workflow after every release (job `validate`, once the version is on Maven
+Central) with `publish` and `notify` on. The `report` job:
+
+1. `summarize.py --json results.json`: every flow on every row with its status (pass, retry, fail,
+   error = Maestro did not start, skip, known, expected).
+2. `scripts/release/validation-report.mjs` turns `results.json` plus the result of each job into
+   `report.md` / `report.html` / `summary.json`; Chrome prints the PDF. Nothing in it is typed by
+   hand: any failed or not-run flow, red job (device log, prod isolation, cancelled) or failed
+   control makes the platform and the report **FAILED**. Flows map to report rows in
+   `scripts/release/validation/report.json` (a test fails if a flow is missing there).
+3. `publish`: pushes the folder to the `validation-reports` branch (`<version>/`, last attempt
+   wins) and runs `docs-pages.yml`, which serves it at
+   `https://magicfeedback.github.io/deepdots-popup-mobile-native-sdk/validation/<version>/report.html`
+   (the GitHub Release links there: releases are immutable, the report can't be attached later).
+4. `notify`: Slack with the status, the report and the first failures, only from a release (tag
+   push). A manual run prints the message in the log and posts nothing.
+
+A row lost to the runner (emulator image download, simulator driver) also reads FAILED: re-run the
+failed jobs and the report job runs again and replaces the report. The real-device section stays
+**pending** until someone does the manual pass.
