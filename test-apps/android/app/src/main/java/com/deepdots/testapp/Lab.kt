@@ -72,6 +72,9 @@ data class LabConfig(
                 start = extras?.getString("start") ?: base.start,
             )
             if (extras != null && KEYS.any { extras.containsKey(it) }) config.save(context)
+            // `consent all|necessary`: the cookie choice is already made, so no dialog at launch
+            // (a host app without a cookie dialog, where a popup at start shows right away).
+            extras?.getString("consent")?.let { p.edit().putString("consent", it).commit() }
             return config
         }
     }
