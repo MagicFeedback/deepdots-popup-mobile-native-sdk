@@ -4,6 +4,14 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **iOS: a popup at the top no longer goes under the status bar.** With a top position and a tall
+  survey, the card was laid out from the very top of the screen: the title sat on the clock and
+  the close button (X) under the battery icon, where it could not be tapped. The card now stays
+  inside the safe area (status bar, Dynamic Island / notch, home indicator); the dimmed backdrop
+  still covers the whole screen. Found by the new end-to-end tests.
+
 ## 0.7.8 - 2026-11-03
 
 ### Fixed
