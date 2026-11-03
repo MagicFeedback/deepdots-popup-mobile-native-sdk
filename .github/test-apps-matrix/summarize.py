@@ -52,7 +52,7 @@ def flow_kind(name, sdk):
 rows = []
 for meta in sorted(root.glob("*/row.json")):
     row = json.loads(meta.read_text())
-    results, status = {}, {}
+    results, status, messages = {}, {}, {}
     junit = {x.stem: x for x in (meta.parent / "junit").glob("*.xml")}
     # Flows Maestro ran but did not report (older runs without the synthetic JUnit): failed.
     ran = {t.stem for t in (meta.parent / "maestro").glob("*.txt")} - {"warm-up"}
@@ -63,6 +63,12 @@ for meta in sorted(root.glob("*/row.json")):
         errored = not cases or any(c.find("error") is not None for c in cases)
         ok = bool(cases) and all(c.find("failure") is None and c.find("error") is None for c in cases)
         retried = (meta.parent / "maestro" / f"{name}.try1.txt").exists()
+        bad = [e for c in cases for e in (c.find("failure"), c.find("error")) if e is not None]
+        if bad:
+            text = bad[0].get("message") or bad[0].text or ""
+            messages[name] = (text.strip().splitlines() or [""])[0][:300]
+        elif not cases:
+            messages[name] = "Maestro did not report this flow"
         kind = flow_kind(name, row["sdk"])
         if skipped:
             results[name], status[name] = "n/a", "skip"
@@ -76,7 +82,7 @@ for meta in sorted(root.glob("*/row.json")):
             results[name], status[name] = ("✅ (retry)", "retry") if retried else ("✅", "pass")
         else:
             results[name], status[name] = ("❌ (did not run)", "error") if errored else ("❌", "fail")
-    row["results"], row["status"] = results, status
+    row["results"], row["status"], row["messages"] = results, status, messages
     rows.append(row)
 
 flows = sorted({f for r in rows for f in r["results"]})

@@ -1,0 +1,31 @@
+{
+  "$comment": "Release validation report (DD-25): which report row each Maestro flow of test-apps/maestro (and the client-replica flows of .github/test-apps-matrix) counts for. validation-report.test.mjs fails if a flow is missing here. 'safety' lists the host-app safety checks shown on their own in section 4.",
+  "categories": [
+    { "name": "SDK initialization and version check", "flows": ["00-version", "repeated-init", "release-fixtures"] },
+    { "name": "Path-based triggers and excluded screens", "flows": ["path-targeting", "not-on-cart"] },
+    { "name": "Time-based triggers", "flows": ["checkout-time", "time-cancel"] },
+    { "name": "Event and click triggers", "flows": ["rate-product", "help-click", "duplicate-trigger"] },
+    { "name": "Exit triggers", "flows": ["exit-checkout", "rapid-exit"] },
+    { "name": "Re-display rules (cooldown)", "flows": ["redisplay"] },
+    { "name": "Audience segmentation by language", "flows": ["audience-lang", "lang-da-shows", "lang-en-hidden"] },
+    { "name": "Popup opening and closing", "flows": ["rate-product-close", "close-with-keyboard"] },
+    { "name": "Survey rendering, interactions and submission", "flows": ["submit-simple", "rating-labels"] },
+    { "name": "Navigation and app lifecycle (background / foreground, rotation)", "flows": ["lifecycle", "background-open-popup", "rotate-open-popup"] },
+    { "name": "Network failures and recovery", "flows": ["offline", "offline-open-popup", "slow-survey", "survey-missing", "popups-error"] },
+    { "name": "Host app safety", "flows": ["overlay-touches"] },
+    { "name": "Detection check: a missing navigation event is caught", "flows": ["missing-navigation"] }
+  ],
+  "safety": [
+    { "flow": "overlay-touches", "label": "No invisible layer blocks the app after the popup closes" },
+    { "flow": "survey-missing", "label": "Survey that cannot load: the popup can be closed and the app stays usable" },
+    { "flow": "popups-error", "label": "Popup configuration that cannot load: no popup, the app stays usable" },
+    { "flow": "offline", "label": "No network: no popup, the app stays usable" },
+    { "flow": "offline-open-popup", "label": "Network lost right after a popup is triggered" },
+    { "flow": "slow-survey", "label": "Slow network while the survey loads" },
+    { "flow": "background-open-popup", "label": "Background / foreground with a popup open" },
+    { "flow": "rotate-open-popup", "label": "Rotation with a popup open" },
+    { "flow": "duplicate-trigger", "label": "The same popup triggered several times: shown once" },
+    { "flow": "rapid-exit", "label": "Popup triggered during rapid navigation" },
+    { "flow": "repeated-init", "label": "SDK initialised more than once by the host" }
+  ]
+}

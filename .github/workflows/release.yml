@@ -392,6 +392,10 @@ jobs:
             else
               echo "Android: attach the AAR below. This version is not on Maven Central; a bare AAR has no POM, so the host app has to declare the SDK's dependencies itself."
             fi
+            echo
+            echo "## Release validation"
+            echo
+            echo "Automated validation report (Android and iOS test apps on emulators and simulators, generated from the CI results about two hours after the release): https://magicfeedback.github.io/deepdots-popup-mobile-native-sdk/validation/$VERSION/report.html"
           } >> "$NOTES"
           OUT="$RUNNER_TEMP/out"
           FLAGS=(--latest)
@@ -454,5 +458,41 @@ jobs:
     uses: ./.github/workflows/slack-notify.yml
     with:
       tag: ${{ github.ref_name }}
+    secrets:
+      SDK_RELEASES_SLACK_WEBHOOK_URL: ${{ secrets.SDK_RELEASES_SLACK_WEBHOOK_URL }}
+
+  # Informe de validacion de la release (DD-25): la matriz de test apps contra la version YA
+  # publicada (Maven Central + SPM). Publica el informe en GitHub Pages (validation/X.Y.Z/) y
+  # avisa en Slack con el resultado. Maven Central tarda en servir una version nueva: se espera.
+  wait-maven:
+    name: Wait for Maven Central
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    outputs:
+      version: ${{ steps.wait.outputs.version }}
+    steps:
+      - id: wait
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          URL="https://repo1.maven.org/maven2/$ARTIFACT_GROUP_PATH/$VERSION/shared-android-$VERSION.pom"
+          for _ in $(seq 1 70); do
+            curl -sfo /dev/null "$URL" && { echo "shared-android $VERSION is on Maven Central"; exit 0; }
+            sleep 60
+          done
+          echo "::error::shared-android $VERSION is not on Maven Central after 70 min: the validation cannot run."; exit 1
+
+  validate:
+    name: Release validation
+    needs: wait-maven
+    permissions:
+      contents: write
+      actions: write
+    uses: ./.github/workflows/test-apps-matrix.yml
+    with:
+      sdk: ${{ needs.wait-maven.outputs.version }}
+      publish: true
+      notify: true
     secrets:
       SDK_RELEASES_SLACK_WEBHOOK_URL: ${{ secrets.SDK_RELEASES_SLACK_WEBHOOK_URL }}
