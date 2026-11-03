@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.7 - 2026-11-03
+
 ### Fixed
 
 - **iOS: a popup triggered at app start is no longer lost.** When an event fired right after
