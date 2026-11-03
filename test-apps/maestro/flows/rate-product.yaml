@@ -20,3 +20,11 @@ tags: [smoke]
     visible: "Tell us what you think of this product"
     timeout: 15000
 - takeScreenshot: rate-product
+# DD-25 MANDATORY FAILURE TEST (throwaway branch, never merged): an Android-only regression.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          text: "DD-25 failure test: this text does not exist"
+          timeout: 3000
