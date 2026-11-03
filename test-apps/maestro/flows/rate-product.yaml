@@ -25,6 +25,6 @@ tags: [smoke]
     when:
       platform: Android
     commands:
-      - assertVisible:
-          text: "DD-25 failure test: this text does not exist"
+      - extendedWaitUntil:
+          visible: "DD-25 failure test: this text does not exist"
           timeout: 3000
