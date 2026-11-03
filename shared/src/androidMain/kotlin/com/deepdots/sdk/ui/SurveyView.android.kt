@@ -160,10 +160,10 @@ actual fun SurveyView(
             }
             // Provide controller
             onController(object : SurveyController {
-                override fun send() { webView.post { webView.evaluateJavascript("window.DeepdotsActions?.send()", null) } }
-                override fun back() { webView.post { webView.evaluateJavascript("window.DeepdotsActions?.back()", null) } }
-                override fun close() { webView.post { webView.evaluateJavascript("window.DeepdotsActions?.close()", null) } }
-                override fun startForm() { webView.post { webView.evaluateJavascript("window.DeepdotsActions?.startForm?.()", null) } }
+                override fun send() { webView.post { webView.evaluateJavascript(SurveyActionsJs.send, null) } }
+                override fun back() { webView.post { webView.evaluateJavascript(SurveyActionsJs.back, null) } }
+                override fun close() { webView.post { webView.evaluateJavascript(SurveyActionsJs.close, null) } }
+                override fun startForm() { webView.post { webView.evaluateJavascript(SurveyActionsJs.startForm, null) } }
             })
             webView
         }, update = {})

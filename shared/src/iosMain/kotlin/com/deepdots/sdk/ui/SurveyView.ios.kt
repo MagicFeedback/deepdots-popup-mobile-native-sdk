@@ -51,10 +51,10 @@ actual fun SurveyView(
 
     // Expose controller bound to current WKWebView
     onController(object : SurveyController {
-        override fun send() { webViewRef?.evaluateJavaScript("window.DeepdotsActions?.send()", null) }
-        override fun back() { webViewRef?.evaluateJavaScript("window.DeepdotsActions?.back()", null) }
-        override fun close() { webViewRef?.evaluateJavaScript("window.DeepdotsActions?.close()", null) }
-        override fun startForm() { webViewRef?.evaluateJavaScript("window.DeepdotsActions?.startForm?.()", null) }
+        override fun send() { webViewRef?.evaluateJavaScript(SurveyActionsJs.send, null) }
+        override fun back() { webViewRef?.evaluateJavaScript(SurveyActionsJs.back, null) }
+        override fun close() { webViewRef?.evaluateJavaScript(SurveyActionsJs.close, null) }
+        override fun startForm() { webViewRef?.evaluateJavaScript(SurveyActionsJs.startForm, null) }
     })
 
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
