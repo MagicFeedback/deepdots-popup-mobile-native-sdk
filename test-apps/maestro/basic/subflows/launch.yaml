@@ -4,10 +4,14 @@ appId: com.deepdots.basicapp
 - launchApp:
     clearState: true
 - extendedWaitUntil:
-    visible:
-      id: basic-home
+    visible: "Basic app · SDK.*"
     timeout: 60000
+# The X is native and always in the accessibility tree; Android exposes the survey's WebView
+# text later and not always, so the question is only waited for.
+- extendedWaitUntil:
+    visible: "Luk pop op"
+    timeout: 30000
 - extendedWaitUntil:
     visible: "Hvordan vil du vurdere din oplevelse med appen?"
-    timeout: 30000
-- assertVisible: "Luk pop op"
+    timeout: 10000
+    optional: true

@@ -1,12 +1,36 @@
 # Thank-you screen of the client survey, closed with its button; the host app works afterwards.
+# The SDK's own "survey completed" event is the proof on both platforms (Lab counter "done 1"):
+# on Android the counter is visible above the popup and the WebView text is not always exposed,
+# on iOS the Lab bar is hidden under the popup and the text is.
 appId: com.deepdots.testapp
 ---
-- extendedWaitUntil:
-    visible: "Tak for din feedback!"
-    timeout: 20000
-- tapOn: "Afslut undersøgelse"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Tak for din feedback!"
+          timeout: 20000
+      - assertVisible: "Afslut undersøgelse"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: lab-counts
+            text: "shown 1 · done 1"
+          timeout: 30000
+- tapOn:
+    text: "Afslut undersøgelse"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 3000
+- runFlow:
+    when:
+      visible: "Luk pop op"
+    commands:
+      - tapOn: "Luk pop op"
 - assertNotVisible: "Tak for din feedback!"
 - assertVisible:
     id: lab-counts

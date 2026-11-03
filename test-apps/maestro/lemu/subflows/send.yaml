@@ -1,4 +1,6 @@
 # Closes the keyboard if it is open and taps the survey's Send.
+# Android: hideKeyboard is the Back key when no keyboard is open, and Back closes the popup, so it
+# is only used when the keyboard hides Send.
 appId: com.deepdots.testapp
 ---
 - runFlow:
@@ -10,6 +12,7 @@ appId: com.deepdots.testapp
 - runFlow:
     when:
       platform: Android
+      notVisible: "Send"
     commands:
       - hideKeyboard
 - tapOn: "Send"

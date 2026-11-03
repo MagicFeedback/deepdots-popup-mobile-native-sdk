@@ -4,7 +4,10 @@ appId: com.deepdots.testapp
 tags: [lemu]
 ---
 - runFlow: subflows/open-popup.yaml
-- tapOn: "1"
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "1"
 - runFlow: subflows/send.yaml
 - runFlow:
     file: subflows/text-answer.yaml
@@ -12,11 +15,17 @@ tags: [lemu]
       QUESTION: "Hvad skal vi ændre, for at forbedre din oplevelse?"
       ANSWER: "Automated test: rating 1"
       NEXT: "Er der andet, vi kan gøre for at forbedre din oplevelse?"
-- tapOn: "Nej"
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "Nej"
 - runFlow: subflows/send.yaml
 - extendedWaitUntil:
     visible: "Må vi kontakte dig, hvis vi gerne vil høre mere om din feedback?"
     timeout: 15000
-- tapOn: "Nej"
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "Nej"
 - runFlow: subflows/send.yaml
 - runFlow: subflows/finish.yaml

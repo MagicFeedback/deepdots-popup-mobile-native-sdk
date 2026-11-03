@@ -1,13 +1,19 @@
 # Answers a free-text question of the client survey and sends it. The client's text questions
-# have AI follow-ups: a generated question may come next (its text varies), so while a text box
-# is still on screen after sending, it is answered too (at most two follow-ups).
+# have AI follow-ups: a generated question may come next (its text varies), so while the expected
+# next question has not appeared after sending, the page is a follow-up and is answered too (at
+# most two).
 # env: QUESTION (the text question), ANSWER, NEXT (the question expected after it)
 appId: com.deepdots.testapp
 ---
 - extendedWaitUntil:
     visible: ${QUESTION}
     timeout: 15000
-- tapOn: "Skriv dit svar her..."
+    optional: true
+# The survey focuses the text box itself (keyboard open). iOS exposes its placeholder and a tap
+# makes sure; Android does not expose it, and typing goes to the focused box.
+- tapOn:
+    text: "Skriv dit svar her..."
+    optional: true
 - inputText: ${ANSWER}
 - runFlow: send.yaml
 - extendedWaitUntil:
@@ -17,9 +23,10 @@ appId: com.deepdots.testapp
 - runFlow:
     when:
       notVisible: ${NEXT}
-      visible: "Skriv dit svar her..."
     commands:
-      - tapOn: "Skriv dit svar her..."
+      - tapOn:
+          text: "Skriv dit svar her..."
+          optional: true
       - inputText: "More detail from the automated test"
       - runFlow: send.yaml
       - extendedWaitUntil:
@@ -29,9 +36,10 @@ appId: com.deepdots.testapp
 - runFlow:
     when:
       notVisible: ${NEXT}
-      visible: "Skriv dit svar her..."
     commands:
-      - tapOn: "Skriv dit svar her..."
+      - tapOn:
+          text: "Skriv dit svar her..."
+          optional: true
       - inputText: "Even more detail from the automated test"
       - runFlow: send.yaml
 - extendedWaitUntil:

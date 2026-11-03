@@ -4,7 +4,10 @@ appId: com.deepdots.testapp
 tags: [lemu]
 ---
 - runFlow: subflows/open-popup.yaml
-- tapOn: "4"
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "4"
 - runFlow: subflows/send.yaml
 - extendedWaitUntil:
     visible: "Er der noget, vi kan gøre anderledes for at forbedre din oplevelse?"

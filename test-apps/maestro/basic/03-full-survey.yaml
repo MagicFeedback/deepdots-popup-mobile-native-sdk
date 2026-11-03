@@ -3,7 +3,10 @@ appId: com.deepdots.basicapp
 tags: [basic]
 ---
 - runFlow: subflows/launch.yaml
-- tapOn: "5"
+- runFlow:
+    file: ../lemu/subflows/tap.yaml
+    env:
+      OPTION: "5"
 - runFlow: ../lemu/subflows/send.yaml
 - runFlow:
     file: ../lemu/subflows/text-answer.yaml
@@ -11,7 +14,10 @@ tags: [basic]
       QUESTION: "Vi er meget glade for at høre.*"
       ANSWER: "Automated test (basic app): rating 5"
       NEXT: "Er der andet, vi kan gøre for at forbedre din oplevelse?"
-- tapOn: "Ja"
+- runFlow:
+    file: ../lemu/subflows/tap.yaml
+    env:
+      OPTION: "Ja"
 - runFlow: ../lemu/subflows/send.yaml
 - runFlow:
     file: ../lemu/subflows/text-answer.yaml
@@ -19,20 +25,27 @@ tags: [basic]
       QUESTION: "Hvad kan vi gøre for at forbedre din oplevelse i vores app?"
       ANSWER: "Automated test (basic app): improvement"
       NEXT: "Må vi kontakte dig, hvis vi gerne vil høre mere om din feedback?"
-- tapOn: "Ja"
+- runFlow:
+    file: ../lemu/subflows/tap.yaml
+    env:
+      OPTION: "Ja"
 - runFlow: ../lemu/subflows/send.yaml
 - extendedWaitUntil:
     visible: "Indtast venligst din e-mailadresse."
     timeout: 15000
-- tapOn: "you@example.com"
+- tapOn:
+    text: "you@example.com"
+    optional: true
 - inputText: "qa+lemu-basic@deepdots.com"
 - runFlow: ../lemu/subflows/send.yaml
+# End of the survey: "Afslut undersøgelse" is the native button of the thank-you screen (its title
+# is in the WebView, which Android does not always expose).
 - extendedWaitUntil:
-    visible: "Tak for din feedback!"
-    timeout: 20000
+    visible: "Afslut undersøgelse"
+    timeout: 30000
 - tapOn: "Afslut undersøgelse"
 - waitForAnimationToEnd:
     timeout: 3000
-- assertNotVisible: "Tak for din feedback!"
-- assertVisible:
-    id: basic-home
+- assertNotVisible: "Afslut undersøgelse"
+- assertNotVisible: "Luk pop op"
+- assertVisible: "Basic app · SDK.*"

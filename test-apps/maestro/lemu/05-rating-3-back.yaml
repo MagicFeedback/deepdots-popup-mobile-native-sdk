@@ -4,7 +4,10 @@ appId: com.deepdots.testapp
 tags: [lemu]
 ---
 - runFlow: subflows/open-popup.yaml
-- tapOn: "3"
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "3"
 - runFlow: subflows/send.yaml
 - extendedWaitUntil:
     visible: "Er der noget, vi kan gøre anderledes for at forbedre din oplevelse?"
@@ -14,7 +17,10 @@ tags: [lemu]
     visible: "Hvordan vil du vurdere din oplevelse med appen?"
     timeout: 15000
 - assertNotVisible: "Tilbage"
-- tapOn: "3"
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "3"
 - runFlow: subflows/send.yaml
 - extendedWaitUntil:
     visible: "Er der noget, vi kan gøre anderledes for at forbedre din oplevelse?"
@@ -23,11 +29,17 @@ tags: [lemu]
 - extendedWaitUntil:
     visible: "Er der andet, vi kan gøre for at forbedre din oplevelse?"
     timeout: 20000
-- tapOn: "Nej"
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "Nej"
 - runFlow: subflows/send.yaml
 - extendedWaitUntil:
     visible: "Må vi kontakte dig, hvis vi gerne vil høre mere om din feedback?"
     timeout: 15000
-- tapOn: "Nej"
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "Nej"
 - runFlow: subflows/send.yaml
 - runFlow: subflows/finish.yaml

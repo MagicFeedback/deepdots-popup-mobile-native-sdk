@@ -14,5 +14,4 @@ tags: [basic]
     timeout: 10000
     optional: true
 - assertNotVisible: "Hvordan vil du vurdere din oplevelse med appen?"
-- assertVisible:
-    id: basic-home
+- assertVisible: "Basic app · SDK.*"

@@ -17,6 +17,12 @@ tags: [lemu]
       TITLE: "Hvordan vil du vurdere din oplevelse med appen?"
       CLOSE_LABEL: "Luk pop op"
 - assertVisible:
+    id: lab-scenario
+    text: client-exact
+- assertVisible:
+    id: lab-env
+    text: DEV
+- assertVisible:
     id: lab-counts
     text: "shown 1 · done 0"
 - runFlow: ../subflows/host-usable.yaml

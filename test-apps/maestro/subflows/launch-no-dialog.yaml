@@ -16,13 +16,18 @@ appId: com.deepdots.testapp
       instances: ${INSTANCES || '1'}
       event: ${EVENT || ''}
 # Checked first: a popup at app start opens after a few seconds and, on iOS, hides the Lab bar
-# from accessibility.
-- extendedWaitUntil:
-    visible:
-      id: lab-scenario
-      text: ${SCENARIO}
-    timeout: 90000
-- assertVisible:
-    id: lab-env
-    text: DEV
+# from accessibility. With EVENT the popup opens about a second after launch, so the flow checks
+# the Lab bar itself, after closing it.
+- runFlow:
+    when:
+      true: ${!EVENT}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: lab-scenario
+            text: ${SCENARIO}
+          timeout: 90000
+      - assertVisible:
+          id: lab-env
+          text: DEV
 - assertNotVisible: "Accept all"

@@ -12,5 +12,4 @@ tags: [basic]
     env:
       TITLE: "Hvordan vil du vurdere din oplevelse med appen?"
       CLOSE_LABEL: "Luk pop op"
-- assertVisible:
-    id: basic-home
+- assertVisible: "Basic app · SDK.*"

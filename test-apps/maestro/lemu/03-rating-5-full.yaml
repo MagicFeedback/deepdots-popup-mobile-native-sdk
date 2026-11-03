@@ -4,7 +4,10 @@ appId: com.deepdots.testapp
 tags: [lemu]
 ---
 - runFlow: subflows/open-popup.yaml
-- tapOn: "5"
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "5"
 - runFlow: subflows/send.yaml
 - runFlow:
     file: subflows/text-answer.yaml
@@ -16,7 +19,10 @@ tags: [lemu]
 - runFlow: subflows/send.yaml
 - assertVisible: "Please answer the required question to continue."
 - assertVisible: "Tilbage"
-- tapOn: "Ja"
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "Ja"
 - runFlow: subflows/send.yaml
 - runFlow:
     file: subflows/text-answer.yaml
@@ -24,12 +30,17 @@ tags: [lemu]
       QUESTION: "Hvad kan vi gøre for at forbedre din oplevelse i vores app?"
       ANSWER: "Automated test: improvement"
       NEXT: "Må vi kontakte dig, hvis vi gerne vil høre mere om din feedback?"
-- tapOn: "Ja"
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "Ja"
 - runFlow: subflows/send.yaml
 - extendedWaitUntil:
     visible: "Indtast venligst din e-mailadresse."
     timeout: 15000
-- tapOn: "you@example.com"
+- tapOn:
+    text: "you@example.com"
+    optional: true
 - inputText: "not-an-email"
 - runFlow: subflows/send.yaml
 - assertVisible: "Indtast venligst din e-mailadresse."
