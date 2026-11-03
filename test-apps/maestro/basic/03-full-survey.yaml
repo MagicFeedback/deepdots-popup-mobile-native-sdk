@@ -1,0 +1,38 @@
+# Minimal host: the whole client survey (rating 5, every yes, email) to the thank-you screen.
+appId: com.deepdots.basicapp
+tags: [basic]
+---
+- runFlow: subflows/launch.yaml
+- tapOn: "5"
+- runFlow: ../lemu/subflows/send.yaml
+- runFlow:
+    file: ../lemu/subflows/text-answer.yaml
+    env:
+      QUESTION: "Vi er meget glade for at høre.*"
+      ANSWER: "Automated test (basic app): rating 5"
+      NEXT: "Er der andet, vi kan gøre for at forbedre din oplevelse?"
+- tapOn: "Ja"
+- runFlow: ../lemu/subflows/send.yaml
+- runFlow:
+    file: ../lemu/subflows/text-answer.yaml
+    env:
+      QUESTION: "Hvad kan vi gøre for at forbedre din oplevelse i vores app?"
+      ANSWER: "Automated test (basic app): improvement"
+      NEXT: "Må vi kontakte dig, hvis vi gerne vil høre mere om din feedback?"
+- tapOn: "Ja"
+- runFlow: ../lemu/subflows/send.yaml
+- extendedWaitUntil:
+    visible: "Indtast venligst din e-mailadresse."
+    timeout: 15000
+- tapOn: "you@example.com"
+- inputText: "qa+lemu-basic@deepdots.com"
+- runFlow: ../lemu/subflows/send.yaml
+- extendedWaitUntil:
+    visible: "Tak for din feedback!"
+    timeout: 20000
+- tapOn: "Afslut undersøgelse"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "Tak for din feedback!"
+- assertVisible:
+    id: basic-home

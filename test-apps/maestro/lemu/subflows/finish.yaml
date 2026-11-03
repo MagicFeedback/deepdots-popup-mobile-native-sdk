@@ -1,0 +1,14 @@
+# Thank-you screen of the client survey, closed with its button; the host app works afterwards.
+appId: com.deepdots.testapp
+---
+- extendedWaitUntil:
+    visible: "Tak for din feedback!"
+    timeout: 20000
+- tapOn: "Afslut undersøgelse"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "Tak for din feedback!"
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 1"
+- runFlow: ../../subflows/host-usable.yaml

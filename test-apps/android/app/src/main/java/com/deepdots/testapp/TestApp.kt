@@ -13,10 +13,27 @@ import com.deepdots.sdk.models.Event
 import com.deepdots.sdk.models.InitOptions
 import com.deepdots.sdk.models.Mode
 import com.deepdots.sdk.models.PopupOptions
+import com.deepdots.sdk.platform.PlatformContext
 
 /** Owns the SDK for the whole process, as a host app would, and feeds it the app lifecycle. */
 class TestApp : Application() {
     val sdk: DeepdotsPopupsSdk = Deepdots.create()
+    /** `instances 2`: a second instance fed the same calls (a host that creates the SDK twice). */
+    var second: DeepdotsPopupsSdk? = null
+        private set
+    private var context: PlatformContext? = null
+
+    /** The popup is shown on this Activity (both instances, when there are two). */
+    fun attachContext(context: PlatformContext) {
+        this.context = context
+        sdk.attachContext(context)
+        second?.attachContext(context)
+    }
+
+    fun setPath(path: String) {
+        sdk.setPath(path)
+        second?.setPath(path)
+    }
     var initialized = false
         private set
     lateinit var config: LabConfig
@@ -58,7 +75,18 @@ class TestApp : Application() {
             Lab.countCompleted()
         }
         sdk.init(initOptions())
+        if (c.instances == "2") {
+            Lab.log("sdk", "second instance (same options)")
+            second = Deepdots.create().also { s ->
+                s.init(initOptions())
+                context?.let(s::attachContext)
+            }
+        }
         if (c.user.isNotBlank()) sdk.setUserId(c.user)
+        if (c.startEvent.isNotBlank()) {
+            Lab.log("host", "triggerEvent(${c.startEvent}) right after init")
+            sdk.triggerEvent(c.startEvent)
+        }
         Lab.log("sdk", "userId=${sdk.getUserId()}")
     }
 

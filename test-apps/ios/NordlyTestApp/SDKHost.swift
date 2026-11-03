@@ -6,6 +6,8 @@ final class SDKHost: ObservableObject {
     static let shared = SDKHost()
 
     let sdk = DeepdotsSDK.DeepdotsPopups()
+    /// `instances 2`: a second instance fed the same calls (a host that creates the SDK twice).
+    private lazy var second: DeepdotsSDK.DeepdotsPopups? = config.instances == "2" ? DeepdotsSDK.DeepdotsPopups() : nil
     let config = LabConfig.resolve()
     @Published private(set) var initialized = false
 
@@ -25,8 +27,16 @@ final class SDKHost: ObservableObject {
             Lab.countCompleted()
         }
         sdk.initialize(options: initOptions())
+        if let second {
+            Lab.log("sdk", "second instance (same options)")
+            second.initialize(options: initOptions())
+        }
         if !c.user.isEmpty { sdk.setUserId(userId: c.user) }
         attachContext()
+        if !c.startEvent.isEmpty {
+            Lab.log("host", "triggerEvent(\(c.startEvent)) right after init")
+            sdk.triggerEvent(eventName: c.startEvent)
+        }
         Lab.log("sdk", "userId=\(sdk.getUserId() ?? "-")")
     }
 
@@ -65,11 +75,13 @@ final class SDKHost: ObservableObject {
         guard let root = UIApplication.shared.connectedScenes
             .compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first?.rootViewController else { return }
         sdk.attachContext(context: PlatformContext(viewController: root))
+        second?.attachContext(context: PlatformContext(viewController: root))
     }
 
     func setPath(_ path: String) {
         guard initialized else { return }
         sdk.setPath(path: path)
+        second?.setPath(path: path)
     }
 
     func triggerEvent(_ name: String) { if initialized { sdk.triggerEvent(eventName: name) } }

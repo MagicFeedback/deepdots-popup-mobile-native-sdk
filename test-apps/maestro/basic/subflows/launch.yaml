@@ -1,0 +1,13 @@
+# Fresh launch of the minimal host app: the client popup opens by itself at app start.
+appId: com.deepdots.basicapp
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: basic-home
+    timeout: 60000
+- extendedWaitUntil:
+    visible: "Hvordan vil du vurdere din oplevelse med appen?"
+    timeout: 30000
+- assertVisible: "Luk pop op"

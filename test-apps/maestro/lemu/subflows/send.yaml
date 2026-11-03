@@ -1,0 +1,17 @@
+# Closes the keyboard if it is open and taps the survey's Send.
+appId: com.deepdots.testapp
+---
+- runFlow:
+    when:
+      platform: iOS
+      visible: "Done"
+    commands:
+      - tapOn: "Done"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- tapOn: "Send"
+- waitForAnimationToEnd:
+    timeout: 3000

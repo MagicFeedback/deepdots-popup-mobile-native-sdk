@@ -1,0 +1,18 @@
+# Minimal host (init + attachContext + setPath("/") only): the client popup opens by itself at
+# app start, ONCE, and closes; the app is left as it was.
+appId: com.deepdots.basicapp
+tags: [basic]
+---
+- runFlow: subflows/launch.yaml
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Hvordan vil du vurdere din oplevelse med appen?"
+      CLOSE_LABEL: "Luk pop op"
+- extendedWaitUntil:
+    visible: "Hvordan vil du vurdere din oplevelse med appen?"
+    timeout: 10000
+    optional: true
+- assertNotVisible: "Hvordan vil du vurdere din oplevelse med appen?"
+- assertVisible:
+    id: basic-home

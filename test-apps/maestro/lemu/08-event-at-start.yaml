@@ -1,0 +1,22 @@
+# The client's current setup: the popup on an event. The app fires it right after init(),
+# before the popups have arrived: the SDK keeps it and shows the popup once they load.
+appId: com.deepdots.testapp
+tags: [lemu]
+---
+- runFlow:
+    file: ../subflows/launch-no-dialog.yaml
+    env:
+      SCENARIO: client-exact
+      EVENT: jhgjgjhg
+- extendedWaitUntil:
+    visible: "Hvordan vil du vurdere din oplevelse med appen?"
+    timeout: 30000
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Hvordan vil du vurdere din oplevelse med appen?"
+      CLOSE_LABEL: "Luk pop op"
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 0"
+- runFlow: ../subflows/host-usable.yaml

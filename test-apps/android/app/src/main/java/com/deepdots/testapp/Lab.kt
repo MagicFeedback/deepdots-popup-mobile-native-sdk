@@ -42,6 +42,10 @@ data class LabConfig(
     val user: String = "",
     /** First screen: home, shop, cart, checkout or account (one-shot, not saved). */
     val start: String = "home",
+    /** `2`: a second SDK instance with the same options, like a host that creates two (one-shot). */
+    val instances: String = "1",
+    /** An event fired right after init(), before the popups have loaded (one-shot). */
+    val startEvent: String = "",
 ) {
     val publicKey: String get() = Scenarios.keys[scenario] ?: error("Unknown scenario $scenario")
 
@@ -70,6 +74,8 @@ data class LabConfig(
                 load = read("load", base.load),
                 user = read("user", base.user),
                 start = extras?.getString("start") ?: base.start,
+                instances = extras?.getString("instances") ?: base.instances,
+                startEvent = extras?.getString("event") ?: base.startEvent,
             )
             if (extras != null && KEYS.any { extras.containsKey(it) }) config.save(context)
             // `consent all|necessary`: the cookie choice is already made, so no dialog at launch

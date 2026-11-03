@@ -1,0 +1,14 @@
+# Fresh launch with no dialog in front and the client's popup on its 5 s timer (its setup until
+# 30-oct), as in the client app: the popup must open by itself with the first question.
+# env: INSTANCES (optional)
+appId: com.deepdots.testapp
+---
+- runFlow:
+    file: ../../subflows/launch-no-dialog.yaml
+    env:
+      SCENARIO: client-exact-launch
+      INSTANCES: ${INSTANCES || '1'}
+- extendedWaitUntil:
+    visible: "Hvordan vil du vurdere din oplevelse med appen?"
+    timeout: 30000
+- assertVisible: "Luk pop op"

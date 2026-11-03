@@ -1,0 +1,16 @@
+# Minimal host: Send with nothing selected asks for an answer and shows no Back button.
+appId: com.deepdots.basicapp
+tags: [basic]
+---
+- runFlow: subflows/launch.yaml
+- runFlow: ../lemu/subflows/send.yaml
+- assertVisible: "Please answer the required question to continue."
+- assertVisible: "Hvordan vil du vurdere din oplevelse med appen?"
+- assertNotVisible: "Tilbage"
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Hvordan vil du vurdere din oplevelse med appen?"
+      CLOSE_LABEL: "Luk pop op"
+- assertVisible:
+    id: basic-home

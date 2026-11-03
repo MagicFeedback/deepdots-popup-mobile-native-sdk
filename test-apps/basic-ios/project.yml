@@ -1,0 +1,49 @@
+# Minimal host app for iOS: the SDK is created, initialised, attached to the root view controller
+# and told the screen ("/"), nothing else (no lifecycle calls, no events, no Lab). It shows the
+# client-exact-launch popup by itself. Generate with: SDK_VERSION=0.7.8 xcodegen generate
+name: BasicApp
+options:
+  bundleIdPrefix: com.deepdots
+  deploymentTarget:
+    iOS: "16.0"
+packages:
+  DeepdotsSDK:
+    url: https://github.com/MagicFeedback/DeepdotsSDK-SPM
+    exactVersion: ${SDK_VERSION}
+settings:
+  base:
+    BASIC_SDK_VERSION: ${SDK_VERSION}
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  BasicApp:
+    type: application
+    platform: iOS
+    sources:
+      - BasicApp
+      - path: ../scenarios.json
+        buildPhase: resources
+    dependencies:
+      - package: DeepdotsSDK
+        product: ComposeApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.deepdots.basicapp
+        CODE_SIGNING_ALLOWED: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
+    info:
+      path: BasicApp/Info.plist
+      properties:
+        CFBundleDisplayName: Basic
+        BasicSDKVersion: $(BASIC_SDK_VERSION)
+        UILaunchScreen: {}
+        CADisableMinimumFrameDurationOnPhone: true
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+schemes:
+  BasicApp:
+    build:
+      targets:
+        BasicApp: all

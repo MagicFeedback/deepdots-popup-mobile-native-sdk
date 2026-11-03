@@ -1,0 +1,21 @@
+# Client popup at app start (5 s timer, no dialog in front): it opens by itself ONCE. After
+# closing it, nothing is left behind and no second popup shows (the 0.7.5 double popup).
+appId: com.deepdots.testapp
+tags: [lemu]
+---
+- runFlow: subflows/open-popup.yaml
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Hvordan vil du vurdere din oplevelse med appen?"
+      CLOSE_LABEL: "Luk pop op"
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 0"
+# Long enough for a second timer or a late duplicate.
+- extendedWaitUntil:
+    visible: "Hvordan vil du vurdere din oplevelse med appen?"
+    timeout: 10000
+    optional: true
+- assertNotVisible: "Hvordan vil du vurdere din oplevelse med appen?"
+- runFlow: ../subflows/host-usable.yaml

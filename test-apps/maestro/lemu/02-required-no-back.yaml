@@ -1,0 +1,16 @@
+# Send on the first screen with nothing selected: the survey asks for an answer, stays on the
+# first question and shows NO Back button (reported by the client on 0.7.5).
+appId: com.deepdots.testapp
+tags: [lemu]
+---
+- runFlow: subflows/open-popup.yaml
+- runFlow: subflows/send.yaml
+- assertVisible: "Please answer the required question to continue."
+- assertVisible: "Hvordan vil du vurdere din oplevelse med appen?"
+- assertNotVisible: "Tilbage"
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "Hvordan vil du vurdere din oplevelse med appen?"
+      CLOSE_LABEL: "Luk pop op"
+- runFlow: ../subflows/host-usable.yaml
