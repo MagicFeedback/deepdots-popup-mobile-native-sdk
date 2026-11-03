@@ -6,6 +6,7 @@ package com.deepdots.sdk.renderer
 
 import androidx.compose.runtime.ExperimentalComposeApi
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.uikit.OnFocusBehavior
 import androidx.compose.ui.window.ComposeUIViewController
 import com.deepdots.sdk.models.Action
 import com.deepdots.sdk.models.PopupDefinition
@@ -36,6 +37,9 @@ actual object PopupRenderer {
         val vc = ComposeUIViewController(configure = {
             opaque = false
             enforceStrictPlistSanityCheck = false
+            // El teclado lo resuelve PopupView con imePadding() (avoidKeyboard): que el
+            // controlador no desplace además la vista entera al enfocar.
+            onFocusBehavior = OnFocusBehavior.DoNothing
         }) {
             PopupView(
                 popup = popup,
