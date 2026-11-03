@@ -13,6 +13,30 @@
 name: Test apps matrix
 
 on:
+  # release.yml calls it after every release (DD-25): validation report on GitHub Pages + Slack.
+  workflow_call:
+    inputs:
+      sdk:
+        type: string
+        required: true
+      control:
+        type: string
+        default: "0.7.0"
+      flows:
+        type: string
+        default: ""
+      record:
+        type: boolean
+        default: false
+      publish:
+        type: boolean
+        default: false
+      notify:
+        type: boolean
+        default: false
+    secrets:
+      SDK_RELEASES_SLACK_WEBHOOK_URL:
+        required: false
   workflow_dispatch:
     inputs:
       sdk:
@@ -26,6 +50,10 @@ on:
         default: ""
       record:
         description: "Record one video per flow"
+        type: boolean
+        default: false
+      publish:
+        description: "Publish the validation report on GitHub Pages (validation/<sdk>/)"
         type: boolean
         default: false
   # On a PR it only runs with the `run-matrix` label: ~20 jobs, 7 of them on macOS.
@@ -44,10 +72,10 @@ concurrency:
 
 # Same tools as release.yml / release-check.yml (MF-3242).
 env:
-  SDK: ${{ github.event.inputs.sdk || '0.7.5' }}
-  CONTROL_SDK: ${{ github.event.inputs.control || '0.7.0' }}
-  FLOWS: ${{ github.event.inputs.flows }}
-  RECORD: ${{ github.event.inputs.record == 'true' && '1' || '0' }}
+  SDK: ${{ inputs.sdk || '0.7.5' }}
+  CONTROL_SDK: ${{ inputs.control || '0.7.0' }}
+  FLOWS: ${{ inputs.flows }}
+  RECORD: ${{ inputs.record && '1' || '0' }}
   JAVA_VERSION: "21"
   XCODE_APP: /Applications/Xcode_16.4.app
 
@@ -338,6 +366,9 @@ jobs:
 
   report:
     name: Results matrix
+    permissions:
+      contents: write # validation-reports branch (publish)
+      actions: write # docs-pages.yml (publish)
     if: always() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-matrix'))
     needs: [android, ios, negative-control, r8-control]
     runs-on: ubuntu-latest
@@ -351,10 +382,84 @@ jobs:
           merge-multiple: true
       - name: Summarize
         run: |
-          python3 .github/test-apps-matrix/summarize.py rows test-apps/maestro > matrix.md
+          python3 .github/test-apps-matrix/summarize.py rows test-apps/maestro --json results.json > matrix.md
           { echo "## SDK $SDK · control $CONTROL_SDK"; echo; cat matrix.md; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: results-matrix
-          path: matrix.md
+          path: |
+            matrix.md
+            results.json
           retention-days: 90
+      # Release validation report (DD-25): generated only from results.json and the job results.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: scripts/release/package-lock.json
+      - run: npm ci --prefix scripts/release
+      - name: Validation report
+        id: report
+        env:
+          JOBS: android=${{ needs.android.result }},ios=${{ needs.ios.result }},negative-control=${{ needs.negative-control.result }},r8-control=${{ needs.r8-control.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          OUT="validation/$SDK"
+          node scripts/release/validation-report.mjs --results results.json --version "$SDK" --out "$OUT" \
+            --jobs "$JOBS" --changelog CHANGELOG.md --flows-dir test-apps/maestro --run-url "$RUN_URL" --control "$CONTROL_SDK"
+          PDF="Deepdots-Popup-SDK-$SDK-Release-Validation-Report.pdf"
+          google-chrome --headless=new --disable-gpu --no-sandbox --no-pdf-header-footer \
+            --print-to-pdf="$PWD/$OUT/$PDF" "file://$PWD/$OUT/report.html"
+          test -s "$OUT/$PDF"
+          cp results.json matrix.md "$OUT/"
+          STATUS=$(jq -r .status "$OUT/summary.json")
+          echo "## Validation report $SDK: $STATUS" >> "$GITHUB_STEP_SUMMARY"
+          echo "pdf=$PDF" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: validation-report-${{ env.SDK }}
+          path: validation/
+          retention-days: 90
+      # Kept in the validation-reports branch (one folder per version, the last attempt wins);
+      # docs-pages.yml serves it under /validation/.
+      # A cancelled run (stopped by hand) neither publishes nor notifies: its report is partial.
+      - name: Publish the report on GitHub Pages
+        if: ${{ !cancelled() && inputs.publish }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth=1 origin validation-reports; then
+            git worktree add pages FETCH_HEAD
+          else
+            git worktree add --detach pages && git -C pages checkout --orphan validation-reports && git -C pages rm -rfq .
+          fi
+          rm -rf "pages/$SDK" && cp -R "validation/$SDK" "pages/$SDK"
+          node scripts/release/validation-report.mjs index pages
+          git -C pages add -A
+          git -C pages commit -qm "validation report $SDK (run ${{ github.run_id }}, attempt ${{ github.run_attempt }})"
+          git -C pages push origin HEAD:refs/heads/validation-reports
+          gh workflow run docs-pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+      # Only a release (release.yml, push of the tag, notify on) posts to Slack. Manual runs and PRs
+      # print the message in the log instead: test notices in #sdk-releases alarm people.
+      - name: Slack
+        if: ${{ !cancelled() }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SDK_RELEASES_SLACK_WEBHOOK_URL }}
+          PAGES: https://magicfeedback.github.io/deepdots-popup-mobile-native-sdk/validation/${{ env.SDK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ARTIFACTS: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+        run: |
+          set -euo pipefail
+          LINKS=(--link "Test run=$RUN_URL")
+          if [ "${{ inputs.publish }}" = true ]; then
+            LINKS=(--link "Report=$PAGES/report.html" --link "PDF=$PAGES/${{ steps.report.outputs.pdf }}" "${LINKS[@]}")
+          else
+            LINKS=(--link "Report (artifact)=$ARTIFACTS" "${LINKS[@]}")
+          fi
+          FLAGS=()
+          [ "${{ github.event_name }}" = push ] && [ "${{ inputs.notify }}" = true ] || FLAGS+=(--print)
+          node scripts/release/validation-report.mjs slack --summary "validation/$SDK/summary.json" "${LINKS[@]}" "${FLAGS[@]}"

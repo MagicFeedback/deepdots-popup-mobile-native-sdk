@@ -361,3 +361,10 @@ viejas (`deploy_sdk_release.sh` y el `update_version.sh` del repo SPM).
   :shared:testDebugUnitTest --tests '*ReleaseContractTest*'` regenera `release/config.schema.json`.
 - `release.yml` construye el AAR (staging repo de Maven) y el zip del XCFramework UNA vez; esos
   ficheros son los que se publican y se adjuntan. Xcode y Node van fijados en los dos workflows.
+- **Test app en la PR de release (DD-25):** `release-check.yml` llama a `test-apps.yml` con
+  `["local"]` (job "Test apps (release build)"): la suite de Maestro en Android **e iOS** con la
+  SDK de ese commit. En iOS, `test-apps/scripts/ios-local-sdk.sh` compila el framework del
+  simulador, lo envuelve en `dist/spm-local/DeepdotsSDK.xcframework` y apunta el test app al
+  paquete `spm-local` en vez de a DeepdotsSDK-SPM. `scripts/release/required-checks.mjs` exige
+  los dos checks y el "Release dry run" en verde, desde `release.mjs tag` y desde `release.yml`
+  antes de publicar.
