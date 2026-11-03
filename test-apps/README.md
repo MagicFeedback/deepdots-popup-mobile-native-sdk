@@ -152,8 +152,8 @@ named "Native Test Apps (MF-3244) · <scenario>").
     before the trigger; the popup closes and the host works.
 
 CI: `.github/workflows/test-apps.yml`, one job per platform and SDK version. The versions come
-from `sdk-versions.json` (latest published, the ones customers run in production, oldest
-supported); add the new version there after each release, and the workflow warns when Maven
+from `sdk-versions.json` (the latest published version and the previous one; older ones are not
+tested); update it after each release, and the workflow warns when Maven
 Central has one that is not in the list. *Run workflow* takes another list and can record
 videos. Android runs on an
 `ubuntu-latest` emulator (API 34), iOS on `macos-15` (Xcode 16.4, iPhone 16). Each job uploads
