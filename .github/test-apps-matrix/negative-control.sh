@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Negative control for the Lemu validation (MF-3263): proves the suite detects the 0.7.0 bugs.
+# Negative control for the client validation (MF-3263): proves the suite detects the 0.7.0 bugs.
 #
 #   .github/test-apps-matrix/negative-control.sh <sdk-version> <pass|fail> <out-dir>
 #
-# Runs lemu/rating-labels.yaml through test-apps/scripts/run-maestro.sh on the connected device
+# Runs client-replica/rating-labels.yaml through test-apps/scripts/run-maestro.sh on the connected device
 # and checks the outcome is the expected one:
 #   pass  (0.7.3): the flow passes and the device log has no CalledFromWrongThreadException;
 #   fail  (0.7.0): the flow fails ON the rating assertion (labels inside the chips), not on
@@ -14,10 +14,10 @@
 set -uo pipefail
 SDK=$1 EXPECT=$2 OUT=$3
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-mkdir -p "$ROOT/test-apps/maestro/lemu"
-cp -R "$ROOT/.github/test-apps-matrix/lemu/." "$ROOT/test-apps/maestro/lemu/"
+mkdir -p "$ROOT/test-apps/maestro/client-replica"
+cp -R "$ROOT/.github/test-apps-matrix/client-replica/." "$ROOT/test-apps/maestro/client-replica/"
 
-FLOWS="lemu/rating-labels.yaml" "$ROOT/test-apps/scripts/run-maestro.sh" android "$SDK" "$OUT"
+FLOWS="client-replica/rating-labels.yaml" "$ROOT/test-apps/scripts/run-maestro.sh" android "$SDK" "$OUT"
 code=$?
 log="$OUT/maestro/rating-labels.txt"
 reason=$(grep -m1 -E '^\[Failed\]|Assertion is false' "$log" 2>/dev/null | sed 's/^ *//')

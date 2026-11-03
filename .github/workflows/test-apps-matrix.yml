@@ -1,4 +1,4 @@
-# Device matrix for the native test apps (MF-3263, Lemvigh-Müller validation of SDK 0.7.x).
+# Device matrix for the native test apps (MF-3263, client validation of SDK 0.7.x).
 # Runs the MF-3244 Maestro suite (test-apps/, test-apps.yml) on every OS version / device / build
 # type we promise, against ONE published SDK version, plus a negative control that must catch the
 # 0.7.0 bugs. Manual (workflow_dispatch) and on PRs that touch it; test-apps.yml stays the quick
@@ -8,7 +8,7 @@
 #   Android  API 26 / 30 / 34 / 36, Pixel 6, debug + release (R8, minify, shrinkResources); Pixel Tablet on 34
 #   iOS      16.4 iPhone SE · 17.5 iPhone 15 (runtimes downloaded) · 18 iPhone 16 Pro Max, iPad (A16),
 #            iPhone 16 Release · 26 iPhone 17 built with Xcode 26 (what App Store builds use today)
-#   Control  Android API 34: lemu/rating-labels.yaml must fail on the control version and pass on `sdk`
+#   Control  Android API 34: client-replica/rating-labels.yaml must fail on the control version and pass on `sdk`
 # Every row fails if the device log shows CalledFromWrongThreadException or a crash, besides the flows.
 name: Test apps matrix
 
@@ -70,12 +70,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - &apps
-        name: Lemu flows
+        name: Client replica flows
         run: |
-          # Lemu flows (rating labels, segments.lang) run with the suite on every row.
-          mkdir -p test-apps/maestro/lemu && cp -R .github/test-apps-matrix/lemu/. test-apps/maestro/lemu/
+          # Client replica flows (rating labels, segments.lang) run with the suite on every row.
+          mkdir -p test-apps/maestro/client-replica && cp -R .github/test-apps-matrix/client-replica/. test-apps/maestro/client-replica/
           if [ -z "$FLOWS" ]; then
-            echo "FLOWS=$(cd test-apps/maestro && ls flows/*.yaml failures/*.yaml lemu/*.yaml | tr '\n' ' ')" >> "$GITHUB_ENV"
+            echo "FLOWS=$(cd test-apps/maestro && ls flows/*.yaml failures/*.yaml client-replica/*.yaml | tr '\n' ' ')" >> "$GITHUB_ENV"
           fi
       - uses: actions/setup-java@v4
         with:
@@ -164,7 +164,7 @@ jobs:
           - { ios: "18", device: "iPhone 16", config: Release, xcode: /Applications/Xcode_16.4.app }
           # Scenario 12: no CADisableMinimumFrameDurationOnPhone (0.7.0 crashed on presenting the popup; fixed in 0.7.2).
           - { ios: "18", device: "iPhone 16 Pro", config: Debug, xcode: /Applications/Xcode_16.4.app, no_frame_key: true }
-          # Since April 2026 App Store uploads need the iOS 26 SDK, so this is how Lemu builds today.
+          # Since April 2026 App Store uploads need the iOS 26 SDK, so this row matches what App Store builds use today.
           - { ios: "26", device: "iPhone 17", config: Debug, xcode: /Applications/Xcode_26.2.app }
     env:
       OUT: out/ios-${{ matrix.ios }}-${{ matrix.config }}-${{ matrix.device }}

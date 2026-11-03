@@ -36,7 +36,7 @@ env:
   IOS: ${{ github.event.inputs.ios || '16.4' }}
   DEVICE_TYPE: "iPhone SE (3rd generation)"
   # Flows that open and close popups (the crash is in the dispose of the popup's UI).
-  FLOWS: flows/exit-checkout.yaml flows/help-click.yaml flows/lifecycle.yaml flows/checkout-time.yaml lemu/rating-labels.yaml
+  FLOWS: flows/exit-checkout.yaml flows/help-click.yaml flows/lifecycle.yaml flows/checkout-time.yaml client-replica/rating-labels.yaml
   CRASH: "setAutomationElements:]: unrecognized selector"
   JAVA_VERSION: "21"
 
@@ -47,9 +47,9 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
-      - name: Lemu flows
+      - name: Client replica flows
         run: |
-          mkdir -p test-apps/maestro/lemu && cp -R .github/test-apps-matrix/lemu/. test-apps/maestro/lemu/
+          mkdir -p test-apps/maestro/client-replica && cp -R .github/test-apps-matrix/client-replica/. test-apps/maestro/client-replica/
       - name: SDK source (${{ env.SDK_REF }})
         uses: actions/checkout@v4
         with:

@@ -39,4 +39,13 @@ class PresentationPlanTest {
         assertEquals(PresentationPlan.Wait, presentationPlan(listOf(PresentedKind.Dismissing)))
         assertEquals(PresentationPlan.Wait, presentationPlan(listOf(PresentedKind.Screen, PresentedKind.Dismissing)))
     }
+
+    @Test
+    fun siElControladorAunNoEstaEnLaVentanaEspera() {
+        // Arranque: evento justo tras init() con el root view controller aún fuera de la ventana.
+        // Antes se presentaba igual, UIKit lo rechazaba y el popup contaba como mostrado.
+        assertEquals(PresentationPlan.Wait, presentationPlan(emptyList(), baseInWindow = false))
+        assertEquals(PresentationPlan.Wait, presentationPlan(listOf(PresentedKind.Sheet), baseInWindow = false))
+        assertEquals(PresentationPlan.PresentFrom(-1), presentationPlan(emptyList(), baseInWindow = true))
+    }
 }

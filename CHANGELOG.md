@@ -4,6 +4,21 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.7 - 2026-11-03
+
+### Fixed
+
+- **iOS: a popup triggered at app start is no longer lost.** When an event fired right after
+  `init()` (or a queued event was replayed when the popups arrived) before the host's view
+  controller was in a window, UIKit refused the presentation silently while the popup was already
+  counted as shown, so it was not shown again. The popup now waits until the view controller is in
+  a window, as it already did for a host alert.
+- **No Back button on the first screen after a failed Send.** Tapping Send on the first screen
+  without answering a required question (or when the send failed) switched the footer to Back +
+  Send, with a Back that led nowhere, and the "required" message disappeared at once. A failed
+  send does not change page any more, so the footer stays as it was and the message stays
+  visible. Same behaviour as the web and React Native popups. Reported on iOS with 0.7.5 / 0.7.6.
+
 ## 0.7.6 - 2026-11-02
 
 ### Fixed
