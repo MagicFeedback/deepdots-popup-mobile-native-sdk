@@ -59,7 +59,7 @@ struct LabConfig: Equatable {
 
     /// Saved config, overridden by any launch argument (`-scenario x`, `scenario x` or `scenario=x`).
     static func resolve(arguments: [String] = ProcessInfo.processInfo.arguments) -> LabConfig {
-        let known = keys + ["start"]
+        let known = keys + ["start", "consent"]
         var args: [String: String] = [:]
         var i = 1
         while i < arguments.count {
@@ -87,6 +87,9 @@ struct LabConfig: Equatable {
         )
         if Scenarios.publicKey(config.scenario) == nil { config.scenario = base.scenario }
         if keys.contains(where: { args[$0] != nil }) { config.save() }
+        // `consent all|necessary`: the cookie choice is already made, so no dialog at launch
+        // (a host app without a cookie dialog, where a popup at start shows right away).
+        if let consent = args["consent"] { LabConfig.consent = consent }
         return config
     }
 }

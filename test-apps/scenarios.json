@@ -78,6 +78,19 @@
       "describe": "same as client-replica but segments.lang da (path /): with SDK >= 0.7.4 it shows with lang=da and not with lang=en",
       "title": "Hvordan vil du vurdere din oplevelse med appen?"
     },
+    "client-exact": {
+      "publicKey": "NhvpAyYxpyPWz09XdxXoXWmOpzUNicGo",
+      "popupOptionId": "5fefd6f0-d782-11f1-ab45-8bbb0ec1d341",
+      "describe": "Exact DEV copy of a client app popup as in prod on 3-nov-2026 (event jhgjgjhg, cooldown SHOWED 14 / PARTIAL 30 / COMPLETED 30 days, segments path / and no lang, centered). Survey 9c449790-d781-11f1-ab45-8bbb0ec1d341 (da), same questions, branching and colours as the client's: rating 1-5, a follow-up text per rating band (1-2 / 3-4 / 5), yes/no, text, yes/no, email. The client logo is not uploaded in DEV",
+      "title": "Hvordan vil du vurdere din oplevelse med appen?",
+      "events": ["jhgjgjhg"]
+    },
+    "client-exact-launch": {
+      "publicKey": "9C1hiLhDp7Jq5hKyFyjppXiEJ1DfeTAl",
+      "popupOptionId": "f5e95a60-d781-11f1-ab45-8bbb0ec1d341",
+      "describe": "Same as client-exact but on time_on_page 5 s, the client's setup before 30-oct: the popup opens by itself at app start (the case of the double popup on 0.7.5)",
+      "title": "Hvordan vil du vurdere din oplevelse med appen?"
+    },
     "fault-popups-error": {
       "publicKey": "invalid-key-mf3244",
       "describe": "fault: unknown public key, GET /sdk/{key}/popups answers 406 and no popup loads",
