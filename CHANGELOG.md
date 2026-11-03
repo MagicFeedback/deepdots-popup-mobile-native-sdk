@@ -6,6 +6,11 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ### Fixed
 
+- **The close button (X) stays visible when the survey does not fit.** With a tall survey page,
+  the whole card scrolled, and after a "required" message it scrolled to the bottom on its own:
+  the title and the X went out of view, so the popup could not be closed without scrolling back
+  up. The title row and the buttons now stay fixed and only the content in between scrolls.
+  Found by the end-to-end tests on iOS.
 - **iOS: a popup at the top no longer goes under the status bar.** With a top position and a tall
   survey, the card was laid out from the very top of the screen: the title sat on the clock and
   the close button (X) under the battery icon, where it could not be tapped. The card now stays
