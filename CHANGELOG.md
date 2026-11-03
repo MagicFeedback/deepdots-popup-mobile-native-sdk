@@ -6,6 +6,11 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ### Fixed
 
+- **The close button (X) stays visible when the survey does not fit.** With a tall survey page,
+  the whole card scrolled, and after a "required" message it scrolled to the bottom on its own:
+  the title and the X went out of view, so the popup could not be closed without scrolling back
+  up. The title row and the buttons now stay fixed and only the content in between scrolls.
+  Found by the end-to-end tests on iOS.
 - **The popup's Send, Back, close and Start work on older WebViews.** The native buttons ran
   `window.DeepdotsActions?.send()` in the survey; a WebView older than Chrome 80 (Android 8–10
   phones whose WebView was never updated) and iOS 13.0–13.3 reject optional chaining with a

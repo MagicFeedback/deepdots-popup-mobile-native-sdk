@@ -217,15 +217,16 @@ fun PopupView(
                 val maxSurveyHeight = maxPopupHeight * 0.72f
                 val scrollState = rememberScrollState()
                 Box(modifier = Modifier.fillMaxWidth()) {
-                    // Wrap-content column with a hard max-height. If the total intrinsic size
-                    // (header + image + survey area + footer) overflows maxPopupHeight, users
-                    // can scroll the popup. The WebView itself also scrolls internally for very
-                    // long surveys, so this is a defensive outer scroll.
+                    // Wrap-content column with a hard max-height. The header (title + X) and the
+                    // footer buttons stay fixed; only the middle (image, progress, message,
+                    // survey, error) scrolls when everything does not fit. Before, the whole card
+                    // scrolled: with a tall page, the auto-scroll to the error banner pushed the
+                    // title and the X out of view and the popup could not be closed (iOS, found
+                    // by e2e/cooldown-partial). The WebView also scrolls internally.
                     Column(
                         modifier = Modifier
                             .padding(horizontal = 16.dp, vertical = 12.dp)
-                            .heightIn(max = maxPopupHeight)
-                            .verticalScroll(scrollState),
+                            .heightIn(max = maxPopupHeight),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // Header row
@@ -252,6 +253,14 @@ fun PopupView(
                                     .semantics { contentDescription = labels.closeAria },
                             ) { Text("✕", color = textColor, fontSize = 18.sp) }
                         }
+
+                        // Scrollable middle: everything between the fixed header and footer.
+                        Column(
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .verticalScroll(scrollState),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
 
                         // Optional image placeholder (supports runtime override via loaded style).
                         // Va ANTES de la barra de progreso: la marca abre la tarjeta y la barra
@@ -587,6 +596,8 @@ fun PopupView(
                             }
                         }
 
+                        }
+
                         // Footer buttons, driven by state. Mientras se envia una pagina se
                         // quedan los del ultimo estado (sin responder): antes la fila desaparecia,
                         // la tarjeta encogia unos 48 dp y volvia a crecer al llegar la pagina.
@@ -657,8 +668,8 @@ fun PopupView(
                         }
                     }
 
-                    // Auto-scroll to reveal the error banner when it appears (banner sits
-                    // just above the footer, so we jump to the end of the scroll range).
+                    // Auto-scroll to reveal the error banner when it appears (it is the last item
+                    // of the scrollable middle, right above the fixed footer).
                     LaunchedEffect(errorHint) {
                         if (errorHint != null) {
                             scrollState.animateScrollTo(scrollState.maxValue)
