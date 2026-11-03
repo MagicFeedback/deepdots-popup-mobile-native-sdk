@@ -56,6 +56,7 @@ iOS quits, and the new run starts on the next launch).
 | `load` | `immediate` · `consent` | Init the SDK at launch, or after "Accept all" in the cookie dialog. |
 | `user` | text | `setUserId()` after init. Without it the SDK uses its anonymous id. |
 | `start` | `home` · `shop` · `cart` · `checkout` · `account` | First screen (not saved). |
+| `consent` | `all` · `necessary` | The cookie choice is already made: no cookie dialog at launch, as in a host app without one (a popup at app start shows right away instead of waiting for the dialog). |
 
 **Reset** in the Lab panel clears the SDK's storage (cooldowns, user id) and the cookie choice.
 
@@ -92,11 +93,19 @@ Surveys are the MF-3243 ones: «SDK Test App · Simple» `5581b5a0-…` and «Co
 | `release-fixtures` | events `fixture_*` (Lab panel) | `release/fixtures/popups` (MF-3242) | simple |
 | `fault-survey-missing` | `event` `fault_survey` | popup whose survey id does not exist | — |
 | `fault-popups-error` | — | unknown public key: the popups GET answers 406 | — |
+| `client-exact` | `event` `jhgjgjhg` (Lab panel) | `path: /`, cooldown `SHOWED` 14 d · `PARTIAL` / `COMPLETED` 30 d | client copy |
+| `client-exact-launch` | `time_on_page` 5 s | same as `client-exact` | client copy |
 
 `release-fixtures` stores the four fixtures through the API with the real simple survey; the API
 keeps them in its current shape, so the legacy `trigger`/`condition` parsing is still only
 covered by the SDK's unit tests (`ReleaseContractTest`). Path segments (`/`, `/#/game`) and the
 es-only language were dropped so all four show from the Lab panel.
+
+`client-exact` is a copy of a client app popup and its survey as they were in production on
+3 Nov 2026 (read through the public SDK endpoints, nothing written there): same rules, same
+questions, branching and colours (Danish rating 1–5, one follow-up text per rating band,
+yes/no, text, yes/no, email). Only the client logo is missing in DEV. `client-exact-launch` is
+the same popup on the 5 s timer the client used before, so it opens by itself at app start.
 
 If you change a popup, change it in the DEV Admin Panel too (Integrations › Popups, configs
 named "Native Test Apps (MF-3244) · <scenario>").
