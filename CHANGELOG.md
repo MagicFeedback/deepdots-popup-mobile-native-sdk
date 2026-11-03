@@ -8,6 +8,12 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ### Fixed
 
+- **A time-on-screen popup is scheduled once, not twice.** Every popup was normalised twice when
+  it was loaded, and the second pass added its trigger again: a `time_on_page` trigger that the
+  API sends once started two timers that fired together. Up to 0.7.5 this could show the same
+  popup twice at app start (one under the other); 0.7.6 already hid the second one with the "one
+  popup at a time" check, and now it is not requested at all. Display conditions were duplicated
+  the same way (without effect).
 - **iOS: a popup triggered at app start is no longer lost.** When an event fired right after
   `init()` (or a queued event was replayed when the popups arrived) before the host's view
   controller was in a window, UIKit refused the presentation silently while the popup was already
