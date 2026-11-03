@@ -351,10 +351,12 @@ jobs:
           merge-multiple: true
       - name: Summarize
         run: |
-          python3 .github/test-apps-matrix/summarize.py rows test-apps/maestro > matrix.md
+          python3 .github/test-apps-matrix/summarize.py rows test-apps/maestro --json results.json > matrix.md
           { echo "## SDK $SDK · control $CONTROL_SDK"; echo; cat matrix.md; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: results-matrix
-          path: matrix.md
+          path: |
+            matrix.md
+            results.json
           retention-days: 90

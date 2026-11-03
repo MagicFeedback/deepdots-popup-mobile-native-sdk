@@ -68,6 +68,26 @@ set_text_size() {
   fi
 }
 
+# JUnit file for a flow Maestro did not report: junit_case <name> <error|skipped> <message>.
+junit_case() {
+  local msg; msg=$(printf '%s' "$3" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g')
+  local body="<error message=\"$msg\"/>"
+  [ "$2" = skipped ] && body="<skipped message=\"$msg\"/>"
+  printf '<?xml version="1.0" encoding="UTF-8"?>\n<testsuites><testsuite name="%s" tests="1"><testcase name="%s">%s</testcase></testsuite></testsuites>\n' \
+    "$1" "$1" "$body" > "$OUT/junit/$1.xml"
+}
+
+# iOS: when the Maestro driver did not come up in time (seen on the downloaded iOS 16.4 runtime),
+# reboot the simulator before the next try; retrying on the same simulator hit the same timeout.
+reboot_if_driver_timeout() { # <maestro output>
+  [ "$PLATFORM" = ios ] && grep -q 'IOSDriverTimeoutException' "$1" || return 0
+  echo "::warning::[lab] Maestro iOS driver did not start: rebooting the simulator"
+  local dev=${DEVICE:-booted}
+  [ "$dev" = booted ] && dev=$(xcrun simctl list devices booted -j | python3 -c "import json,sys;print([d['udid'] for r in json.load(sys.stdin)['devices'].values() for d in r][0])")
+  xcrun simctl shutdown "$dev" > /dev/null 2>&1
+  xcrun simctl boot "$dev" && xcrun simctl bootstatus "$dev" -b > /dev/null
+}
+
 run_flow() { # <flow file> -> exit code of maestro
   local name; name=$(basename "$1" .yaml)
   local net; net=$(sed -n 's/^# network: *//p' "$1")
@@ -75,9 +95,15 @@ run_flow() { # <flow file> -> exit code of maestro
   local text; text=$(sed -n 's/^# text-size: *//p' "$1")
   [ -n "$text" ] && { echo "[lab] $name: text size $text"; set_text_size "$text"; }
   start_recording "$name"
+  rm -f "$OUT/junit/$name.xml"
   maestro_cmd test $DRIVER_OPTS -e SDK_VERSION="$SDK" --format junit --output "$OUT/junit/$name.xml" \
     --test-output-dir "$OUT/maestro/$name" "$1" > "$OUT/maestro/$name.txt" 2>&1
   local code=$?
+  # Maestro writes no JUnit when it cannot start (e.g. the iOS driver did not come up): write one
+  # with the error, so the flow reads as failed and not as "not run" in the results.
+  if [ "$code" != 0 ] && [ ! -s "$OUT/junit/$name.xml" ]; then
+    junit_case "$name" error "$(grep -m1 -E 'Exception|Error' "$OUT/maestro/$name.txt" | sed 's/^ *//')"
+  fi
   stop_recording "$name"
   [ -n "$net" ] && set_network full none
   [ -n "$text" ] && set_text_size default
@@ -104,7 +130,9 @@ FLOWS=${FLOWS:-$(ls flows/*.yaml regression/*.yaml failures/*.yaml)}
 failed=()
 for f in $FLOWS; do
   name=$(basename "$f" .yaml)
-  if grep -q 'android-only' "$f" && [ "$PLATFORM" != android ]; then echo "[lab] skip $name (android-only)"; continue; fi
+  if grep -q 'android-only' "$f" && [ "$PLATFORM" != android ]; then
+    echo "[lab] skip $name (android-only)"; junit_case "$name" skipped "Android only"; continue
+  fi
   # `# known-issue-until: X.Y.Z`: a known issue only for SDK versions up to X.Y.Z.
   # `# known-issue-until-ios: X.Y.Z` / `-android:` overrides it on that platform.
   until_v=$(sed -n "s/^# known-issue-until-$PLATFORM: *//p" "$f")
@@ -138,6 +166,7 @@ for f in $FLOWS; do
         echo "[lab] => the test system detects the missing trigger"
       elif [ "$try" = 1 ]; then
         cp "$OUT/maestro/$name.txt" "$OUT/maestro/$name.try1.txt"
+        reboot_if_driver_timeout "$OUT/maestro/$name.try1.txt"
         echo "::warning::[lab] $name failed for another reason, retrying: $(grep -m1 -E '^\[Failed\]' "$OUT/maestro/$name.txt")"
         continue
       else
@@ -152,11 +181,13 @@ for f in $FLOWS; do
   # One retry, so a slow CI device does not hide real results; the retry is reported.
   first=$(grep -m1 -E '^\[Failed\]' "$OUT/maestro/$name.txt")
   mv "$OUT/maestro/$name.txt" "$OUT/maestro/$name.try1.txt"
+  reboot_if_driver_timeout "$OUT/maestro/$name.try1.txt"
   if run_flow "$f"; then
     echo "::warning::[lab] PASS $name on retry (first try: $first)"
   else
     echo "::error::[lab] FAIL $name: $(grep -m1 -E '^\[Failed\]' "$OUT/maestro/$name.txt")"
     failed+=("$name")
+    reboot_if_driver_timeout "$OUT/maestro/$name.txt"
   fi
 done
 
