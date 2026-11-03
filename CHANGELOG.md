@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.8 - 2026-11-03
+
 ### Fixed
 
 - **A time-on-screen popup is scheduled once, not twice.** Every popup was normalised twice when
