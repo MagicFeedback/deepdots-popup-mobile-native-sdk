@@ -141,3 +141,11 @@ test('two platforms on one red job: only the one with the failing test fails', (
   const r = evaluate(rows, { web: 'failure' }, config);
   assert.deepEqual(r.platforms, { Desktop: STATUS.failed, Mobile: STATUS.passed });
 });
+
+test('a row where no test ran (emulator did not start) says so', () => {
+  const rows = green();
+  rows[0] = { ...rows[0], status: {}, outcome: 'failure' };
+  const r = evaluate(rows, jobs);
+  assert.equal(r.platforms.Android, STATUS.failed);
+  assert.match(r.failures[0].message, /No test ran/);
+});
