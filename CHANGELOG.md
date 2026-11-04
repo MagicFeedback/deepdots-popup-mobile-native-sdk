@@ -4,6 +4,18 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- **Surveys SDK 2.2.39** (`@magicfeedback/native`, from 2.2.31), vendored on Android and from the
+  CDN on iOS (`MAGICFEEDBACK_VERSION`). With it the popup shows "Please enter a valid email
+  address." for an email with a typo (`INVALID_EMAIL`), the survey reports send failures apart
+  from an empty required question (`SEND_FAILED`, 2.2.37), and it gets the survey changes since
+  2.2.31: the 24 official EU languages, the email `Option/Alt + 2` shortcut, typed submit
+  errors, rating and choice layout options. The survey stylesheet now comes from popup-sdk
+  1.18.0 (`POPUP_SDK_CSS_VERSION`, from 1.10.0), the copy of the 2.2.37 CSS; the email @ button
+  (`assets.atButton`, 2.2.38) shows unstyled until a popup-sdk with the 2.2.39 CSS is published
+  and pinned here.
+
 ### Fixed
 
 - **The popup understands the survey's error codes.** The surveys SDK (`@magicfeedback/native`
