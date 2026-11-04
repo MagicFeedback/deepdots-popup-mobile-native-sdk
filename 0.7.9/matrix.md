@@ -3,21 +3,21 @@
 | 00-version | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | audience-lang | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | checkout-time | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| close-with-keyboard | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (retry) | ✅ |
+| close-with-keyboard | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | exit-checkout | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | help-click | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| lang-da-shows | ✅ | ✅ | ✅ | ✅ | ✅ (retry) | ✅ | ✅ | ✅ | ✅ | ❌ (did not run) | ✅ | ✅ | ✅ (retry) | ✅ (retry) | ✅ | ✅ |
-| lang-en-hidden | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ (did not run) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| lang-da-shows | ✅ | ✅ | ✅ | ✅ | ✅ (retry) | ✅ | ✅ | ✅ | ✅ | ✅ (retry) | ✅ | ✅ | ✅ | ✅ | ✅ (retry) | ✅ |
+| lang-en-hidden | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | lifecycle | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | missing-navigation | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) | ✅ (fails as expected) |
 | not-on-cart | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | offline | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 | offline-open-popup | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
-| path-targeting | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| path-targeting | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ (did not run) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | popups-error | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | rate-product | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| rate-product-close | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) | ❌ (known issue passes: drop the tag) |
-| rating-labels | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (retry) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| rate-product-close | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| rating-labels | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | redisplay | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | release-fixtures | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | slow-survey | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | n/a | n/a | n/a | n/a | n/a | n/a | n/a |

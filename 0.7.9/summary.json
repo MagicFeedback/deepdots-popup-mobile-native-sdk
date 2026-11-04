@@ -9,62 +9,8 @@
     {
       "platform": "iOS",
       "row": "iOS 16.4 iPhone SE (3rd generation) Debug",
-      "flow": "lang-da-shows",
+      "flow": "path-targeting",
       "message": "xcuitest.installer.LocalXCTestInstaller$IOSDriverTimeoutException: iOS driver not ready in time, consider increasing timeout by configuring MAESTRO_DRIVER_STARTUP_TIMEOUT env variable"
-    },
-    {
-      "platform": "iOS",
-      "row": "iOS 16.4 iPhone SE (3rd generation) Debug",
-      "flow": "lang-en-hidden",
-      "message": "xcuitest.installer.LocalXCTestInstaller$IOSDriverTimeoutException: iOS driver not ready in time, consider increasing timeout by configuring MAESTRO_DRIVER_STARTUP_TIMEOUT env variable"
-    },
-    {
-      "platform": "iOS",
-      "row": "iOS 16.4 iPhone SE (3rd generation) Debug",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "iOS",
-      "row": "iOS 17.5 iPhone 15 Debug",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "iOS",
-      "row": "iOS 18 iPad (A16) Debug",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "iOS",
-      "row": "iOS 18 iPhone 16 Pro Debug no-frame-key",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "iOS",
-      "row": "iOS 18 iPhone 16 Pro Max Debug",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "iOS",
-      "row": "iOS 18 iPhone 16 Release",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "iOS",
-      "row": "iOS 26 iPhone 17 Debug",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "Android",
-      "row": "A26 phone debug",
-      "flow": "rate-product-close",
-      "message": ""
     },
     {
       "platform": "Android",
@@ -75,64 +21,16 @@
     {
       "platform": "Android",
       "row": "A26 phone release",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "Android",
-      "row": "A26 phone release",
       "flow": "slow-survey",
       "message": "Assertion is false: \"Can we help?\" is visible"
-    },
-    {
-      "platform": "Android",
-      "row": "A30 phone debug",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "Android",
-      "row": "A30 phone release",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "Android",
-      "row": "A34 phone debug",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "Android",
-      "row": "A34 phone release",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "Android",
-      "row": "A34 tablet debug",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "Android",
-      "row": "A36 phone debug",
-      "flow": "rate-product-close",
-      "message": ""
-    },
-    {
-      "platform": "Android",
-      "row": "A36 phone release",
-      "flow": "rate-product-close",
-      "message": ""
     }
   ],
   "knownIssues": {},
   "counts": {
     "executions": 352,
-    "passed": 311,
-    "retried": 5,
-    "failed": 20,
+    "passed": 328,
+    "retried": 3,
+    "failed": 3,
     "skipped": 21,
     "known": 0
   }

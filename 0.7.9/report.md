@@ -12,11 +12,11 @@
 
 SDK 0.7.9 was validated as published (Maven Central and Swift Package Manager) inside dedicated native test applications that integrate the SDK the same way a customer app does.
 
-Results ([CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/41785193836/attempts/1)):
+Results ([CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/41803323992/attempts/1)):
 
 - **352** automated test executions on **16** configurations (7 iOS, 9 Android)
-- **311** passed (5 on the automatic retry)
-- **20** failed
+- **328** passed (3 on the automatic retry)
+- **3** failed
 - **21** not applicable on that platform
 - Manual pass on real devices: **pending** (section 7)
 
@@ -28,39 +28,22 @@ Results ([CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-
 
 | Platform | Configuration | Test | Detail |
 |---|---|---|---|
-| iOS | iOS 16.4 iPhone SE (3rd generation) Debug | lang-da-shows | xcuitest.installer.LocalXCTestInstaller$IOSDriverTimeoutException: iOS driver not ready in time, consider increasing timeout by configuring MAESTRO_DRIVER_STARTUP_TIMEOUT env variable |
-| iOS | iOS 16.4 iPhone SE (3rd generation) Debug | lang-en-hidden | xcuitest.installer.LocalXCTestInstaller$IOSDriverTimeoutException: iOS driver not ready in time, consider increasing timeout by configuring MAESTRO_DRIVER_STARTUP_TIMEOUT env variable |
-| iOS | iOS 16.4 iPhone SE (3rd generation) Debug | rate-product-close |  |
-| iOS | iOS 17.5 iPhone 15 Debug | rate-product-close |  |
-| iOS | iOS 18 iPad (A16) Debug | rate-product-close |  |
-| iOS | iOS 18 iPhone 16 Pro Debug no-frame-key | rate-product-close |  |
-| iOS | iOS 18 iPhone 16 Pro Max Debug | rate-product-close |  |
-| iOS | iOS 18 iPhone 16 Release | rate-product-close |  |
-| iOS | iOS 26 iPhone 17 Debug | rate-product-close |  |
-| Android | A26 phone debug | rate-product-close |  |
+| iOS | iOS 16.4 iPhone SE (3rd generation) Debug | path-targeting | xcuitest.installer.LocalXCTestInstaller$IOSDriverTimeoutException: iOS driver not ready in time, consider increasing timeout by configuring MAESTRO_DRIVER_STARTUP_TIMEOUT env variable |
 | Android | A26 phone debug | slow-survey | Assertion is false: "Can we help?" is visible |
-| Android | A26 phone release | rate-product-close |  |
 | Android | A26 phone release | slow-survey | Assertion is false: "Can we help?" is visible |
-| Android | A30 phone debug | rate-product-close |  |
-| Android | A30 phone release | rate-product-close |  |
-| Android | A34 phone debug | rate-product-close |  |
-| Android | A34 phone release | rate-product-close |  |
-| Android | A34 tablet debug | rate-product-close |  |
-| Android | A36 phone debug | rate-product-close |  |
-| Android | A36 phone release | rate-product-close |  |
 
 ## 2. Test Results
 
 | Test category | iOS | Android |
 |---|---|---|
 | SDK initialization and version check | PASS | PASS |
-| Path-based triggers and excluded screens | PASS | PASS |
+| Path-based triggers and excluded screens | **FAIL** | PASS |
 | Time-based triggers | PASS | PASS |
 | Event and click triggers | PASS | PASS |
 | Exit triggers | PASS | PASS |
 | Re-display rules (cooldown) | PASS | PASS |
-| Audience segmentation by language | **FAIL** | PASS |
-| Popup opening and closing | **FAIL** | **FAIL** |
+| Audience segmentation by language | PASS | PASS |
+| Popup opening and closing | PASS | PASS |
 | Survey rendering, interactions and submission | PASS | PASS |
 | Navigation and app lifecycle (background / foreground, rotation) | PASS | PASS |
 | Network failures and recovery | PASS | **FAIL** |
@@ -76,21 +59,21 @@ Results ([CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-
 | 00-version | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
 | audience-lang | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
 | checkout-time | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
-| close-with-keyboard | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | retry | pass |
+| close-with-keyboard | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
 | exit-checkout | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
 | help-click | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
-| lang-da-shows | pass | pass | pass | pass | retry | pass | pass | pass | pass | error | pass | pass | retry | retry | pass | pass |
-| lang-en-hidden | pass | pass | pass | pass | pass | pass | pass | pass | pass | error | pass | pass | pass | pass | pass | pass |
+| lang-da-shows | pass | pass | pass | pass | retry | pass | pass | pass | pass | retry | pass | pass | pass | pass | retry | pass |
+| lang-en-hidden | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
 | lifecycle | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
 | missing-navigation | expected | expected | expected | expected | expected | expected | expected | expected | expected | expected | expected | expected | expected | expected | expected | expected |
 | not-on-cart | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
 | offline | pass | pass | pass | pass | pass | pass | pass | pass | pass | skip | skip | skip | skip | skip | skip | skip |
 | offline-open-popup | pass | pass | pass | pass | pass | pass | pass | pass | pass | skip | skip | skip | skip | skip | skip | skip |
-| path-targeting | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
+| path-targeting | pass | pass | pass | pass | pass | pass | pass | pass | pass | error | pass | pass | pass | pass | pass | pass |
 | popups-error | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
 | rate-product | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
-| rate-product-close | fail | fail | fail | fail | fail | fail | fail | fail | fail | fail | fail | fail | fail | fail | fail | fail |
-| rating-labels | pass | pass | pass | pass | pass | pass | pass | pass | pass | retry | pass | pass | pass | pass | pass | pass |
+| rate-product-close | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
+| rating-labels | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
 | redisplay | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
 | release-fixtures | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
 | slow-survey | fail | fail | pass | pass | pass | pass | pass | pass | pass | skip | skip | skip | skip | skip | skip | skip |
@@ -104,20 +87,20 @@ Results ([CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-
 |---|---|---|---|---|---|---|
 | Android | API 26 | pixel_6 (emulator) | debug | 0.7.9 | WebView 69.0.3497.100 | **FAIL** |
 | Android | API 26 | pixel_6 (emulator) | release (R8) | 0.7.9 | WebView 69.0.3497.100 | **FAIL** |
-| Android | API 30 | pixel_6 (emulator) | debug | 0.7.9 | WebView 83.0.4103.106 | **FAIL** |
-| Android | API 30 | pixel_6 (emulator) | release (R8) | 0.7.9 | WebView 83.0.4103.106 | **FAIL** |
-| Android | API 34 | pixel_6 (emulator) | debug | 0.7.9 | WebView 113.0.5672.136 | **FAIL** |
-| Android | API 34 | pixel_6 (emulator) | release (R8) | 0.7.9 | WebView 113.0.5672.136 | **FAIL** |
-| Android | API 34 | pixel_tablet (emulator) | debug | 0.7.9 | WebView 113.0.5672.136 | **FAIL** |
-| Android | API 36 | pixel_6 (emulator) | debug | 0.7.9 | WebView 133.0.6943.137 | **FAIL** |
-| Android | API 36 | pixel_6 (emulator) | release (R8) | 0.7.9 | WebView 133.0.6943.137 | **FAIL** |
+| Android | API 30 | pixel_6 (emulator) | debug | 0.7.9 | WebView 83.0.4103.106 | PASS |
+| Android | API 30 | pixel_6 (emulator) | release (R8) | 0.7.9 | WebView 83.0.4103.106 | PASS |
+| Android | API 34 | pixel_6 (emulator) | debug | 0.7.9 | WebView 113.0.5672.136 | PASS |
+| Android | API 34 | pixel_6 (emulator) | release (R8) | 0.7.9 | WebView 113.0.5672.136 | PASS |
+| Android | API 34 | pixel_tablet (emulator) | debug | 0.7.9 | WebView 113.0.5672.136 | PASS |
+| Android | API 36 | pixel_6 (emulator) | debug | 0.7.9 | WebView 133.0.6943.137 | PASS |
+| Android | API 36 | pixel_6 (emulator) | release (R8) | 0.7.9 | WebView 133.0.6943.137 | PASS |
 | iOS | iOS-16-4 | iPhone SE (3rd generation) (simulator) | Debug · Xcode_16.4 | 0.7.9 | — | **FAIL** |
-| iOS | iOS-17-5 | iPhone 15 (simulator) | Debug · Xcode_16.4 | 0.7.9 | — | **FAIL** |
-| iOS | iOS-18-6 | iPad (A16) (simulator) | Debug · Xcode_16.4 | 0.7.9 | — | **FAIL** |
-| iOS | iOS-18-6 | iPhone 16 Pro (simulator) | Debug · Xcode_16.4 | 0.7.9 | — | **FAIL** |
-| iOS | iOS-18-6 | iPhone 16 Pro Max (simulator) | Debug · Xcode_16.4 | 0.7.9 | — | **FAIL** |
-| iOS | iOS-18-6 | iPhone 16 (simulator) | Release · Xcode_16.4 | 0.7.9 | — | **FAIL** |
-| iOS | iOS-26-2 | iPhone 17 (simulator) | Debug · Xcode_26.2 | 0.7.9 | — | **FAIL** |
+| iOS | iOS-17-5 | iPhone 15 (simulator) | Debug · Xcode_16.4 | 0.7.9 | — | PASS |
+| iOS | iOS-18-6 | iPad (A16) (simulator) | Debug · Xcode_16.4 | 0.7.9 | — | PASS |
+| iOS | iOS-18-6 | iPhone 16 Pro (simulator) | Debug · Xcode_16.4 | 0.7.9 | — | PASS |
+| iOS | iOS-18-6 | iPhone 16 Pro Max (simulator) | Debug · Xcode_16.4 | 0.7.9 | — | PASS |
+| iOS | iOS-18-6 | iPhone 16 (simulator) | Release · Xcode_16.4 | 0.7.9 | — | PASS |
+| iOS | iOS-26-2 | iPhone 17 (simulator) | Debug · Xcode_26.2 | 0.7.9 | — | PASS |
 
 All automated tests ran against the Deepdots development environment with test companies only. No customer data was used, and each configuration fails if any request reaches the production API.
 
@@ -176,9 +159,9 @@ The test system has to prove it catches real problems. These controls run in eve
 - **SDK version:** 0.7.9
 - **Release:** [GitHub release v0.7.9](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/releases/tag/v0.7.9)
 - **Changelog:** [CHANGELOG](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/blob/main/CHANGELOG.md)
-- **Test execution:** [CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/41785193836/attempts/1) (logs, screenshots and per-configuration artifacts)
+- **Test execution:** [CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/41803323992/attempts/1) (logs, screenshots and per-configuration artifacts)
 - **Validation date:** 2026-11-04
-- **Results file SHA-256:** `8443f107b4d321e028f7c59cf04a1430d9ae97549db7384f4c5db7e1da5f6a81`
+- **Results file SHA-256:** `689bc810009bb046aeda7fc7b7d58e6e5292e01a9328015c209b69445aef8056`
 
 ### Release notes 0.7.9
 
