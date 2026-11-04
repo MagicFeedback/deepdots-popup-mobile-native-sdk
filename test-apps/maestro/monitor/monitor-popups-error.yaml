@@ -1,0 +1,6 @@
+# Synthetic monitor (DD-26) · popups-error: the popup config does not load (DEV API answers 406):
+# no popup, and the host app keeps working.
+appId: com.deepdots.testapp
+tags: [monitor]
+---
+- runFlow: ../failures/popups-error.yaml

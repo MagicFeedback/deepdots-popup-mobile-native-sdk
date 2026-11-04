@@ -1,0 +1,109 @@
+# Alert side of the synthetic monitor (DD-26, monitor.yml), shared by the Android and iOS jobs:
+# results -> Slack (#notifications) -> failure report on GitHub Pages -> BigQuery (optional) ->
+# artifact. The job passes MONITORING_SLACK_WEBHOOK_URL, SDK_MONITOR_* and GH_TOKEN as env
+# (a composite action cannot read secrets or vars). Grafana is not in this path.
+name: SDK monitor report
+description: Collect the Maestro results of a monitor run and tell Slack
+inputs:
+  platform:
+    description: android | ios
+    required: true
+  sdk:
+    description: SDK version under test
+    required: true
+  source:
+    description: maven | spm
+    required: true
+  out:
+    description: run-maestro.sh output directory
+    required: true
+  job-status:
+    description: outcome of the Maestro step
+    required: true
+  fault:
+    description: injected failure (failure test), empty otherwise
+    default: ''
+  write-bigquery:
+    description: 'false = skip the BigQuery write (failure test: Grafana down)'
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: npm ci --prefix scripts/release --no-audit --no-fund
+
+    - uses: actions/cache/restore@v4
+      with:
+        path: sdk-monitor-${{ inputs.platform }}-state.json
+        key: sdk-monitor-${{ inputs.platform }}-${{ github.event_name == 'schedule' && 'schedule' || 'manual' }}-${{ github.run_id }}
+        restore-keys: sdk-monitor-${{ inputs.platform }}-${{ github.event_name == 'schedule' && 'schedule' || 'manual' }}-
+
+    - name: Collect
+      shell: bash
+      run: |
+        node scripts/release/sdk-monitor.mjs collect --platform "${{ inputs.platform }}" --source "${{ inputs.source }}" \
+          --sdk "${{ inputs.sdk }}" --maestro "${{ inputs.out }}" --job-status "${{ inputs.job-status }}" \
+          --fault "${{ inputs.fault }}" --out "sdk-monitor-${{ inputs.platform }}"
+
+    - name: Slack
+      id: report
+      shell: bash
+      env:
+        REPORT_URL: https://magicfeedback.github.io/deepdots-popup-mobile-native-sdk/validation/monitor/${{ inputs.platform }}-${{ github.run_id }}-${{ github.run_attempt }}
+      run: |
+        node scripts/release/sdk-monitor.mjs report --out "sdk-monitor-${{ inputs.platform }}" \
+          --state "sdk-monitor-${{ inputs.platform }}-state.json" --report-url "$REPORT_URL"
+
+    - uses: actions/cache/save@v4
+      with:
+        path: sdk-monitor-${{ inputs.platform }}-state.json
+        key: sdk-monitor-${{ inputs.platform }}-${{ github.event_name == 'schedule' && 'schedule' || 'manual' }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+    # validation-reports branch, served by docs-pages.yml under /validation/monitor/.
+    - name: Publish the failure report
+      if: steps.report.outputs.report == 'true'
+      shell: bash
+      env:
+        DIR: monitor/${{ inputs.platform }}-${{ github.run_id }}-${{ github.run_attempt }}
+        SRC: sdk-monitor-${{ inputs.platform }}/report
+      run: |
+        set -euo pipefail
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        for try in 1 2 3; do
+          rm -rf pages; git worktree prune
+          if git fetch --depth=1 origin validation-reports; then git worktree add pages FETCH_HEAD
+          else git worktree add --detach pages && git -C pages checkout --orphan validation-reports && git -C pages rm -rfq .; fi
+          mkdir -p "pages/$DIR" && cp -R "$SRC/." "pages/$DIR/"
+          git -C pages add -A && git -C pages commit -qm "sdk monitor report $DIR"
+          git -C pages push origin HEAD:refs/heads/validation-reports && break
+          sleep $((try * 5))
+        done
+        gh workflow run docs-pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+
+    # Grafana's data: survey_monitoring.sdk_check_results. Optional, never blocks the alerts.
+    - uses: google-github-actions/auth@v2
+      if: inputs.write-bigquery == 'true' && env.SDK_MONITOR_WIF_PROVIDER != ''
+      continue-on-error: true
+      with:
+        workload_identity_provider: ${{ env.SDK_MONITOR_WIF_PROVIDER }}
+        service_account: ${{ env.SDK_MONITOR_SERVICE_ACCOUNT }}
+    - uses: google-github-actions/setup-gcloud@v2
+      if: inputs.write-bigquery == 'true' && env.SDK_MONITOR_WIF_PROVIDER != ''
+      continue-on-error: true
+    - name: Write rows
+      if: inputs.write-bigquery == 'true' && env.SDK_MONITOR_WIF_PROVIDER != ''
+      continue-on-error: true
+      shell: bash
+      run: |
+        jq -c 'del(.sdk_log) | .evidence |= map({name, url})' "sdk-monitor-${{ inputs.platform }}/results.jsonl" > rows.jsonl
+        bq --project_id="$SDK_MONITOR_GCP_PROJECT" insert "$SDK_MONITOR_BQ_TABLE" rows.jsonl
+
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: sdk-monitor-${{ inputs.platform }}-${{ github.run_id }}-${{ github.run_attempt }}
+        path: |
+          sdk-monitor-${{ inputs.platform }}
+          ${{ inputs.out }}
+        retention-days: 14
