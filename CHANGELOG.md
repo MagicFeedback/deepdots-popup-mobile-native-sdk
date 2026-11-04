@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.9 - 2026-11-04
+
 ### Fixed
 
 - **iOS: a survey taller than its box can be scrolled again.** The survey's WebView sat inside
