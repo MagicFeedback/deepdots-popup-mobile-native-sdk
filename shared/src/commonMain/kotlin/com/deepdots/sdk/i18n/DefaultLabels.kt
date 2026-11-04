@@ -46,6 +46,8 @@ object DefaultLabels {
         val loadingAria: String,
         /** Aviso al intentar avanzar con una pregunta obligatoria sin responder. */
         val errorRequired: String,
+        /** Aviso al intentar avanzar con un email que no es una dirección válida (`INVALID_EMAIL`). */
+        val errorInvalidEmail: String,
         /** Aviso cuando el envío falla. */
         val errorSubmit: String,
         /** Aviso cuando el survey no ha podido cargar (el popup solo ofrece cerrarlo). */
@@ -72,6 +74,7 @@ object DefaultLabels {
         closeAria = "Close popup",
         loadingAria = "Loading survey",
         errorRequired = "Please answer the required question to continue.",
+        errorInvalidEmail = "Please enter a valid email address.",
         errorSubmit = "An error occurred while submitting. Please try again or close the popup.",
         errorLoad = "We couldn't load this survey.",
     )
@@ -88,6 +91,7 @@ object DefaultLabels {
         closeAria = "Cerrar ventana emergente",
         loadingAria = "Cargando encuesta",
         errorRequired = "Responde la pregunta obligatoria para continuar.",
+        errorInvalidEmail = "Introduce una dirección de correo electrónico válida.",
         errorSubmit = "Se produjo un error al enviar. Inténtalo de nuevo o cierra la ventana.",
         errorLoad = "No se ha podido cargar la encuesta.",
     )
@@ -104,6 +108,7 @@ object DefaultLabels {
         closeAria = "Luk pop op",
         loadingAria = "Indlæser undersøgelse",
         errorRequired = "Besvar venligst det obligatoriske spørgsmål for at fortsætte.",
+        errorInvalidEmail = "Indtast venligst en gyldig e-mailadresse.",
         errorSubmit = "Der opstod en fejl under afsendelsen. Prøv igen, eller luk pop op-vinduet.",
         errorLoad = "Undersøgelsen kunne ikke indlæses.",
     )
@@ -120,6 +125,7 @@ object DefaultLabels {
         closeAria = "Lukk popup",
         loadingAria = "Laster undersøkelse",
         errorRequired = "Svar på det obligatoriske spørsmålet for å fortsette.",
+        errorInvalidEmail = "Skriv inn en gyldig e-postadresse.",
         errorSubmit = "Det oppstod en feil under innsendingen. Prøv igjen, eller lukk popupen.",
         errorLoad = "Undersøkelsen kunne ikke lastes inn.",
     )
@@ -136,6 +142,7 @@ object DefaultLabels {
         closeAria = "Stäng popup",
         loadingAria = "Laddar undersökning",
         errorRequired = "Svara på den obligatoriska frågan för att fortsätta.",
+        errorInvalidEmail = "Ange en giltig e-postadress.",
         errorSubmit = "Ett fel uppstod vid inskickningen. Försök igen eller stäng popupen.",
         errorLoad = "Enkäten kunde inte laddas.",
     )
@@ -152,6 +159,7 @@ object DefaultLabels {
         closeAria = "Sulje ponnahdusikkuna",
         loadingAria = "Ladataan kyselyä",
         errorRequired = "Vastaa pakolliseen kysymykseen jatkaaksesi.",
+        errorInvalidEmail = "Anna kelvollinen sähköpostiosoite.",
         errorSubmit = "Lähetyksessä tapahtui virhe. Yritä uudelleen tai sulje ponnahdusikkuna.",
         errorLoad = "Kyselyä ei voitu ladata.",
     )
@@ -168,6 +176,7 @@ object DefaultLabels {
         closeAria = "Popup schließen",
         loadingAria = "Umfrage wird geladen",
         errorRequired = "Bitte beantworte die Pflichtfrage, um fortzufahren.",
+        errorInvalidEmail = "Bitte gib eine gültige E-Mail-Adresse ein.",
         errorSubmit = "Beim Senden ist ein Fehler aufgetreten. Versuche es erneut oder schließe das Popup.",
         errorLoad = "Die Umfrage konnte nicht geladen werden.",
     )
@@ -184,6 +193,7 @@ object DefaultLabels {
         closeAria = "Fermer la fenêtre",
         loadingAria = "Chargement de l'enquête",
         errorRequired = "Veuillez répondre à la question obligatoire pour continuer.",
+        errorInvalidEmail = "Veuillez saisir une adresse e-mail valide.",
         errorSubmit = "Une erreur s'est produite lors de l'envoi. Réessayez ou fermez la fenêtre.",
         errorLoad = "Impossible de charger l'enquête.",
     )
@@ -200,6 +210,7 @@ object DefaultLabels {
         closeAria = "Fechar janela",
         loadingAria = "A carregar questionário",
         errorRequired = "Responda à pergunta obrigatória para continuar.",
+        errorInvalidEmail = "Insira um endereço de e-mail válido.",
         errorSubmit = "Ocorreu um erro ao enviar. Tente novamente ou feche a janela.",
         errorLoad = "Não foi possível carregar o inquérito.",
     )
@@ -219,6 +230,7 @@ object DefaultLabels {
         closeAria = "إغلاق النافذة المنبثقة",
         loadingAria = "جارٍ تحميل الاستبيان",
         errorRequired = "يرجى الإجابة على السؤال المطلوب للمتابعة.",
+        errorInvalidEmail = "يرجى إدخال عنوان بريد إلكتروني صالح.",
         errorSubmit = "حدث خطأ أثناء الإرسال. يرجى المحاولة مرة أخرى أو إغلاق النافذة.",
         errorLoad = "تعذّر تحميل الاستبيان.",
     )
@@ -235,6 +247,7 @@ object DefaultLabels {
         closeAria = "পপআপ বন্ধ করুন",
         loadingAria = "জরিপ লোড হচ্ছে",
         errorRequired = "চালিয়ে যেতে আবশ্যক প্রশ্নের উত্তর দিন।",
+        errorInvalidEmail = "একটি বৈধ ইমেল ঠিকানা লিখুন।",
         errorSubmit = "জমা দেওয়ার সময় একটি ত্রুটি ঘটেছে। আবার চেষ্টা করুন বা পপআপ বন্ধ করুন।",
         errorLoad = "সমীক্ষাটি লোড করা যায়নি।",
     )
@@ -251,6 +264,7 @@ object DefaultLabels {
         closeAria = "关闭弹窗",
         loadingAria = "正在加载问卷",
         errorRequired = "请回答必答题后继续。",
+        errorInvalidEmail = "请输入有效的电子邮件地址。",
         errorSubmit = "提交时出错。请重试或关闭弹窗。",
         errorLoad = "无法加载问卷。",
     )

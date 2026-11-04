@@ -4,6 +4,18 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **The popup understands the survey's error codes.** The surveys SDK (`@magicfeedback/native`
+  2.2.37+) sends a `code` with each submit error; the popup only looked at the text, so any
+  error containing "No response" read as "required question" (also a send the API did not
+  save) and every other error showed the generic message. The popup now reads the code, like the
+  Web SDK: `REQUIRED` shows the required message, the new `INVALID_EMAIL` (2.2.39) shows "Please
+  enter a valid email address." (translated in the 12 languages), and the rest show the submit
+  error. Without a code it keeps matching the text. It applies once the pinned surveys SDK
+  (`MAGICFEEDBACK_VERSION`, 2.2.31 today) is raised to a version that sends codes. Asked by
+  Lemvigh-Müller: an email with a typo showed "Please answer the question".
+
 ## 0.7.9 - 2026-11-04
 
 ### Fixed
