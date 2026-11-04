@@ -4,7 +4,8 @@
 #   test-apps/scripts/run-maestro.sh <android|ios> <sdk-version> <out-dir>
 #
 # env: DEVICE (simulator UDID / adb serial, optional), RECORD=1 (one video per flow),
-#      FLOWS (space-separated flow files relative to test-apps/maestro; default: all).
+#      FLOWS (space-separated flow files relative to test-apps/maestro; default: all),
+#      MONITOR_SCENARIO (synthetic monitor failure test, maestro/monitor; passed to the flows).
 # Per flow it writes Maestro's output and a JUnit report; for the run, the device log with the
 # app's [lab] lines. Exit code != 0 when a flow fails, when the expected-failure test passes, or
 # when anything in the log points at the production API.
@@ -113,7 +114,7 @@ run_flow() { # <flow file> -> exit code of maestro
   [ -n "$text" ] && { echo "[lab] $name: text size $text"; set_text_size "$text"; }
   start_recording "$name"
   rm -f "$OUT/junit/$name.xml"
-  maestro_cmd test $DRIVER_OPTS -e SDK_VERSION="$SDK" --format junit --output "$OUT/junit/$name.xml" \
+  maestro_cmd test $DRIVER_OPTS -e SDK_VERSION="$SDK" -e MONITOR_SCENARIO="${MONITOR_SCENARIO:-}" --format junit --output "$OUT/junit/$name.xml" \
     --test-output-dir "$OUT/maestro/$name" "$1" > "$OUT/maestro/$name.txt" 2>&1
   local code=$?
   # Maestro writes no JUnit when it cannot start (e.g. the iOS driver did not come up): write one

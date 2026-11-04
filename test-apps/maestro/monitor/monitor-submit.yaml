@@ -1,0 +1,37 @@
+# Synthetic monitor (DD-26) · answer → submit: a host event opens the simple survey, it is
+# answered to the end and the popup counts it as done (one answer in MAGICFEEDBACK_DEV per run).
+# Same steps as e2e/cooldown-completed.yaml.
+appId: com.deepdots.testapp
+tags: [monitor]
+---
+- runFlow:
+    file: ../subflows/launch-no-dialog.yaml
+    env:
+      SCENARIO: e2e-cooldown-completed
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-event-e2e_completed
+- extendedWaitUntil:
+    visible: "How likely are you to recommend NORDLY to a friend?"
+    timeout: 20000
+- runFlow:
+    file: ../lemu/subflows/tap.yaml
+    env:
+      OPTION: "5"
+- extendedWaitUntil:
+    visible: "0/500"
+    timeout: 10000
+    optional: true
+- inputText: "DD-26 monitor"
+- runFlow: ../lemu/subflows/send.yaml
+- extendedWaitUntil:
+    visible: "Complete survey"
+    timeout: 20000
+- tapOn: "Complete survey"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 1"
+- takeScreenshot: monitor-submit
