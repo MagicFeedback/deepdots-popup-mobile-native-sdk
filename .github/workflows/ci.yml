@@ -1,0 +1,86 @@
+name: CI
+
+# Unit tests en cada PR (DD-27). Antes solo corrian en la PR de release ("Release dry run") y al
+# etiquetar, asi que un cambio en shared/ podia llegar a dev sin pasarlos.
+#
+# - "Unit tests (JVM)": :shared:testDebugUnitTest (commonTest + androidUnitTest) en Linux. Es
+#   selectivo: si la PR no toca el SDK ni el build, el job termina en verde sin compilar, para que
+#   pueda ser un check obligatorio (un workflow filtrado por `paths` dejaria el check pendiente).
+#   Los tests en el simulador de iOS siguen en el "Release dry run" (macOS): en cada PR harian cola
+#   en los runners de macOS que comparten las demas suites.
+#   En local: JAVA_HOME=... ./gradlew :shared:testDebugUnitTest (CLAUDE.md, "Comandos").
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Mismas versiones que release.yml y release-check.yml.
+env:
+  JAVA_VERSION: "21"
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
+
+jobs:
+  unit:
+    name: Unit tests (JVM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Cambios que pueden romper un test: el SDK, sus tests, el build y este workflow.
+      - name: Relevant changes
+        id: changes
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "${BASE:-}" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; echo "[ci] run by hand or no base: full run"; exit 0
+          fi
+          CHANGED="$(git diff --name-only "$BASE" HEAD)"
+          RELEVANT="$(printf '%s\n' "$CHANGED" | grep -E '^(shared/|gradle/|build\.gradle\.kts$|settings\.gradle\.kts$|gradle\.properties$|gradlew$|release/config\.schema\.json$|release/fixtures/|\.github/workflows/ci\.yml$)' || true)"
+          if [ -n "$RELEVANT" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            printf '[ci] relevant changes:\n%s\n' "$RELEVANT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No SDK or build changes: unit tests not needed for this change."
+          fi
+
+      - uses: actions/setup-java@v4
+        if: steps.changes.outputs.run == 'true'
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: android-actions/setup-android@v3
+        if: steps.changes.outputs.run == 'true'
+        with:
+          packages: platform-tools
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.changes.outputs.run == 'true'
+
+      - name: Unit tests (JVM)
+        if: steps.changes.outputs.run == 'true'
+        run: ./gradlew :shared:testDebugUnitTest
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: shared/build/reports/tests/
+          retention-days: 7

@@ -45,6 +45,7 @@ permissions:
   actions: write # lanzar docs-pages.yml tras fusionar en main
   pull-requests: write # PR de respaldo si el merge en main da conflicto
   checks: read # metadata.mjs lee el "Release dry run" de la PR de release
+  issues: read # required-checks.mjs: quien puso la etiqueta de la excepcion de emergencia
 
 concurrency:
   group: release
@@ -107,12 +108,14 @@ jobs:
           fi
           node scripts/release/check.mjs release --tag "$GITHUB_REF_NAME" --notes-out "$RUNNER_TEMP/changelog.md"
 
-      # Checks de la PR de release (DD-25): "Release dry run" y el test app de Android con la SDK
-      # de este commit. En rojo, no se publica nada.
+      # Checks de la PR de release (DD-25, DD-27): "Release dry run" y los test apps de Android e
+      # iOS con la SDK de este commit. En rojo, sin PR de release o si el commit no es el probado, no
+      # se publica nada. La unica salida es la excepcion de emergencia (docs/VERSIONING.md), que
+      # deja un aviso en las release notes.
       - name: Release PR checks
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/release/required-checks.mjs --sha "$GITHUB_SHA"
+        run: node scripts/release/required-checks.mjs --sha "$GITHUB_SHA" --notes "$RUNNER_TEMP/changelog.md"
 
       - name: Check what is already published
         id: state
