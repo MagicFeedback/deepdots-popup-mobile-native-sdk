@@ -4,6 +4,49 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.9 - 2026-11-04
+
+### Fixed
+
+- **iOS: a survey taller than its box can be scrolled again.** The survey's WebView sat inside
+  the popup's scrollable middle with the default (cooperative) touch handling: the middle took
+  every vertical drag, could not move because its content already fitted, and the WebView never
+  scrolled. On a small iPhone (SE) the 0–10 scale, shown as a vertical list there, could not be
+  scrolled past 3, so 4–10 could not be chosen. The survey now gets its touches directly and
+  scrolls its own content; its content stays available to VoiceOver. The console bridge of the
+  iOS WebView also drops optional chaining (iOS 13.0–13.3).
+
+- **iOS: the keyboard no longer covers the popup's Back and Send.** The SDK relied on the Compose
+  view controller to move the focused field above the keyboard, but the survey's text field lives
+  in a WKWebView, which Compose does not see as focused: nothing moved, and on a free-text page
+  (focused on its own after Next) the keyboard covered the footer until it was dismissed. Seen on
+  every iPhone in the device matrix (iPhone SE to iPhone 17). The popup now keeps itself above the
+  keyboard with the IME inset, as on Android, and the view controller no longer shifts the view on
+  focus, so it is not moved twice.
+
+- **The close button (X) stays visible when the survey does not fit.** With a tall survey page,
+  the whole card scrolled, and after a "required" message it scrolled to the bottom on its own:
+  the title and the X went out of view, so the popup could not be closed without scrolling back
+  up. The title row and the buttons now stay fixed and only the content in between scrolls.
+  Found by the end-to-end tests on iOS.
+- **The popup's Send, Back, close and Start work on older WebViews.** The native buttons ran
+  `window.DeepdotsActions?.send()` in the survey; a WebView older than Chrome 80 (Android 8–10
+  phones whose WebView was never updated) and iOS 13.0–13.3 reject optional chaining with a
+  `SyntaxError`, so the button did nothing and pages that need Send never moved on (the rating
+  page worked because it advances by itself). The calls are now plain ES5, and a test fails if
+  the survey's scripts use `?.` or `??` again. Found by the local device matrix on Android 8.
+- **Android 8–10: the keyboard no longer covers the popup's Back and Send.** The popup is mounted
+  on the window's decor view, outside the content the Activity resizes, and before Android 11 the
+  keyboard was not reported to it as an inset, so `imePadding()` was 0 and the footer stayed
+  under the keyboard. On those versions the popup now measures the keyboard from the window's
+  visible frame and moves above it; Android 11+ keeps using the IME inset.
+
+- **iOS: a popup at the top no longer goes under the status bar.** With a top position and a tall
+  survey, the card was laid out from the very top of the screen: the title sat on the clock and
+  the close button (X) under the battery icon, where it could not be tapped. The card now stays
+  inside the safe area (status bar, Dynamic Island / notch, home indicator); the dimmed backdrop
+  still covers the whole screen. Found by the new end-to-end tests.
+
 ## 0.7.8 - 2026-11-03
 
 ### Fixed

@@ -1,0 +1,53 @@
+# Minimal host: the whole client survey (rating 5, every yes, email) to the thank-you screen.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
+appId: com.deepdots.basicapp
+tags: [basic]
+---
+- runFlow: subflows/launch.yaml
+- runFlow:
+    file: ../lemu/subflows/tap.yaml
+    env:
+      OPTION: "5"
+- runFlow: ../lemu/subflows/send.yaml
+- runFlow:
+    file: ../lemu/subflows/text-answer.yaml
+    env:
+      QUESTION: "Vi er meget glade for at høre.*"
+      ANSWER: "Automated test (basic app): rating 5"
+      NEXT: "Er der andet, vi kan gøre for at forbedre din oplevelse?"
+- runFlow:
+    file: ../lemu/subflows/tap.yaml
+    env:
+      OPTION: "Ja"
+- runFlow: ../lemu/subflows/send.yaml
+- runFlow:
+    file: ../lemu/subflows/text-answer.yaml
+    env:
+      QUESTION: "Hvad kan vi gøre for at forbedre din oplevelse i vores app?"
+      ANSWER: "Automated test (basic app): improvement"
+      NEXT: "Må vi kontakte dig, hvis vi gerne vil høre mere om din feedback?"
+- runFlow:
+    file: ../lemu/subflows/tap.yaml
+    env:
+      OPTION: "Ja"
+- runFlow: ../lemu/subflows/send.yaml
+- extendedWaitUntil:
+    visible: "Indtast venligst din e-mailadresse."
+    timeout: 15000
+- tapOn:
+    text: "you@example.com"
+    optional: true
+- inputText: "qa+lemu-basic@deepdots.com"
+- runFlow: ../lemu/subflows/send.yaml
+# End of the survey: "Afslut undersøgelse" is the native button of the thank-you screen (its title
+# is in the WebView, which Android does not always expose).
+- extendedWaitUntil:
+    visible: "Afslut undersøgelse"
+    timeout: 30000
+- tapOn: "Afslut undersøgelse"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "Afslut undersøgelse"
+- assertNotVisible: "Luk pop op"
+- assertVisible: "Basic app · SDK.*"

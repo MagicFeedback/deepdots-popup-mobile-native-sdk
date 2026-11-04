@@ -2,6 +2,11 @@
 # (Android: Maven Central, iOS: MagicFeedback/DeepdotsSDK-SPM), runs the Maestro suite on an
 # emulator / simulator against DEV (MAGICFEEDBACK_DEV) and keeps logs, JUnit and videos.
 # Docs: test-apps/README.md
+#
+# On a pull request it runs a SHORT suite: the latest version in sdk-versions.json only, and only
+# the flows the PR adds or changes plus a smoke test (00-version, checkout-time). The apps use the
+# published SDK, so the other flows would re-test the same binaries that already passed on dev.
+# The full suite (every flow, every version) runs from "Run workflow" or locally (README, "Run").
 name: Test apps
 
 on:
@@ -9,6 +14,12 @@ on:
     paths:
       - "test-apps/**"
       - ".github/workflows/test-apps.yml"
+  # release-check.yml calls it on release PRs with ["local"] (DD-25).
+  workflow_call:
+    inputs:
+      versions:
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       versions:
@@ -20,7 +31,7 @@ on:
         default: false
 
 concurrency:
-  group: test-apps-${{ github.ref }}
+  group: test-apps-${{ github.ref }}-${{ inputs.versions }}
   cancel-in-progress: true
 
 jobs:
@@ -29,15 +40,32 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       list: ${{ steps.pick.outputs.list }}
+      flows: ${{ steps.pick.outputs.flows }}
     steps:
       - uses: actions/checkout@v4
       - id: pick
         env:
-          INPUT: ${{ github.event.inputs.versions }}
+          INPUT: ${{ inputs.versions }}
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
           LIST=${INPUT:-$(jq -c .versions test-apps/sdk-versions.json)}
+          FLOWS=""
+          # A caller passing versions (release-check on a release PR: ["local"]) gets the full suite.
+          if [ -n "$PR" ] && [ -z "$INPUT" ]; then
+            # Short suite: latest version, smoke + the flows this PR adds or changes (subflows are
+            # shared, so a change there only gets the smoke test: run the full suite locally).
+            LIST=$(jq -c '.versions[:1]' test-apps/sdk-versions.json)
+            CHANGED=$(gh api "repos/${{ github.repository }}/pulls/$PR/files" --paginate \
+              --jq '.[] | select(.status != "removed") | .filename' \
+              | sed -n 's#^test-apps/maestro/##p' | grep -E '\.yaml$' | grep -vE '(^|/)subflows/|^config\.yaml$' || true)
+            FLOWS=$(printf '%s\n' flows/00-version.yaml flows/checkout-time.yaml $CHANGED | awk 'NF && !seen[$0]++' | tr '\n' ' ')
+            echo "[lab] pull request: short suite. Full suite: Run workflow, or locally (test-apps/README.md)"
+          fi
           echo "list=$LIST" >> "$GITHUB_OUTPUT"
+          echo "flows=$FLOWS" >> "$GITHUB_OUTPUT"
           echo "[lab] SDK versions: $LIST"
+          echo "[lab] flows: ${FLOWS:-all}"
           # A new release that nobody added to the list yet.
           LATEST=$(curl -fsS https://repo1.maven.org/maven2/com/deepdots/sdk/shared-android/maven-metadata.xml | sed -n 's:.*<release>\(.*\)</release>.*:\1:p')
           if [ -n "$LATEST" ] && ! jq -e --arg v "$LATEST" '.versions | index($v)' test-apps/sdk-versions.json > /dev/null; then
@@ -47,7 +75,9 @@ jobs:
   android:
     name: Android · SDK ${{ matrix.sdk }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # `local` is the release gate (release-check.yml): the FULL suite, ~48 flows at ~1.3 min on this
+    # emulator plus the build of the SDK. A published version on a PR runs the short suite.
+    timeout-minutes: ${{ matrix.sdk == 'local' && 120 || 60 }}
     needs: versions
     strategy:
       fail-fast: false
@@ -64,9 +94,10 @@ jobs:
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
-      - name: Build app (SDK ${{ matrix.sdk }})
+      - name: Build apps (SDK ${{ matrix.sdk }})
         working-directory: test-apps/android
-        run: ./gradlew :app:assembleDebug :app:labSdkInfo -PsdkVersion=${{ matrix.sdk }}
+        # :basic is the minimal host app (init + attachContext + setPath only), for maestro/basic.
+        run: ./gradlew :app:assembleDebug :basic:assembleDebug :app:labSdkInfo -PsdkVersion=${{ matrix.sdk }}
       - name: Install Maestro
         run: |
           curl -fsSL "https://get.maestro.mobile.dev" | bash
@@ -74,7 +105,8 @@ jobs:
       - name: Run suite on the emulator
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          RECORD: ${{ github.event.inputs.record == 'true' && '1' || '0' }}
+          RECORD: ${{ inputs.record && '1' || '0' }}
+          FLOWS: ${{ needs.versions.outputs.flows }}
         with:
           api-level: 34
           target: google_apis
@@ -87,6 +119,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: |
             adb install -r test-apps/android/app/build/outputs/apk/debug/app-debug.apk
+            adb install -r test-apps/android/basic/build/outputs/apk/debug/basic-debug.apk
             test-apps/scripts/run-maestro.sh android ${{ matrix.sdk }} out/android-${{ matrix.sdk }}
       - uses: actions/upload-artifact@v4
         if: always()
@@ -98,7 +131,9 @@ jobs:
   ios:
     name: iOS · SDK ${{ matrix.sdk }}
     runs-on: macos-15
-    timeout-minutes: 60
+    # `local` is the release gate: it builds the SDK from this commit first (Kotlin/Native, ~15 min)
+    # and runs the FULL suite (~48 flows at ~2 min on this runner). A PR runs the short suite.
+    timeout-minutes: ${{ matrix.sdk == 'local' && 150 || 90 }}
     needs: versions
     strategy:
       fail-fast: false
@@ -106,41 +141,62 @@ jobs:
         sdk: ${{ fromJSON(needs.versions.outputs.list) }}
     steps:
       - uses: actions/checkout@v4
-        if: matrix.sdk != 'local'
       - name: Select Xcode
-        if: matrix.sdk != 'local'
         run: sudo xcode-select -s /Applications/Xcode_16.4.app
+      - uses: actions/setup-java@v4
+        if: matrix.sdk == 'local'
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+        if: matrix.sdk == 'local'
       - name: Install tools
-        if: matrix.sdk != 'local'
         run: |
           brew install xcodegen
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      # The release PR (release-check.yml, versions ["local"]): the iOS test app on the SDK built
+      # from this commit, as a local Swift package, instead of a published DeepdotsSDK-SPM version.
+      - name: Build the SDK from this commit (local)
+        if: matrix.sdk == 'local'
+        run: test-apps/scripts/ios-local-sdk.sh
       - name: Generate and build app (SDK ${{ matrix.sdk }})
-        if: matrix.sdk != 'local'
         working-directory: test-apps/ios
         run: |
           SDK_VERSION=${{ matrix.sdk }} xcodegen generate
           xcodebuild -project NordlyTestApp.xcodeproj -scheme NordlyTestApp -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath build -quiet build
-          RESOLVED=$(python3 -c "import json;print(next(p['state']['version'] for p in json.load(open('NordlyTestApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved'))['pins'] if p['identity']=='deepdotssdk-spm'))")
-          echo "[lab] sdk requested=${{ matrix.sdk }} resolved=$RESOLVED source=SPM (DeepdotsSDK-SPM)"
-          test "$RESOLVED" = "${{ matrix.sdk }}"
-      - name: Boot simulator and install
+          if [ "${{ matrix.sdk }}" = local ]; then
+            echo "[lab] sdk requested=local resolved=$(git rev-parse --short HEAD) source=local spm-local (built from this commit)"
+          else
+            RESOLVED=$(python3 -c "import json;print(next(p['state']['version'] for p in json.load(open('NordlyTestApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved'))['pins'] if p['identity']=='deepdotssdk-spm'))")
+            echo "[lab] sdk requested=${{ matrix.sdk }} resolved=$RESOLVED source=SPM (DeepdotsSDK-SPM)"
+            test "$RESOLVED" = "${{ matrix.sdk }}"
+          fi
+      - name: Generate and build the minimal host app (SDK ${{ matrix.sdk }})
         if: matrix.sdk != 'local'
+        working-directory: test-apps/basic-ios
+        run: |
+          SDK_VERSION=${{ matrix.sdk }} xcodegen generate
+          xcodebuild -project BasicApp.xcodeproj -scheme BasicApp -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build -quiet build
+      - name: Boot simulator and install
         run: |
           UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for r,v in d.items() if 'iOS' in r for x in v if x['name']=='iPhone 16'))")
           echo "DEVICE=$UDID" >> "$GITHUB_ENV"
           xcrun simctl boot "$UDID" && xcrun simctl bootstatus "$UDID" -b
           xcrun simctl install "$UDID" test-apps/ios/build/Build/Products/Debug-iphonesimulator/NordlyTestApp.app
+          # The minimal host app is only built for published versions (not on `local`).
+          BASIC=test-apps/basic-ios/build/Build/Products/Debug-iphonesimulator/BasicApp.app
+          if [ -d "$BASIC" ]; then xcrun simctl install "$UDID" "$BASIC"; fi
       - name: Run suite on the simulator
-        if: matrix.sdk != 'local'
         env:
-          RECORD: ${{ github.event.inputs.record == 'true' && '1' || '0' }}
+          RECORD: ${{ inputs.record && '1' || '0' }}
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "180000"
+          FLOWS: ${{ needs.versions.outputs.flows }}
         run: test-apps/scripts/run-maestro.sh ios ${{ matrix.sdk }} out/ios-${{ matrix.sdk }}
       - uses: actions/upload-artifact@v4
-        if: always() && matrix.sdk != 'local'
+        if: always()
         with:
           name: test-apps-ios-${{ matrix.sdk }}
           path: out/ios-${{ matrix.sdk }}

@@ -1,0 +1,33 @@
+# Fresh launch (clean state) of one scenario with the cookie choice already made: no dialog in
+# front at app start, like a host app without one (a popup at start shows right away).
+# env: SCENARIO (required), NAV, LANG, START, INSTANCES (2: a second SDK instance), EVENT (fired
+# right after the first setPath, before the popups load)
+appId: com.deepdots.testapp
+---
+- launchApp:
+    clearState: true
+    arguments:
+      scenario: ${SCENARIO}
+      nav: ${NAV || 'history'}
+      lang: ${LANG || 'en'}
+      start: ${START || 'home'}
+      load: immediate
+      consent: all
+      instances: ${INSTANCES || '1'}
+      event: ${EVENT || ''}
+# Checked first: a popup at app start opens after a few seconds and, on iOS, hides the Lab bar
+# from accessibility. With EVENT the popup opens about a second after launch, so the flow checks
+# the Lab bar itself, after closing it.
+- runFlow:
+    when:
+      true: ${!EVENT}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: lab-scenario
+            text: ${SCENARIO}
+          timeout: 90000
+      - assertVisible:
+          id: lab-env
+          text: DEV
+- assertNotVisible: "Accept all"

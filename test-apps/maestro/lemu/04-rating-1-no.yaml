@@ -1,0 +1,33 @@
+# Rating 1 and every "no": rating → the low-rating question → yes/no (no) → yes/no (no) →
+# thank you. Covers the branch for ratings 1–2 and the short path.
+# The client setup is validated from 0.7.6; older versions predate the fixes it relies on.
+# min-sdk: 0.7.6
+appId: com.deepdots.testapp
+tags: [lemu]
+---
+- runFlow: subflows/open-popup.yaml
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "1"
+- runFlow: subflows/send.yaml
+- runFlow:
+    file: subflows/text-answer.yaml
+    env:
+      QUESTION: "Hvad skal vi ændre, for at forbedre din oplevelse?"
+      ANSWER: "Automated test: rating 1"
+      NEXT: "Er der andet, vi kan gøre for at forbedre din oplevelse?"
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "Nej"
+- runFlow: subflows/send.yaml
+- extendedWaitUntil:
+    visible: "Må vi kontakte dig, hvis vi gerne vil høre mere om din feedback?"
+    timeout: 15000
+- runFlow:
+    file: subflows/tap.yaml
+    env:
+      OPTION: "Nej"
+- runFlow: subflows/send.yaml
+- runFlow: subflows/finish.yaml

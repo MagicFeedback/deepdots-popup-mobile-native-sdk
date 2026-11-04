@@ -195,3 +195,15 @@ jobs:
           name: test-reports
           path: shared/build/reports/tests/
           retention-days: 7
+
+  # Test apps de Android e iOS con la SDK compilada desde este commit (DD-25): un flujo de Maestro
+  # roto en la PR de release la bloquea. release.yml y `release.mjs tag` exigen los dos checks en
+  # verde (scripts/release/required-checks.mjs). En iOS la SDK va como paquete Swift local
+  # (test-apps/scripts/ios-local-sdk.sh).
+  test-apps:
+    name: Test apps (release build)
+    needs: version
+    if: ${{ !cancelled() && needs.version.outputs.kind == 'release' }}
+    uses: ./.github/workflows/test-apps.yml
+    with:
+      versions: '["local"]'

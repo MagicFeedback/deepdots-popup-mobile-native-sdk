@@ -1,0 +1,27 @@
+# Style: E2E · Bottom left. Shows, can be read and closed; screenshot for the layout.
+# E2E scenario in MAGICFEEDBACK_DEV (scenarios.json). Needs the scenario in the app build.
+# min-sdk: 0.7.6
+appId: com.deepdots.testapp
+tags: [e2e]
+---
+- runFlow:
+    file: ../subflows/launch-no-dialog.yaml
+    env:
+      SCENARIO: e2e-position-bottom
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-event-e2e_position
+- extendedWaitUntil:
+    visible: "E2E · Bottom left"
+    timeout: 20000
+- assertVisible: "Close popup"
+- takeScreenshot: e2e-position-bottom
+- runFlow:
+    file: ../subflows/close-popup.yaml
+    env:
+      TITLE: "E2E · Bottom left"
+- assertVisible:
+    id: lab-counts
+    text: "shown 1 · done 0"
+- runFlow: ../subflows/host-usable.yaml

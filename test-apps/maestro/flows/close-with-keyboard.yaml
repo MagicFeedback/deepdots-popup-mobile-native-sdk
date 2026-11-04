@@ -32,8 +32,12 @@ tags: [smoke]
       - extendedWaitUntil:
           visible: "What could we improve\\?"
           timeout: 20000
-      # iOS exposes the placeholder as text; Android as hint text prefixed with the question.
-      - tapOn: ".*Write your answer here.*"
+      # iOS exposes the placeholder as text; Android as hint text prefixed with the question, and
+      # some emulators (API 36) do not expose it at all: the survey already focused the box after
+      # the page change, so the tap is only a help.
+      - tapOn:
+          text: ".*Write your answer here.*"
+          optional: true
       - inputText: "typing"
       - assertVisible: "typing"
       - runFlow:

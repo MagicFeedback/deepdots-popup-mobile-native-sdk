@@ -78,10 +78,86 @@
       "describe": "same as client-replica but segments.lang da (path /): with SDK >= 0.7.4 it shows with lang=da and not with lang=en",
       "title": "Hvordan vil du vurdere din oplevelse med appen?"
     },
+    "client-exact": {
+      "publicKey": "NhvpAyYxpyPWz09XdxXoXWmOpzUNicGo",
+      "popupOptionId": "5fefd6f0-d782-11f1-ab45-8bbb0ec1d341",
+      "describe": "Exact DEV copy of a client app popup as in prod on 3-nov-2026 (event jhgjgjhg, cooldown SHOWED 14 / PARTIAL 30 / COMPLETED 30 days, segments path / and no lang, centered). Survey 9c449790-d781-11f1-ab45-8bbb0ec1d341 (da), same questions, branching and colours as the client's: rating 1-5, a follow-up text per rating band (1-2 / 3-4 / 5), yes/no, text, yes/no, email. The client logo is not uploaded in DEV",
+      "title": "Hvordan vil du vurdere din oplevelse med appen?",
+      "events": ["jhgjgjhg"]
+    },
+    "client-exact-launch": {
+      "publicKey": "9C1hiLhDp7Jq5hKyFyjppXiEJ1DfeTAl",
+      "popupOptionId": "f5e95a60-d781-11f1-ab45-8bbb0ec1d341",
+      "describe": "Same as client-exact but on time_on_page 5 s, the client's setup before 30-oct: the popup opens by itself at app start (the case of the double popup on 0.7.5)",
+      "title": "Hvordan vil du vurdere din oplevelse med appen?"
+    },
     "fault-popups-error": {
       "publicKey": "invalid-key-mf3244",
       "describe": "fault: unknown public key, GET /sdk/{key}/popups answers 406 and no popup loads",
       "title": null
+    },
+    "e2e-scroll": {
+      "publicKey": "HvCsLnjP6GKmWPCr2eIdCqQOb5TQM08X",
+      "popupOptionId": "579129f0-d79b-11f1-a3ed-61e4c5f76af9",
+      "describe": "scroll trigger 50 % on /shop, simple survey. The Lab buttons scroll:30 / scroll:60 are the host reporting onScroll()",
+      "title": "E2E · Scroll 50%",
+      "events": ["scroll:30", "scroll:60"]
+    },
+    "e2e-multi-trigger": {
+      "publicKey": "CLEm9sDMAXtNgjGP81HjHPHEfuxNENwd",
+      "popupOptionId": "5811cba0-d79b-11f1-a3ed-61e4c5f76af9",
+      "describe": "two triggers on one popup: event e2e_multi or click help-button",
+      "title": "E2E · Event or click",
+      "events": ["e2e_multi"]
+    },
+    "e2e-inactive": {
+      "publicKey": "1oZJ0mr5ApfYY1jvBK4uErp9DYKvyA7i",
+      "popupOptionId": "58924640-d79b-11f1-a3ed-61e4c5f76af9",
+      "describe": "popup on event e2e_inactive set to DEPRECATED (inactive): the API returns no popup, nothing shows",
+      "title": "E2E · Inactive popup",
+      "events": ["e2e_inactive"]
+    },
+    "e2e-cooldown-partial": {
+      "publicKey": "gi7WRXyCLG0tr12SzaHvKvYgDkbbnWYx",
+      "popupOptionId": "592dea00-d79b-11f1-a3ed-61e4c5f76af9",
+      "describe": "event e2e_partial, cooldown PARTIAL 1 day, complex survey: after a partial answer it does not show again",
+      "title": "E2E · Cooldown after a partial answer",
+      "events": ["e2e_partial"]
+    },
+    "e2e-cooldown-completed": {
+      "publicKey": "GrRj95spi2mVHP6L89eZPVpoQTYA4hHY",
+      "popupOptionId": "379a0720-d79b-11f1-a3ed-61e4c5f76af9",
+      "describe": "event e2e_completed, cooldown COMPLETED 1 day, simple survey: after completing it does not show again",
+      "title": "E2E · Cooldown after completing",
+      "events": ["e2e_completed"]
+    },
+    "e2e-two-popups": {
+      "publicKey": "tLf3qmBo93Cv3sXn2DiEyFiCRrPUD8j9",
+      "popupOptionId": "59ad7a40-d79b-11f1-a3ed-61e4c5f76af9",
+      "describe": "two popups (A and B) on the same event e2e_two: one at a time",
+      "title": "E2E · Popup A",
+      "events": ["e2e_two"]
+    },
+    "e2e-position-top": {
+      "publicKey": "mH6Tvjc74ZHhgCAa4nFEn6bCiaZOmwMv",
+      "popupOptionId": "5a7c8a10-d79b-11f1-a3ed-61e4c5f76af9",
+      "describe": "event e2e_position, position top-right",
+      "title": "E2E · Top right",
+      "events": ["e2e_position"]
+    },
+    "e2e-position-bottom": {
+      "publicKey": "awtNfViux4DpGQumeZK4seGqq9qbS3IK",
+      "popupOptionId": "5afc6870-d79b-11f1-a3ed-61e4c5f76af9",
+      "describe": "event e2e_position, position bottom-left",
+      "title": "E2E · Bottom left",
+      "events": ["e2e_position"]
+    },
+    "e2e-dark-font": {
+      "publicKey": "U8tVYbrHWK5drRWaWosSe8fGHWwzVpFH",
+      "popupOptionId": "5b77b2f0-d79b-11f1-a3ed-61e4c5f76af9",
+      "describe": "event e2e_style, dark theme, font family Georgia",
+      "title": "E2E · Dark theme and custom font",
+      "events": ["e2e_style"]
     }
   }
 }

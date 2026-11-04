@@ -56,6 +56,7 @@ iOS quits, and the new run starts on the next launch).
 | `load` | `immediate` · `consent` | Init the SDK at launch, or after "Accept all" in the cookie dialog. |
 | `user` | text | `setUserId()` after init. Without it the SDK uses its anonymous id. |
 | `start` | `home` · `shop` · `cart` · `checkout` · `account` | First screen (not saved). |
+| `consent` | `all` · `necessary` | The cookie choice is already made: no cookie dialog at launch, as in a host app without one (a popup at app start shows right away instead of waiting for the dialog). |
 
 **Reset** in the Lab panel clears the SDK's storage (cooldowns, user id) and the cookie choice.
 
@@ -92,11 +93,19 @@ Surveys are the MF-3243 ones: «SDK Test App · Simple» `5581b5a0-…` and «Co
 | `release-fixtures` | events `fixture_*` (Lab panel) | `release/fixtures/popups` (MF-3242) | simple |
 | `fault-survey-missing` | `event` `fault_survey` | popup whose survey id does not exist | — |
 | `fault-popups-error` | — | unknown public key: the popups GET answers 406 | — |
+| `client-exact` | `event` `jhgjgjhg` (Lab panel) | `path: /`, cooldown `SHOWED` 14 d · `PARTIAL` / `COMPLETED` 30 d | client copy |
+| `client-exact-launch` | `time_on_page` 5 s | same as `client-exact` | client copy |
 
 `release-fixtures` stores the four fixtures through the API with the real simple survey; the API
 keeps them in its current shape, so the legacy `trigger`/`condition` parsing is still only
 covered by the SDK's unit tests (`ReleaseContractTest`). Path segments (`/`, `/#/game`) and the
 es-only language were dropped so all four show from the Lab panel.
+
+`client-exact` is a copy of a client app popup and its survey as they were in production on
+3 Nov 2026 (read through the public SDK endpoints, nothing written there): same rules, same
+questions, branching and colours (Danish rating 1–5, one follow-up text per rating band,
+yes/no, text, yes/no, email). Only the client logo is missing in DEV. `client-exact-launch` is
+the same popup on the 5 s timer the client used before, so it opens by itself at app start.
 
 If you change a popup, change it in the DEV Admin Panel too (Integrations › Popups, configs
 named "Native Test Apps (MF-3244) · <scenario>").
@@ -143,12 +152,19 @@ named "Native Test Apps (MF-3244) · <scenario>").
     before the trigger; the popup closes and the host works.
 
 CI: `.github/workflows/test-apps.yml`, one job per platform and SDK version. The versions come
-from `sdk-versions.json` (latest published, the ones customers run in production, oldest
-supported); add the new version there after each release, and the workflow warns when Maven
+from `sdk-versions.json` (the latest published version and the previous one; older ones are not
+tested); update it after each release, and the workflow warns when Maven
 Central has one that is not in the list. *Run workflow* takes another list and can record
 videos. Android runs on an
 `ubuntu-latest` emulator (API 34), iOS on `macos-15` (Xcode 16.4, iPhone 16). Each job uploads
 the device log, the `[lab]` lines, JUnit, Maestro output and, with recording, one MP4 per flow.
+
+**Pull requests run a short suite:** only the first version of `sdk-versions.json`, and only the
+flows the PR adds or changes plus a smoke test (`00-version`, `checkout-time`). The apps use the
+published SDK, so the rest of the suite would re-test binaries that already passed. A change to a
+subflow only gets the smoke test. Run the **full suite** (every flow, both versions, ~50 min per
+iOS run on CI) on your Mac before merging changes to the app, the runner or subflows, with the
+commands under "Run" (`run-maestro.sh` without `FLOWS`), or from *Run workflow* when it has to be CI.
 
 ## Versions
 
