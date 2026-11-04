@@ -75,7 +75,9 @@ jobs:
   android:
     name: Android · SDK ${{ matrix.sdk }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # `local` is the release gate (release-check.yml): the FULL suite, ~48 flows at ~1.3 min on this
+    # emulator plus the build of the SDK. A published version on a PR runs the short suite.
+    timeout-minutes: ${{ matrix.sdk == 'local' && 120 || 60 }}
     needs: versions
     strategy:
       fail-fast: false
@@ -129,8 +131,9 @@ jobs:
   ios:
     name: iOS · SDK ${{ matrix.sdk }}
     runs-on: macos-15
-    # `local` builds the SDK from this commit first (Kotlin/Native): longer than a published version.
-    timeout-minutes: 90
+    # `local` is the release gate: it builds the SDK from this commit first (Kotlin/Native, ~15 min)
+    # and runs the FULL suite (~48 flows at ~2 min on this runner). A PR runs the short suite.
+    timeout-minutes: ${{ matrix.sdk == 'local' && 150 || 90 }}
     needs: versions
     strategy:
       fail-fast: false
