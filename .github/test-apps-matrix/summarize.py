@@ -32,8 +32,10 @@ def version_key(v):
     return [int(x) if x.isdigit() else 0 for x in v.split(".")]
 
 
-def flow_kind(name, sdk):
-    """'expected', 'known' or None, from the flow file's tags."""
+def flow_kind(name, sdk, platform):
+    """'expected', 'known' or None, from the flow file's tags. Same rule as run-maestro.sh:
+    `# known-issue-until-ios:` / `-android:` overrides `# known-issue-until:` on that platform, and
+    a flow marked only for the other platform is a normal flow here."""
     if not maestro:
         return None
     files = list(maestro.glob(f"*/{name}.yaml"))
@@ -43,7 +45,11 @@ def flow_kind(name, sdk):
     if "expected-failure" in text:
         return "expected"
     if "known-issue" in text:
-        until = next((l.split(":", 1)[1].strip() for l in text.splitlines() if l.startswith("# known-issue-until:")), None)
+        def marker(prefix):
+            return next((l.split(":", 1)[1].strip() for l in text.splitlines() if l.startswith(prefix)), None)
+        until = marker(f"# known-issue-until-{platform.lower()}:") or marker("# known-issue-until:")
+        if until is None and "# known-issue-until-" in text:
+            return None
         if until is None or (sdk != "local" and version_key(sdk) <= version_key(until)):
             return "known"
     return None
@@ -69,7 +75,7 @@ for meta in sorted(root.glob("*/row.json")):
             messages[name] = (text.strip().splitlines() or [""])[0][:300]
         elif not cases:
             messages[name] = "Maestro did not report this flow"
-        kind = flow_kind(name, row["sdk"])
+        kind = flow_kind(name, row["sdk"], row["platform"])
         if skipped:
             results[name], status[name] = "n/a", "skip"
         elif kind == "expected":
