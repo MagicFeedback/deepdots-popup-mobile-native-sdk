@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.interop.UIKitView
+import androidx.compose.ui.viewinterop.UIKitView
+import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
+import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import com.deepdots.sdk.models.PopupFont
 import androidx.compose.ui.unit.dp
 import kotlinx.cinterop.CValue
@@ -90,7 +92,7 @@ actual fun SurveyView(
                             name = 'submit_error'; payload = {};
                           }
                           if (name) {
-                            window.webkit?.messageHandlers?.DeepdotsBridge?.postMessage(JSON.stringify({ name, payload }));
+                            var h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.DeepdotsBridge; if (h) { h.postMessage(JSON.stringify({ name: name, payload: payload })); }
                           }
                         } catch(e){}
                       }
@@ -124,7 +126,18 @@ actual fun SurveyView(
                 wv as UIView
             },
             modifier = Modifier.fillMaxWidth().height(520.dp),
-            update = { /* no-op */ }
+            update = { /* no-op */ },
+            // NonCooperative: the survey's touches go straight to the WKWebView. With the default
+            // (Cooperative) the popup's scrollable middle (Compose verticalScroll) claimed every
+            // vertical drag, could not move because its content already fit, and the WebView never
+            // scrolled: on an iPhone SE the 0-10 scale (a vertical list there) could not be
+            // scrolled to 4-10. The WebView scrolls its own content when it is taller than its box.
+            // isNativeAccessibilityEnabled: without it the survey's content is hidden from
+            // VoiceOver (and UI tests); the deprecated interop UIKitView exposed it by default.
+            properties = UIKitInteropProperties(
+                interactionMode = UIKitInteropInteractionMode.NonCooperative,
+                isNativeAccessibilityEnabled = true,
+            ),
         )
     }
 }
