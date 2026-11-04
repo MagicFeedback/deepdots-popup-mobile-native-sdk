@@ -122,3 +122,14 @@ test('override reason: section text up to the next heading, comments stripped', 
   assert.equal(overrideReasonFrom('## Release gate override\n<!-- why -->\n'), '');
   assert.equal(overrideReasonFrom('nothing'), '');
 });
+
+test('required checks: a green visual-regression job does not stand in for a red functional test app (DD-28 names)', () => {
+  const r = requiredChecksFrom([
+    { name: 'Release dry run', conclusion: 'success', started_at: '1' },
+    { name: 'Test apps (release build) / Android · SDK local', conclusion: 'failure', started_at: '1', html_url: 'f' },
+    { name: 'Test apps (release build) / Visual regression · Android · SDK local', conclusion: 'success', started_at: '2' },
+    { name: 'Test apps (release build) / iOS · SDK local', conclusion: 'success', started_at: '1' },
+    { name: 'Test apps (release build) / Visual regression · iOS · SDK local', conclusion: 'failure', started_at: '2' },
+  ]);
+  assert.deepEqual(failingChecks(r), ['"Test apps (release build) · Android" failure f']);
+});

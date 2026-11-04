@@ -26,8 +26,9 @@ import { evaluateOverride, labelledBy, overrideNotes } from './override.mjs';
 export const REQUIRED_CHECKS = [
   { name: 'Release dry run', match: (n) => n === 'Release dry run' },
   // Como job de un workflow reutilizable, GitHub lo llama "<job que llama> / Android · SDK local".
-  { name: 'Test apps (release build) · Android', match: (n) => n.endsWith('Android · SDK local') },
-  { name: 'Test apps (release build) · iOS', match: (n) => n.endsWith('iOS · SDK local') },
+  // Exacto tras el "/": "… / Visual regression · Android · SDK local" (DD-28) es otro check.
+  { name: 'Test apps (release build) · Android', match: (n) => /(^|\/ )Android · SDK local$/.test(n) },
+  { name: 'Test apps (release build) · iOS', match: (n) => /(^|\/ )iOS · SDK local$/.test(n) },
 ];
 
 /** El check-run más reciente de cada check requerido, o `missing`. */
