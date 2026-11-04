@@ -144,7 +144,7 @@ actual object PopupRenderer {
                     onSurveyEvent = onSurveyEvent,
                     // Por `post`: una vista solo se toca desde el hilo principal, y `onReady`
                     // puede llegar desde el puente del WebView (ver SurveyView.android).
-                    onReady = { container.post { container.visibility = android.view.View.VISIBLE } },
+                    onReady = { /* DD-27 failure test: Android rendering regression, the popup never becomes visible */ },
                 )
             }
         }

@@ -4,6 +4,12 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.10 - 2026-11-04
+
+### Changed
+
+- DD-27 failure test (never merged, never released): Android popup stays invisible.
+
 ## 0.7.9 - 2026-11-04
 
 ### Fixed
