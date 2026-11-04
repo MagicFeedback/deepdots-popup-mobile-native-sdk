@@ -21,7 +21,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { pathToFileURL } from 'node:url';
-import { failingChecks, requiredChecksFrom } from './release/required-checks.mjs';
+import { evaluateRelease } from './release/required-checks.mjs';
 
 const REPO = 'MagicFeedback/deepdots-popup-mobile-native-sdk';
 const SPM_REPO = 'MagicFeedback/DeepdotsSDK-SPM';
@@ -218,17 +218,18 @@ async function tagRelease({ yes, watch }) {
   if (!versionBody(showFile(sha, 'CHANGELOG.md'), version))
     fail(`El CHANGELOG de ${BASE} no tiene la seccion "## ${version}" (o esta vacia).`);
 
-  // Si hay una PR de release para esta version, tiene que estar fusionada y con su "Release dry
-  // run" (gate + tests + build + smoke en macOS) en verde: release.yml lo exige antes de publicar.
-  const pr = tryRun('gh', ['pr', 'list', '--repo', REPO, '--head', `release/${version}`, '--state', 'all', '--json', 'number,state,headRefOid', '--jq', '.[0] // empty']);
+  // Si hay una PR de release para esta version, tiene que estar fusionada.
+  const pr = tryRun('gh', ['pr', 'list', '--repo', REPO, '--head', `release/${version}`, '--state', 'all', '--json', 'number,state', '--jq', '.[0] // empty']);
   if (pr.ok && pr.out) {
-    const { number, state, headRefOid } = JSON.parse(pr.out);
+    const { number, state } = JSON.parse(pr.out);
     if (state !== 'MERGED') fail(`La PR #${number} (release/${version}) esta ${state}: fusionala antes de etiquetar.`);
-    // "Release dry run" + test app de Android con la SDK de la PR (DD-25), como release.yml.
-    const runs = tryRun('gh', ['api', `repos/${REPO}/commits/${headRefOid}/check-runs?per_page=100`, '--jq', '.check_runs']);
-    const failing = failingChecks(requiredChecksFrom(runs.ok ? JSON.parse(runs.out) : []));
-    if (failing.length) fail(`Checks de la PR #${number} no en verde (${failing.join('; ')}): release.yml no publicaria.`);
   }
+  // Lo mismo que release.yml antes de publicar (DD-25, DD-27): PR de release fusionada, su commit
+  // probado = el que se etiqueta, y "Release dry run" + test apps de Android e iOS en verde.
+  const gate = evaluateRelease({ repo: REPO, sha, api: (path) => JSON.parse(run('gh', ['api', path])) });
+  for (const l of gate.lines) console.log(`  ${l}`);
+  if (!gate.ok) fail(`${gate.errors.join('\n  ')}\n  release.yml no publicaria.`);
+  if (gate.override) console.log(`  ⚠ Excepcion de emergencia de ${gate.override.by}: ${gate.override.reason}`);
 
   // Avisos, no bloqueos: el workflow se salta lo que ya existe o lo que no tiene secrets.
   if (remoteTagExists(`https://github.com/${SPM_REPO}.git`, version))
