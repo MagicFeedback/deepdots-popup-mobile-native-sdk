@@ -4,7 +4,7 @@ appId: com.deepdots.testapp
 tags: [visual]
 ---
 - runFlow:
-    file: ../subflows/launch-no-dialog.yaml
+    file: ../subflows/launch.yaml
     env:
       SCENARIO: e2e-dark-font
 - runFlow:
