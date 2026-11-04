@@ -1,0 +1,121 @@
+# Visual regression (DD-28): the complex survey (rate-product, centred popup) page by page, the
+# required-question notice and the thank-you screen. Leaves one answer in MAGICFEEDBACK_DEV per
+# run, like submit-simple. Screenshots: visual-complex-*.png (test-apps/visual/README.md).
+appId: com.deepdots.testapp
+tags: [visual]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      VISUAL: "1"
+      SCENARIO: rate-product
+- tapOn:
+    id: tab-shop
+- tapOn:
+    id: product-fjell-jacket
+# Below the fold on a small screen.
+- scrollUntilVisible:
+    element:
+      id: rate-product
+    direction: DOWN
+- tapOn:
+    id: rate-product
+- tapOn:
+    id: star-5
+- tapOn:
+    id: submit-rating
+- extendedWaitUntil:
+    visible: "Tell us what you think of this product"
+    timeout: 20000
+# The survey must be there before the screenshot: mandatory wait (wait-survey's is optional,
+# and on a slow CI runner the popup can be revealed before the survey loads).
+- extendedWaitUntil:
+    visible: "Did you find what you were looking for?"
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    file: ../subflows/visual-shot.yaml
+    env:
+      NAME: complex-1-open
+- tapOn: "Send"
+- extendedWaitUntil:
+    visible: "Please answer the required question to continue."
+    timeout: 10000
+- runFlow:
+    file: ../subflows/visual-shot.yaml
+    env:
+      NAME: complex-1-required-error
+# RADIO advances by itself. Page 2 is the tallest one (stars + multiple choice).
+- runFlow:
+    file: ../lemu/subflows/tap.yaml
+    env:
+      OPTION: "Partly"
+- extendedWaitUntil:
+    visible: "Rate the product page"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    text: "★"
+    index: 3
+- runFlow:
+    file: ../lemu/subflows/tap.yaml
+    env:
+      OPTION: "Materials"
+- runFlow:
+    file: ../subflows/visual-shot.yaml
+    env:
+      NAME: complex-2-selected
+- tapOn: "Send"
+- extendedWaitUntil:
+    visible: "Would you shop at NORDLY again?"
+    timeout: 15000
+- runFlow:
+    file: ../subflows/visual-shot.yaml
+    env:
+      NAME: complex-3-boolean-email
+- runFlow:
+    file: ../lemu/subflows/tap.yaml
+    env:
+      OPTION: "Yes"
+- tapOn: "Send"
+- extendedWaitUntil:
+    visible: "Anything else you would like to tell us?"
+    timeout: 15000
+# No text typed: the keyboard (and its suggestions) would differ between runs. The survey focuses
+# the text answer, so the keyboard opens: on a fresh iOS simulator with its first-use tip sheet
+# ("Continue"), closed first.
+- runFlow:
+    when:
+      platform: iOS
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    when:
+      platform: iOS
+      visible: "Done"
+    commands:
+      - tapOn: "Done"
+- runFlow:
+    file: ../subflows/visual-shot.yaml
+    env:
+      NAME: complex-4-text
+- tapOn: "Send"
+- extendedWaitUntil:
+    visible: "Complete survey"
+    timeout: 15000
+- runFlow:
+    file: ../subflows/visual-shot.yaml
+    env:
+      NAME: complex-5-thanks
+- tapOn: "Complete survey"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "Tell us what you think of this product"

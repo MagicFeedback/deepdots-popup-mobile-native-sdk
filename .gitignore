@@ -43,3 +43,5 @@ docs/dist/
 docs/.astro/
 docs/.site/
 scripts/release/node_modules/
+scripts/visual/node_modules/
+test-apps/visual/out/

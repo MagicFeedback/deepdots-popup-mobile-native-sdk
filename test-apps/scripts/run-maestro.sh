@@ -63,6 +63,24 @@ set_network() {
   adb_cmd emu network speed "$1" > /dev/null 2>&1; adb_cmd emu network delay "$2" > /dev/null 2>&1
 }
 
+# Fixed status bar (clock 9:41, full battery, full signal, no notification icons), so screenshots
+# only change when the app does (visual regression, DD-28). Android: SystemUI demo mode, which a
+# font scale change drops, so set_text_size applies it again.
+fix_status_bar() {
+  if [ "$PLATFORM" = android ]; then
+    adb_cmd shell settings put global sysui_demo_allowed 1 > /dev/null 2>&1
+    local c
+    for c in "enter" "clock -e hhmm 0941" "battery -e level 100 -e plugged false" \
+      "network -e wifi show -e level 4 -e mobile show -e datatype none -e level 4" "notifications -e visible false"; do
+      # shellcheck disable=SC2086
+      adb_cmd shell am broadcast -a com.android.systemui.demo -e command $c > /dev/null 2>&1
+    done
+  else
+    xcrun simctl status_bar "${DEVICE:-booted}" override --time 9:41 --batteryState charged --batteryLevel 100 \
+      --cellularMode active --cellularBars 4 --wifiMode active --wifiBars 3 --dataNetwork wifi > /dev/null 2>&1
+  fi
+}
+
 # Android: wait (up to 90 s) until the device has a default network again. After the airplane-mode
 # flows, the API 26 emulator took longer than 30 s to reconnect, so the next throttled flow
 # (slow-survey) timed out before the SDK could load its config: a test-order failure, not the SDK's.
@@ -81,6 +99,7 @@ wait_online() {
 set_text_size() {
   if [ "$PLATFORM" = android ]; then
     adb_cmd shell settings put system font_scale "$([ "$1" = large ] && echo 1.3 || echo 1.0)" > /dev/null 2>&1
+    sleep 2; fix_status_bar
   else
     xcrun simctl ui "${DEVICE:-booted}" content_size "$([ "$1" = large ] && echo extra-extra-extra-large || echo large)" > /dev/null 2>&1
   fi
@@ -139,6 +158,25 @@ if [ "$PLATFORM" = android ]; then
   # Pixel Launcher), which hid the cookie dialog in every flow. Don't show them.
   adb_cmd shell settings put global hide_error_dialogs 1 > /dev/null 2>&1 || true
 fi
+# What device this run is, for the visual report: test-apps/visual/collect.mjs reads device.json.
+if [ "$PLATFORM" = android ]; then
+  printf '{"platform":"android","model":"%s","profile":"%s","os":"%s","density":"%s","size":"%s"}\n' \
+    "$(adb_cmd shell getprop ro.product.model | tr -d '\r')" "${AVD_PROFILE:-}" "$(adb_cmd shell getprop ro.build.version.sdk | tr -d '\r')" \
+    "$(adb_cmd shell wm density | tr -d '\r' | awk '{print $NF}' | tail -1)" "$(adb_cmd shell wm size | tr -d '\r' | awk '{print $NF}' | tail -1)" > "$OUT/device.json"
+else
+  xcrun simctl list devices -j | python3 -c "
+import json, sys
+want = sys.argv[1]
+for runtime, devs in json.load(sys.stdin)['devices'].items():
+    for d in devs:
+        if d['state'] == 'Booted' and want in ('booted', d['udid']):
+            os = runtime.rsplit('iOS-', 1)[-1].replace('-', '.')
+            model = d.get('deviceTypeIdentifier', d['name']).rsplit('.', 1)[-1].replace('-', ' ')
+            print(json.dumps({'platform': 'ios', 'model': model, 'os': os, 'name': d['name']}))
+            raise SystemExit
+" "${DEVICE:-booted}" > "$OUT/device.json"
+fi
+fix_status_bar
 # Warm-up: the first cold start on a CI emulator/simulator is the slow one.
 maestro_cmd test -e SCENARIO=checkout-time subflows/launch.yaml > "$OUT/maestro/warm-up.txt" 2>&1 || true
 # Android: by default every `maestro test` reinstalls its driver apps, and the emulator only
@@ -149,7 +187,7 @@ DRIVER_OPTS=""
 
 # lemu/: a client popup and survey, exact copies in DEV. e2e/: the E2E scenarios in DEV. basic/: the minimal host app (com.deepdots.basicapp,
 # installed next to NORDLY): skipped when it is not installed.
-FLOWS=${FLOWS:-$(ls flows/*.yaml regression/*.yaml failures/*.yaml lemu/*.yaml basic/*.yaml e2e/*.yaml)}
+FLOWS=${FLOWS:-$(ls flows/*.yaml regression/*.yaml failures/*.yaml lemu/*.yaml basic/*.yaml e2e/*.yaml visual/*.yaml)}
 failed=()
 ANDROID_API=
 [ "$PLATFORM" = android ] && ANDROID_API=$(adb_cmd shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')
