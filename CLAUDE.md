@@ -345,7 +345,8 @@ en `dev`) y sigue `.github/workflows/release.yml`, que corre los tests y publica
 pasos y los secrets están en la cabecera del workflow y en el README (§15). Maven Central se queda
 en 0.3.0 hasta que existan los secrets de Sonatype y de firma GPG: sin ellos el workflow se salta
 ese paso con un aviso. Los scripts de `scripts/` son el fallback manual y tienen rutas locales
-viejas (`deploy_sdk_release.sh` y el `update_version.sh` del repo SPM).
+viejas (el `update_version.sh` del repo SPM). `deploy_sdk_release.sh` está retirado (DD-27): publicaba
+sin pasar por el gate; la única vía es `release.yml` (excepción de emergencia en `docs/VERSIONING.md`).
 
 **Gate de release (MF-3242, 2026-10-28), espejo del web (MF-3241):** reglas en
 `scripts/release/` (`rules`, `check`, `manifest`, `smoke`, `metadata`; tests con
