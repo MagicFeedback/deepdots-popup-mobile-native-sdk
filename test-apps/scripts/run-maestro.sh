@@ -80,6 +80,19 @@ fix_status_bar() {
   fi
 }
 
+# Android: wait (up to 90 s) until the device has a default network again. After the airplane-mode
+# flows, the API 26 emulator took longer than 30 s to reconnect, so the next throttled flow
+# (slow-survey) timed out before the SDK could load its config: a test-order failure, not the SDK's.
+wait_online() {
+  [ "$PLATFORM" = android ] || return 0
+  local i
+  for i in $(seq 1 45); do
+    adb_cmd shell dumpsys connectivity 2>/dev/null | grep -qE 'Active default network: [0-9]+' && return 0
+    sleep 2
+  done
+  echo "::warning::[lab] device still offline after 90 s"
+}
+
 # `# text-size: large` in a flow: it runs with large system text (Android font_scale 1.3, iOS
 # Dynamic Type XXXL), so long titles wrap on any device; back to the default afterwards.
 set_text_size() {
@@ -114,7 +127,7 @@ reboot_if_driver_timeout() { # <maestro output>
 run_flow() { # <flow file> -> exit code of maestro
   local name; name=$(basename "$1" .yaml)
   local net; net=$(sed -n 's/^# network: *//p' "$1")
-  [ -n "$net" ] && { echo "[lab] $name: network $net"; set_network $net; }
+  [ -n "$net" ] && { echo "[lab] $name: network $net"; wait_online; set_network $net; }
   local text; text=$(sed -n 's/^# text-size: *//p' "$1")
   [ -n "$text" ] && { echo "[lab] $name: text size $text"; set_text_size "$text"; }
   start_recording "$name"
