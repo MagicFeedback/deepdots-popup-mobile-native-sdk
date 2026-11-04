@@ -1,5 +1,5 @@
 # Fresh launch (clean state) of one scenario, cookie dialog accepted.
-# env: SCENARIO (required), NAV, LANG, START
+# env: SCENARIO (required), NAV, LANG, START, VISUAL (1: Lab log without the time, visual flows)
 appId: com.deepdots.testapp
 ---
 - launchApp:
@@ -10,6 +10,7 @@ appId: com.deepdots.testapp
       lang: ${LANG || 'en'}
       start: ${START || 'home'}
       load: immediate
+      visual: ${VISUAL || '0'}
 - extendedWaitUntil:
     visible: "Accept all"
     timeout: 30000
@@ -38,6 +39,7 @@ appId: com.deepdots.testapp
             lang: ${LANG || 'en'}
             start: ${START || 'home'}
             load: immediate
+            visual: ${VISUAL || '0'}
       - extendedWaitUntil:
           visible: "Accept all"
           timeout: 90000

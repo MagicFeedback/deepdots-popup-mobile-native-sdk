@@ -1,0 +1,9 @@
+{
+  "$comment": "DD-28 · tolerance and masks of the native visual regression. threshold = per-pixel colour distance (0-1); maxDiffPixels = differing pixels allowed per screenshot. maxDiffPixels 300 = about 2x the worst noise measured between two CI runs (41814288832 vs 41828530913, outside the Lab log): 139 px from the blinking text cursor (Android, complex-4-text) and 16 px of WebView sub-pixel rendering (iPhone SE, simple-1-open); everything else 0 px. For scale, two swapped popup buttons change ~6,400-7,150 px (web failure test). No masks: the visual flows launch the app with `visual 1` (Lab log without the time), the status bar is fixed by run-maestro.sh, and the Lab bar shows the same text on every `local` run. A mask, if ever needed: devices.<device>.masks = [{x, y, width, height, states?, except?}] in screenshot pixels.",
+  "title": "Visual regression · native",
+  "compare": {
+    "threshold": 0.01,
+    "maxDiffPixels": 300
+  },
+  "devices": {}
+}

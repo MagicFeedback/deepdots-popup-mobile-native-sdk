@@ -1,0 +1,8 @@
+# Regresión visual (DD-28): screenshot of a still screen. Waits for the popup to stop moving
+# (card resize, WebView layout) and takes `visual-<NAME>.png`; test-apps/visual/collect.mjs picks
+# up every `visual-*` screenshot of a run. env: NAME (state, e.g. complex-1-open)
+appId: com.deepdots.testapp
+---
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: visual-${NAME}
