@@ -1,0 +1,1025 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deepdots native popup SDK 0.7.9 Release Validation Report</title>
+<style>@page { size: A4; margin: 18mm 16mm; }
+body { font: 10.5pt/1.5 -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1a1d24; background: #fff; max-width: 180mm; margin: auto; padding: 0 16px; }
+h1 { font-size: 20pt; margin: 0 0 4pt; } h2 { font-size: 14pt; margin-top: 20pt; border-bottom: 1px solid #ddd; padding-bottom: 3pt; }
+h3 { font-size: 11.5pt; margin-top: 14pt; } code { font-size: 9pt; background: #f2f3f5; padding: 0 3px; border-radius: 3px; }
+table { border-collapse: collapse; width: 100%; font-size: 8.5pt; margin: 8pt 0; page-break-inside: avoid; display: block; overflow-x: auto; }
+th, td { border: 1px solid #d6d8dc; padding: 3pt 4pt; text-align: left; vertical-align: top; } th { background: #f2f3f5; }
+details table { font-size: 7pt; } summary { cursor: pointer; color: #1f5fbf; }
+@media print { details { display: none; } table { display: table; } body { padding: 0; } }
+hr { border: 0; border-top: 1px solid #ddd; margin: 16pt 0; } h2:has(+ *) { page-break-after: avoid; }
+a { color: #1f5fbf; }</style></head><body>
+<h1>Deepdots | Popup SDK Release Validation Report</h1>
+<p><strong>SDK:</strong> Deepdots native popup SDK <strong>0.7.9</strong> (Android <code>com.deepdots.sdk:shared-android:0.7.9</code> · iOS <code>DeepdotsSDK-SPM</code> 0.7.9)<br><strong>Validation date:</strong> 2026-11-04<br><strong>Platforms:</strong> iOS / Android<br><strong>Overall status:</strong> <strong>FAILED</strong><br><strong>Report type:</strong> Automated release validation, generated from the CI test results (no manual edits)</p>
+<hr>
+<h2>1. Executive Summary</h2>
+<p>SDK 0.7.9 was validated as published (Maven Central and Swift Package Manager) inside dedicated native test applications that integrate the SDK the same way a customer app does.</p>
+<p>Results (<a href="https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/41785193836/attempts/1">CI run</a>):</p>
+<ul>
+<li><strong>352</strong> automated test executions on <strong>16</strong> configurations (7 iOS, 9 Android)</li>
+<li><strong>311</strong> passed (5 on the automatic retry)</li>
+<li><strong>20</strong> failed</li>
+<li><strong>21</strong> not applicable on that platform</li>
+<li>Manual pass on real devices: <strong>pending</strong> (section 7)</li>
+</ul>
+<p><strong>iOS:</strong> FAILED · <strong>Android:</strong> FAILED</p>
+<p><strong>Validation status:</strong> <strong>FAILED</strong></p>
+<h3>Failures</h3>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Configuration</th>
+<th>Test</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>iOS</td>
+<td>iOS 16.4 iPhone SE (3rd generation) Debug</td>
+<td>lang-da-shows</td>
+<td>xcuitest.installer.LocalXCTestInstaller$IOSDriverTimeoutException: iOS driver not ready in time, consider increasing timeout by configuring MAESTRO_DRIVER_STARTUP_TIMEOUT env variable</td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS 16.4 iPhone SE (3rd generation) Debug</td>
+<td>lang-en-hidden</td>
+<td>xcuitest.installer.LocalXCTestInstaller$IOSDriverTimeoutException: iOS driver not ready in time, consider increasing timeout by configuring MAESTRO_DRIVER_STARTUP_TIMEOUT env variable</td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS 16.4 iPhone SE (3rd generation) Debug</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS 17.5 iPhone 15 Debug</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS 18 iPad (A16) Debug</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS 18 iPhone 16 Pro Debug no-frame-key</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS 18 iPhone 16 Pro Max Debug</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS 18 iPhone 16 Release</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS 26 iPhone 17 Debug</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A26 phone debug</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A26 phone debug</td>
+<td>slow-survey</td>
+<td>Assertion is false: &quot;Can we help?&quot; is visible</td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A26 phone release</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A26 phone release</td>
+<td>slow-survey</td>
+<td>Assertion is false: &quot;Can we help?&quot; is visible</td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A30 phone debug</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A30 phone release</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A34 phone debug</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A34 phone release</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A34 tablet debug</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A36 phone debug</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A36 phone release</td>
+<td>rate-product-close</td>
+<td></td>
+</tr>
+</tbody></table>
+<h2>2. Test Results</h2>
+<table>
+<thead>
+<tr>
+<th>Test category</th>
+<th>iOS</th>
+<th>Android</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SDK initialization and version check</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Path-based triggers and excluded screens</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Time-based triggers</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Event and click triggers</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Exit triggers</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Re-display rules (cooldown)</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Audience segmentation by language</td>
+<td><strong>FAIL</strong></td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Popup opening and closing</td>
+<td><strong>FAIL</strong></td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Survey rendering, interactions and submission</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Navigation and app lifecycle (background / foreground, rotation)</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Network failures and recovery</td>
+<td>PASS</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Detection check: a missing navigation event is caught</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Visual regression</td>
+<td>NOT YET AUTOMATED</td>
+<td>NOT YET AUTOMATED</td>
+</tr>
+</tbody></table>
+<p><code>—</code> = not part of that platform&#39;s suite.</p>
+<details><summary>Every test on every configuration</summary><table>
+<thead>
+<tr>
+<th>Test</th>
+<th>A26 phone debug</th>
+<th>A26 phone release</th>
+<th>A30 phone debug</th>
+<th>A30 phone release</th>
+<th>A34 phone debug</th>
+<th>A34 phone release</th>
+<th>A34 tablet debug</th>
+<th>A36 phone debug</th>
+<th>A36 phone release</th>
+<th>iOS 16.4 iPhone SE (3rd generation) Debug</th>
+<th>iOS 17.5 iPhone 15 Debug</th>
+<th>iOS 18 iPad (A16) Debug</th>
+<th>iOS 18 iPhone 16 Pro Debug no-frame-key</th>
+<th>iOS 18 iPhone 16 Pro Max Debug</th>
+<th>iOS 18 iPhone 16 Release</th>
+<th>iOS 26 iPhone 17 Debug</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>00-version</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>audience-lang</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>checkout-time</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>close-with-keyboard</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>retry</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>exit-checkout</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>help-click</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>lang-da-shows</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>retry</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>error</td>
+<td>pass</td>
+<td>pass</td>
+<td>retry</td>
+<td>retry</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>lang-en-hidden</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>error</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>lifecycle</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>missing-navigation</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+</tr>
+<tr>
+<td>not-on-cart</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>offline</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+</tr>
+<tr>
+<td>offline-open-popup</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+</tr>
+<tr>
+<td>path-targeting</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>popups-error</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>rate-product</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>rate-product-close</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+</tr>
+<tr>
+<td>rating-labels</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>retry</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>redisplay</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>release-fixtures</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>slow-survey</td>
+<td>fail</td>
+<td>fail</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+</tr>
+<tr>
+<td>survey-missing</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+</tbody></table>
+</details><h2>3. Tested Environments</h2>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>OS version</th>
+<th>Device</th>
+<th>Build</th>
+<th>SDK resolved</th>
+<th>Engine</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Android</td>
+<td>API 26</td>
+<td>pixel_6 (emulator)</td>
+<td>debug</td>
+<td>0.7.9</td>
+<td>WebView 69.0.3497.100</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 26</td>
+<td>pixel_6 (emulator)</td>
+<td>release (R8)</td>
+<td>0.7.9</td>
+<td>WebView 69.0.3497.100</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 30</td>
+<td>pixel_6 (emulator)</td>
+<td>debug</td>
+<td>0.7.9</td>
+<td>WebView 83.0.4103.106</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 30</td>
+<td>pixel_6 (emulator)</td>
+<td>release (R8)</td>
+<td>0.7.9</td>
+<td>WebView 83.0.4103.106</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 34</td>
+<td>pixel_6 (emulator)</td>
+<td>debug</td>
+<td>0.7.9</td>
+<td>WebView 113.0.5672.136</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 34</td>
+<td>pixel_6 (emulator)</td>
+<td>release (R8)</td>
+<td>0.7.9</td>
+<td>WebView 113.0.5672.136</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 34</td>
+<td>pixel_tablet (emulator)</td>
+<td>debug</td>
+<td>0.7.9</td>
+<td>WebView 113.0.5672.136</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 36</td>
+<td>pixel_6 (emulator)</td>
+<td>debug</td>
+<td>0.7.9</td>
+<td>WebView 133.0.6943.137</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 36</td>
+<td>pixel_6 (emulator)</td>
+<td>release (R8)</td>
+<td>0.7.9</td>
+<td>WebView 133.0.6943.137</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-16-4</td>
+<td>iPhone SE (3rd generation) (simulator)</td>
+<td>Debug · Xcode_16.4</td>
+<td>0.7.9</td>
+<td>—</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-17-5</td>
+<td>iPhone 15 (simulator)</td>
+<td>Debug · Xcode_16.4</td>
+<td>0.7.9</td>
+<td>—</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-18-6</td>
+<td>iPad (A16) (simulator)</td>
+<td>Debug · Xcode_16.4</td>
+<td>0.7.9</td>
+<td>—</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-18-6</td>
+<td>iPhone 16 Pro (simulator)</td>
+<td>Debug · Xcode_16.4</td>
+<td>0.7.9</td>
+<td>—</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-18-6</td>
+<td>iPhone 16 Pro Max (simulator)</td>
+<td>Debug · Xcode_16.4</td>
+<td>0.7.9</td>
+<td>—</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-18-6</td>
+<td>iPhone 16 (simulator)</td>
+<td>Release · Xcode_16.4</td>
+<td>0.7.9</td>
+<td>—</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-26-2</td>
+<td>iPhone 17 (simulator)</td>
+<td>Debug · Xcode_26.2</td>
+<td>0.7.9</td>
+<td>—</td>
+<td><strong>FAIL</strong></td>
+</tr>
+</tbody></table>
+<p>All automated tests ran against the Deepdots development environment with test companies only. No customer data was used, and each configuration fails if any request reaches the production API.</p>
+<h2>4. Critical Safety Validation</h2>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>iOS</th>
+<th>Android</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Survey that cannot load: the popup can be closed and the app stays usable</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Popup configuration that cannot load: no popup, the app stays usable</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>No network: no popup, the app stays usable</td>
+<td>n/a</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Network lost right after a popup is triggered</td>
+<td>n/a</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Slow network while the survey loads</td>
+<td>n/a</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Crash, freeze (ANR) or threading errors in the device log, and no request to production (every configuration)</td>
+<td>None detected</td>
+<td>None detected</td>
+</tr>
+</tbody></table>
+<h2>5. Detection Controls and Backward Compatibility</h2>
+<p>The test system has to prove it catches real problems. These controls run in every validation:</p>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Negative control: the bug customers saw on the control version is detected (control 0.7.0)</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>R8 control: the control version fails a minified release build, the tested one builds (control 0.7.0)</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Expected failure detected: missing-navigation</td>
+<td>iOS PASS · Android PASS</td>
+</tr>
+</tbody></table>
+<h2>6. Known Issues &amp; Limitations</h2>
+<p><strong>Known blocking issues:</strong> see Failures in section 1.</p>
+<p><strong>Known non-blocking issues:</strong></p>
+<ul>
+<li>None.</li>
+</ul>
+<p><strong>Test limitations:</strong></p>
+<ul>
+<li>Emulators and simulators cover the OS versions, not every manufacturer; real devices are checked by hand (section 7).</li>
+<li>Visual regression (screenshot comparison) is not yet automated for the native SDK.</li>
+<li>Tests marked as known issues are expected to fail until their fix ships; if one passes, the run fails so the mark is removed.</li>
+</ul>
+<h2>7. Real Devices (manual)</h2>
+<p><strong>Status: PENDING.</strong> Filled in by hand after this report is generated: release build of the test app with this exact version on one Android phone, one iPhone and one iPad.</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Android phone</th>
+<th>iPhone</th>
+<th>iPad</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Popup appears complete, once</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>Survey answered and sent to the end</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>Not shown again within its cooldown</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>Taps outside the popup do not reach the app; X closes it</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>Background / foreground with the popup open</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>Rotation with the popup open</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>Keyboard does not cover Send</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>No network: notice, can be closed, app usable</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+</tbody></table>
+<h2>8. Release Information</h2>
+<ul>
+<li><strong>SDK version:</strong> 0.7.9</li>
+<li><strong>Release:</strong> <a href="https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/releases/tag/v0.7.9">GitHub release v0.7.9</a></li>
+<li><strong>Changelog:</strong> <a href="https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/blob/main/CHANGELOG.md">CHANGELOG</a></li>
+<li><strong>Test execution:</strong> <a href="https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/41785193836/attempts/1">CI run</a> (logs, screenshots and per-configuration artifacts)</li>
+<li><strong>Validation date:</strong> 2026-11-04</li>
+<li><strong>Results file SHA-256:</strong> <code>8443f107b4d321e028f7c59cf04a1430d9ae97549db7384f4c5db7e1da5f6a81</code></li>
+</ul>
+<h3>Release notes 0.7.9</h3>
+<h4>Fixed</h4>
+<ul>
+<li><p><strong>iOS: a survey taller than its box can be scrolled again.</strong> The survey&#39;s WebView sat inside
+the popup&#39;s scrollable middle with the default (cooperative) touch handling: the middle took
+every vertical drag, could not move because its content already fitted, and the WebView never
+scrolled. On a small iPhone (SE) the 0–10 scale, shown as a vertical list there, could not be
+scrolled past 3, so 4–10 could not be chosen. The survey now gets its touches directly and
+scrolls its own content; its content stays available to VoiceOver. The console bridge of the
+iOS WebView also drops optional chaining (iOS 13.0–13.3).</p>
+</li>
+<li><p><strong>iOS: the keyboard no longer covers the popup&#39;s Back and Send.</strong> The SDK relied on the Compose
+view controller to move the focused field above the keyboard, but the survey&#39;s text field lives
+in a WKWebView, which Compose does not see as focused: nothing moved, and on a free-text page
+(focused on its own after Next) the keyboard covered the footer until it was dismissed. Seen on
+every iPhone in the device matrix (iPhone SE to iPhone 17). The popup now keeps itself above the
+keyboard with the IME inset, as on Android, and the view controller no longer shifts the view on
+focus, so it is not moved twice.</p>
+</li>
+<li><p><strong>The close button (X) stays visible when the survey does not fit.</strong> With a tall survey page,
+the whole card scrolled, and after a &quot;required&quot; message it scrolled to the bottom on its own:
+the title and the X went out of view, so the popup could not be closed without scrolling back
+up. The title row and the buttons now stay fixed and only the content in between scrolls.
+Found by the end-to-end tests on iOS.</p>
+</li>
+<li><p><strong>The popup&#39;s Send, Back, close and Start work on older WebViews.</strong> The native buttons ran
+<code>window.DeepdotsActions?.send()</code> in the survey; a WebView older than Chrome 80 (Android 8–10
+phones whose WebView was never updated) and iOS 13.0–13.3 reject optional chaining with a
+<code>SyntaxError</code>, so the button did nothing and pages that need Send never moved on (the rating
+page worked because it advances by itself). The calls are now plain ES5, and a test fails if
+the survey&#39;s scripts use <code>?.</code> or <code>??</code> again. Found by the local device matrix on Android 8.</p>
+</li>
+<li><p><strong>Android 8–10: the keyboard no longer covers the popup&#39;s Back and Send.</strong> The popup is mounted
+on the window&#39;s decor view, outside the content the Activity resizes, and before Android 11 the
+keyboard was not reported to it as an inset, so <code>imePadding()</code> was 0 and the footer stayed
+under the keyboard. On those versions the popup now measures the keyboard from the window&#39;s
+visible frame and moves above it; Android 11+ keeps using the IME inset.</p>
+</li>
+<li><p><strong>iOS: a popup at the top no longer goes under the status bar.</strong> With a top position and a tall
+survey, the card was laid out from the very top of the screen: the title sat on the clock and
+the close button (X) under the battery icon, where it could not be tapped. The card now stays
+inside the safe area (status bar, Dynamic Island / notch, home indicator); the dimmed backdrop
+still covers the whole screen. Found by the new end-to-end tests.</p>
+</li>
+</ul>
+
+</body></html>
