@@ -1,5 +1,6 @@
 package com.deepdots.sdk.analytics
 
+import com.deepdots.sdk.SdkIdentity
 import com.deepdots.sdk.util.SdkLock
 import com.deepdots.sdk.util.currentTimeMillis
 import kotlinx.serialization.Serializable
@@ -28,6 +29,10 @@ data class AnalyticsEvent(
 @Serializable
 data class AnalyticsContext(
     val platform: String,
+    /** SDK que produce la analítica, `<plataforma>@<versión>` (`deepdots_sdk`). */
+    val sdk: String? = null,
+    /** Núcleo nativo bajo un wrapper (`deepdots_sdk_core`); null sin wrapper. */
+    val sdkCore: String? = null,
     val language: String? = null,
     /** Info de dispositivo (Technology #11–13). */
     val device: DeviceInfo? = null,
@@ -213,6 +218,8 @@ class AnalyticsManager(
         sessionId = identity.sessionId,
         context = AnalyticsContext(
             platform = platform,
+            sdk = SdkIdentity.sdk,
+            sdkCore = SdkIdentity.sdkCore,
             language = language,
             device = device,
             attributes = attributes.toMap(),
@@ -250,6 +257,8 @@ class AnalyticsManager(
         sessionId = identity.sessionId,
         context = AnalyticsContext(
             platform = platform,
+            sdk = SdkIdentity.sdk,
+            sdkCore = SdkIdentity.sdkCore,
             language = language,
             device = device,
             attributes = attributes.toMap(),

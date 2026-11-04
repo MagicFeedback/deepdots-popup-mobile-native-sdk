@@ -1,5 +1,6 @@
 package com.deepdots.sdk.tracking
 
+import com.deepdots.sdk.SdkIdentity
 import com.deepdots.sdk.storage.KeyValueStorage
 import com.deepdots.sdk.util.currentTimeMillis
 import com.deepdots.sdk.util.randomUuid
@@ -31,13 +32,17 @@ data class SurveyIdentity(
 /**
  * Construye el `profile` y el `metadata` de identidad para inyectar en el survey
  * (`magicfeedback.form(appId, publicKey, profile, metadata)`), según el contrato §5.
- * Mismas claves que Web: `session_id`, `user_id`, `mini_service`.
+ * Mismas claves que Web: `session_id`, `user_id`, `mini_service`. `deepdots_channel` y
+ * `deepdots_sdk` (+ `deepdots_sdk_core` bajo un wrapper) van siempre: marcan la respuesta como
+ * llegada por popup y con qué SDK.
  */
 fun buildSurveyIdentity(
     userId: String?,
     sessionId: String?,
     miniService: String? = null,
     analyticsFeedbackSessionId: String? = null,
+    sdk: String = SdkIdentity.sdk,
+    sdkCore: String? = SdkIdentity.sdkCore,
 ): SurveyIdentity {
     val profile = mutableListOf<IdentityAnswer>()
     if (!userId.isNullOrBlank()) profile += IdentityAnswer("external-user-id", listOf(userId))
@@ -49,6 +54,10 @@ fun buildSurveyIdentity(
     if (!analyticsFeedbackSessionId.isNullOrBlank()) {
         metadata += IdentityAnswer("deepdots_analytics_feedback_session_id", listOf(analyticsFeedbackSessionId))
     }
+    // Canal + SDK que produjo la respuesta (dashboard de Collection): siempre, también sin tracking.
+    metadata += IdentityAnswer("deepdots_channel", listOf(SdkIdentity.POPUP_CHANNEL))
+    metadata += IdentityAnswer("deepdots_sdk", listOf(sdk))
+    if (!sdkCore.isNullOrBlank()) metadata += IdentityAnswer("deepdots_sdk_core", listOf(sdkCore))
     return SurveyIdentity(profile = profile, metadata = metadata)
 }
 

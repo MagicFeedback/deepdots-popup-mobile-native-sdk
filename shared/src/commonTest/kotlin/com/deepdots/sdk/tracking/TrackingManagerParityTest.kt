@@ -1,5 +1,6 @@
 package com.deepdots.sdk.tracking
 
+import com.deepdots.sdk.SdkIdentity
 import com.deepdots.sdk.storage.InMemoryStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -148,10 +149,10 @@ class TrackingManagerParityTest {
     fun omits_missing_pieces_of_the_survey_identity() {
         val identity = buildSurveyIdentity(null, null)
         assertEquals(emptyList(), identity.profile)
-        assertEquals(emptyList(), identity.metadata)
+        assertEquals(listOf("deepdots_channel", "deepdots_sdk"), identity.metadata.map { it.key })
 
         val onlyUser = buildSurveyIdentity("u-1", null)
-        assertEquals(listOf("user_id"), onlyUser.metadata.map { it.key })
+        assertEquals(listOf("user_id", "deepdots_channel", "deepdots_sdk"), onlyUser.metadata.map { it.key })
     }
 
     @Test
@@ -159,5 +160,21 @@ class TrackingManagerParityTest {
         val identity = buildSurveyIdentity("u-1", "s-1", miniService = "checkout")
         val md = identity.metadata.associate { it.key to it.value[0] }
         assertEquals("checkout", md["mini_service"])
+    }
+
+    @Test
+    fun marks_the_survey_response_as_popup_with_the_sdk_that_produced_it() {
+        val md = buildSurveyIdentity("u-1", "s-1").metadata.associate { it.key to it.value[0] }
+        assertEquals("popup", md["deepdots_channel"])
+        assertEquals(SdkIdentity.sdk, md["deepdots_sdk"])
+        assertTrue("deepdots_sdk_core" !in md)
+    }
+
+    @Test
+    fun a_wrapper_sdk_goes_in_deepdots_sdk_and_the_native_core_in_deepdots_sdk_core() {
+        val md = buildSurveyIdentity("u-1", null, sdk = "flutter@0.1.0", sdkCore = "android@0.7.10")
+            .metadata.associate { it.key to it.value[0] }
+        assertEquals("flutter@0.1.0", md["deepdots_sdk"])
+        assertEquals("android@0.7.10", md["deepdots_sdk_core"])
     }
 }
