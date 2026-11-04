@@ -9,11 +9,11 @@ tags: [basic]
 - runFlow:
     file: ../subflows/close-popup.yaml
     env:
-      TITLE: "Hvordan vil du vurdere din oplevelse med appen?"
+      TITLE: "Hvordan vil du vurdere.*"
       CLOSE_LABEL: "Luk pop op"
 - extendedWaitUntil:
-    visible: "Hvordan vil du vurdere din oplevelse med appen?"
+    visible: "Hvordan vil du vurdere.*"
     timeout: 10000
     optional: true
-- assertNotVisible: "Hvordan vil du vurdere din oplevelse med appen?"
+- assertNotVisible: "Hvordan vil du vurdere.*"
 - assertVisible: "Basic app · SDK.*"

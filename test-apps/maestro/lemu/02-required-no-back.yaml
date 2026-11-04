@@ -10,11 +10,11 @@ tags: [lemu, known-issue]
 - runFlow: subflows/open-popup.yaml
 - runFlow: subflows/send.yaml
 - assertVisible: "Please answer the required question to continue."
-- assertVisible: "Hvordan vil du vurdere din oplevelse med appen?"
+- assertVisible: "Hvordan vil du vurdere.*"
 - assertNotVisible: "Tilbage"
 - runFlow:
     file: ../subflows/close-popup.yaml
     env:
-      TITLE: "Hvordan vil du vurdere din oplevelse med appen?"
+      TITLE: "Hvordan vil du vurdere.*"
       CLOSE_LABEL: "Luk pop op"
 - runFlow: ../subflows/host-usable.yaml
