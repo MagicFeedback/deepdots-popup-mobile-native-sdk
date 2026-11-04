@@ -1,0 +1,6 @@
+{
+  "$comment": "DD-28 · tolerance and masks of the native visual regression. threshold = per-pixel colour distance (0-1); maxDiffPixels = differing pixels allowed per screenshot. Masks are rectangles in screenshot pixels per device (Lab bar SDK version, Lab log timestamps); `states` / `except` limit a mask to some states. Measured values: README.md.",
+  "title": "Visual regression · native",
+  "compare": { "threshold": 0.01, "maxDiffPixels": 0 },
+  "devices": {}
+}

@@ -21,10 +21,10 @@
   },
   "deviceLogCheck": "Crash, freeze (ANR) or threading errors in the device log, and no request to production (every configuration)",
   "environmentNote": "All automated tests ran against the Deepdots development environment with test companies only. No customer data was used, and each configuration fails if any request reaches the production API.",
-  "visualRegression": "NOT YET AUTOMATED",
+  "visualRegression": "AUTOMATED: screenshots of the popup states (iOS + Android, standard and small screen) compared with approved baselines by the job \"Visual regression · <platform> · SDK local\" (test-apps/visual/README.md).",
   "limitations": [
     "Emulators and simulators cover the OS versions, not every manufacturer; real devices are checked by hand (section 7).",
-    "Visual regression (screenshot comparison) is not yet automated for the native SDK.",
+    "Visual regression compares screenshots on one standard and one small device per platform (CI emulator / simulator); other devices and OS versions are covered by the functional tests, not by screenshots.",
     "Tests marked as known issues are expected to fail until their fix ships; if one passes, the run fails so the mark is removed."
   ],
   "realDevices": {
@@ -139,6 +139,12 @@
       "name": "Detection check: a missing navigation event is caught",
       "flows": [
         "missing-navigation"
+      ]
+    },
+    {
+      "name": "Visual regression (screenshots vs approved baselines)",
+      "match": [
+        "^visual-"
       ]
     }
   ],

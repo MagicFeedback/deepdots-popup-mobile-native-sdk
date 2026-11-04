@@ -1,0 +1,28 @@
+# Visual regression (DD-28): popup at the top: safe area under the status bar. Same DEV scenario as e2e/position-top.yaml.
+# min-sdk: 0.7.6
+appId: com.deepdots.testapp
+tags: [visual]
+---
+- runFlow:
+    file: ../subflows/launch-no-dialog.yaml
+    env:
+      SCENARIO: e2e-position-top
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-event-e2e_position
+- extendedWaitUntil:
+    visible: "E2E · Top right"
+    timeout: 20000
+# The title is in the accessibility tree before the popup is revealed: wait for the survey too.
+- runFlow:
+    file: ../subflows/wait-survey.yaml
+    env:
+      QUESTION: "How likely are you to recommend NORDLY to a friend?"
+- extendedWaitUntil:
+    visible: "Send"
+    timeout: 15000
+- runFlow:
+    file: ../subflows/visual-shot.yaml
+    env:
+      NAME: position-top

@@ -1,0 +1,31 @@
+# Visual regression (DD-28): the complex survey's first page with the largest system text
+# (Android font scale 1.3, iOS Dynamic Type XXXL): title wrapping, chrome that grows with it.
+# text-size: large
+appId: com.deepdots.testapp
+tags: [visual]
+---
+- runFlow:
+    file: ../subflows/launch-no-dialog.yaml
+    env:
+      SCENARIO: rate-product
+- tapOn:
+    id: tab-shop
+- tapOn:
+    id: product-fjell-jacket
+- tapOn:
+    id: rate-product
+- tapOn:
+    id: star-5
+- tapOn:
+    id: submit-rating
+- extendedWaitUntil:
+    visible: "Tell us what you think of this product"
+    timeout: 20000
+- runFlow:
+    file: ../subflows/wait-survey.yaml
+    env:
+      QUESTION: "Did you find what you were looking for?"
+- runFlow:
+    file: ../subflows/visual-shot.yaml
+    env:
+      NAME: text-large

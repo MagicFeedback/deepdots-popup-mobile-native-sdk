@@ -7,6 +7,12 @@
 # the flows the PR adds or changes plus a smoke test (00-version, checkout-time). The apps use the
 # published SDK, so the other flows would re-test the same binaries that already passed on dev.
 # The full suite (every flow, every version) runs from "Run workflow" or locally (README, "Run").
+#
+# Visual regression (DD-28): the `visual/` flows also run on a small screen (Android: the same
+# emulator at 720x1280; iOS: an iPhone SE simulator), and the jobs "Visual regression · Android /
+# iOS · SDK local" compare their screenshots with the approved baselines of test-apps/visual
+# (test-apps/visual/README.md). They run when `local` is tested: the release PR (release-check.yml)
+# and every Monday (visual flows only). Nothing here ever approves a baseline.
 name: Test apps
 
 on:
@@ -20,8 +26,14 @@ on:
       versions:
         type: string
         required: true
+  schedule:
+    # Mondays: the visual flows on the SDK built from dev (`local`).
+    - cron: "15 5 * * 1"
   workflow_dispatch:
     inputs:
+      flows:
+        description: "Flows to run, space-separated, relative to test-apps/maestro (e.g. visual/*.yaml). Empty: all"
+        default: ""
       versions:
         description: "SDK versions, JSON list (published versions; Android also accepts \"local\"). Empty: test-apps/sdk-versions.json"
         default: ""
@@ -41,16 +53,25 @@ jobs:
     outputs:
       list: ${{ steps.pick.outputs.list }}
       flows: ${{ steps.pick.outputs.flows }}
+      visual: ${{ steps.pick.outputs.visual }}
     steps:
       - uses: actions/checkout@v4
       - id: pick
         env:
           INPUT: ${{ inputs.versions }}
+          INPUT_FLOWS: ${{ inputs.flows }}
+          EVENT: ${{ github.event_name }}
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           LIST=${INPUT:-$(jq -c .versions test-apps/sdk-versions.json)}
           FLOWS=""
+          if [ "$EVENT" = schedule ]; then
+            LIST='["local"]'
+            INPUT_FLOWS='visual/*.yaml'
+          fi
+          # Globs expanded here, so the jobs get the file list.
+          [ -n "$INPUT_FLOWS" ] && FLOWS=$(cd test-apps/maestro && ls $INPUT_FLOWS | tr '\n' ' ')
           # A caller passing versions (release-check on a release PR: ["local"]) gets the full suite.
           if [ -n "$PR" ] && [ -z "$INPUT" ]; then
             # Short suite: latest version, smoke + the flows this PR adds or changes (subflows are
@@ -64,6 +85,10 @@ jobs:
           fi
           echo "list=$LIST" >> "$GITHUB_OUTPUT"
           echo "flows=$FLOWS" >> "$GITHUB_OUTPUT"
+          # Visual flows of this run (empty FLOWS = all of them): what the small-screen pass runs.
+          VISUAL=$(if [ -z "$FLOWS" ]; then cd test-apps/maestro && ls visual/*.yaml; else printf '%s\n' $FLOWS | grep '^visual/' || true; fi | tr '\n' ' ')
+          echo "visual=$VISUAL" >> "$GITHUB_OUTPUT"
+          echo "[lab] visual flows: ${VISUAL:-none}"
           echo "[lab] SDK versions: $LIST"
           echo "[lab] flows: ${FLOWS:-all}"
           # A new release that nobody added to the list yet.
@@ -107,6 +132,8 @@ jobs:
         env:
           RECORD: ${{ inputs.record && '1' || '0' }}
           FLOWS: ${{ needs.versions.outputs.flows }}
+          VISUAL_FLOWS: ${{ needs.versions.outputs.visual }}
+          AVD_PROFILE: pixel_6
         with:
           api-level: 34
           target: google_apis
@@ -120,7 +147,9 @@ jobs:
           script: |
             adb install -r test-apps/android/app/build/outputs/apk/debug/app-debug.apk
             adb install -r test-apps/android/basic/build/outputs/apk/debug/basic-debug.apk
-            test-apps/scripts/run-maestro.sh android ${{ matrix.sdk }} out/android-${{ matrix.sdk }}
+            # The runner executes each line on its own: suite + visual small-screen pass (DD-28: the same
+            # emulator at 720x1280 / 320 dpi) in one line, so a failure of either fails the step.
+            test-apps/scripts/run-maestro.sh android ${{ matrix.sdk }} out/android-${{ matrix.sdk }}; code=$?; if [ -n "$VISUAL_FLOWS" ]; then adb shell wm size 720x1280; adb shell wm density 320; AVD_PROFILE=small-720x1280 FLOWS="$VISUAL_FLOWS" test-apps/scripts/run-maestro.sh android ${{ matrix.sdk }} out/android-${{ matrix.sdk }}/small || code=1; adb shell wm size reset; adb shell wm density reset; fi; exit $code
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -195,9 +224,63 @@ jobs:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "180000"
           FLOWS: ${{ needs.versions.outputs.flows }}
         run: test-apps/scripts/run-maestro.sh ios ${{ matrix.sdk }} out/ios-${{ matrix.sdk }}
+      # Visual regression, small screen (DD-28): the visual flows again on an iPhone SE.
+      - name: Visual flows on a small screen (iPhone SE)
+        if: always() && needs.versions.outputs.visual != ''
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "180000"
+          FLOWS: ${{ needs.versions.outputs.visual }}
+        run: |
+          xcrun simctl shutdown "$DEVICE" || true
+          SE=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for r,v in d.items() if 'iOS' in r for x in v if x['name']=='iPhone SE (3rd generation)'))")
+          xcrun simctl boot "$SE" && xcrun simctl bootstatus "$SE" -b
+          xcrun simctl install "$SE" test-apps/ios/build/Build/Products/Debug-iphonesimulator/NordlyTestApp.app
+          DEVICE=$SE test-apps/scripts/run-maestro.sh ios ${{ matrix.sdk }} out/ios-${{ matrix.sdk }}/small
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-apps-ios-${{ matrix.sdk }}
           path: out/ios-${{ matrix.sdk }}
           retention-days: 14
+
+  # Visual regression (DD-28): the screenshots of the `local` run against the approved baselines
+  # (test-apps/visual/baselines, approvals.json). On a short PR suite only the captured states
+  # are checked; the release PR and the Monday run check every baseline.
+  visual:
+    name: Visual regression · ${{ matrix.platform.name }} · SDK local
+    needs: [versions, android, ios]
+    if: always() && contains(needs.versions.outputs.list, '"local"') && needs.versions.outputs.visual != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { name: Android, id: android }
+          - { name: iOS, id: ios }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --prefix scripts/visual
+      - uses: actions/download-artifact@v4
+        with:
+          name: test-apps-${{ matrix.platform.id }}-local
+          path: run
+      - name: Compare with the approved baselines
+        env:
+          PARTIAL: ${{ needs.versions.outputs.flows != '' && !startsWith(needs.versions.outputs.flows, 'visual/') && '--captured-only' || '' }}
+        run: |
+          for d in run run/small; do [ -f "$d/device.json" ] && node test-apps/visual/collect.mjs --run "$d" --dest actual --sdk local; done
+          node scripts/visual/check.mjs --suite test-apps/visual --actual actual --out visual-report \
+            --title "Visual regression · ${{ matrix.platform.name }}" $PARTIAL
+      - name: Summary
+        if: always()
+        run: cat visual-report/summary.md >> "$GITHUB_STEP_SUMMARY" || echo "No visual summary (no screenshots)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-report-${{ matrix.platform.id }}-local
+          path: visual-report
+          retention-days: 30

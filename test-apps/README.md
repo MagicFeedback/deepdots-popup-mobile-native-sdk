@@ -151,6 +151,10 @@ named "Native Test Apps (MF-3244) · <scenario>").
   - **Network lost with the popup open** (`offline-open-popup.yaml`, Android): airplane mode right
     before the trigger; the popup closes and the host works.
 
+- `visual/`: the visual regression (DD-28): one `visual-<state>.png` screenshot per popup state,
+  compared with approved baselines by the "Visual regression · Android / iOS · SDK local" jobs.
+  The runner fixes the status bar (9:41, full battery) for every run. See `visual/README.md`.
+
 CI: `.github/workflows/test-apps.yml`, one job per platform and SDK version. The versions come
 from `sdk-versions.json` (the latest published version and the previous one; older ones are not
 tested); update it after each release, and the workflow warns when Maven
