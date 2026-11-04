@@ -15,6 +15,12 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   error. Without a code it keeps matching the text. It applies once the pinned surveys SDK
   (`MAGICFEEDBACK_VERSION`, 2.2.31 today) is raised to a version that sends codes. Asked by
   Lemvigh-Müller: an email with a typo showed "Please answer the question".
+- **A failed popups download is retried instead of losing the popup for the session.** At
+  start-up the SDK downloads the popups of the public key; taps and events that arrive before
+  are kept and replayed. If that request failed once (for example a brief loss of signal at
+  start-up), the SDK dropped them and never tried again, so no popup showed until the next app
+  start. The request is now retried twice (after 2 s and 5 s) and the pending taps and events
+  are kept until the last attempt. Found while investigating the release validation on Android 8.
 
 ## 0.7.9 - 2026-11-04
 

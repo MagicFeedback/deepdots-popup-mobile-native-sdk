@@ -151,10 +151,17 @@ DRIVER_OPTS=""
 # installed next to NORDLY): skipped when it is not installed.
 FLOWS=${FLOWS:-$(ls flows/*.yaml regression/*.yaml failures/*.yaml lemu/*.yaml basic/*.yaml e2e/*.yaml)}
 failed=()
+ANDROID_API=
+[ "$PLATFORM" = android ] && ANDROID_API=$(adb_cmd shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')
 for f in $FLOWS; do
   name=$(basename "$f" .yaml)
   if grep -q 'android-only' "$f" && [ "$PLATFORM" != android ]; then
     echo "[lab] skip $name (android-only)"; junit_case "$name" skipped "Android only"; continue
+  fi
+  # `# min-android-api: N`: the flow cannot run on older Android versions (the reason is in the flow).
+  min_api=$(sed -n 's/^# min-android-api: *//p' "$f")
+  if [ -n "$min_api" ] && [ -n "$ANDROID_API" ] && [ "$ANDROID_API" -lt "$min_api" ]; then
+    echo "[lab] skip $name (API $ANDROID_API < $min_api)"; junit_case "$name" skipped "Android API $ANDROID_API < $min_api"; continue
   fi
   # `# min-sdk: X.Y.Z`: the flow covers a setup that only exists from that version (always run on `local`).
   min_v=$(sed -n 's/^# min-sdk: *//p' "$f")

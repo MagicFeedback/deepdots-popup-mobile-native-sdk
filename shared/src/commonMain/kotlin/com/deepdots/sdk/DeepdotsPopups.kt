@@ -53,6 +53,7 @@ import com.deepdots.sdk.renderer.PopupRenderer
 import com.deepdots.sdk.service.DefaultPopupsService
 import com.deepdots.sdk.service.PopupsService
 import com.deepdots.sdk.util.currentTimeMillis
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -84,6 +85,13 @@ private const val ANALYTICS_MAX_BATCH_SIZE = 20
 private const val ANALYTICS_FLUSH_INTERVAL_MS = 30_000L
 /** Techo del buffer de disparos recibidos mientras se cargan las definiciones (descarta los más viejos). */
 internal const val MAX_PENDING_TRIGGERS = 20
+/**
+ * Esperas entre intentos del GET de popups (3 intentos en total). En una red muy lenta (Android 8
+ * en GSM con latencia GPRS) el primer intento caducaba conectando y el SDK tiraba los disparos ya
+ * guardados: ese popup no salía en toda la sesión. Ahora se reintenta y el buffer se conserva
+ * hasta el último intento.
+ */
+internal val POPUPS_FETCH_RETRY_DELAYS_MS = listOf(2_000L, 5_000L)
 /**
  * Latido: con la app en foreground, el flush periódico manda el engagement acumulado al menos
  * cada ANALYTICS_HEARTBEAT_MS. Sin él, una app abierta en una sola pantalla no enviaba nada
@@ -410,8 +418,11 @@ class DeepdotsPopups {
         }
         pendingTriggersLock.withLock { awaitingPopups = true }
         scope.launch {
+            val responseText = fetchPopupsWithRetry(publicKey) ?: run {
+                dropPendingTriggers()
+                return@launch
+            }
             try {
-                val responseText = popupsService.fetchPopups(publicKey, buildFilterParam())
                 log("API response (truncated)", responseText.take(512))
                 val remoteDefinitions = parseServerPopups(responseText)
                 loadPopupDefinitions(remoteDefinitions)
@@ -420,10 +431,26 @@ class DeepdotsPopups {
                     pendingAutoLaunch = false
                 }
             } catch (t: Throwable) {
-                log("Error fetching popups", t.message ?: "unknown")
+                log("Error loading popups", t.message ?: "unknown")
                 dropPendingTriggers()
             }
         }
+    }
+
+    /** GET de popups con reintentos ([POPUPS_FETCH_RETRY_DELAYS_MS]); null si fallan todos. */
+    private suspend fun fetchPopupsWithRetry(publicKey: String): String? {
+        val delays = debugPopupsFetchRetryDelaysMs ?: POPUPS_FETCH_RETRY_DELAYS_MS
+        for (attempt in 0..delays.size) {
+            try {
+                return popupsService.fetchPopups(publicKey, buildFilterParam())
+            } catch (c: CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                log("Error fetching popups (attempt ${attempt + 1}/${delays.size + 1})", t.message ?: "unknown")
+                if (attempt < delays.size) delay(delays[attempt])
+            }
+        }
+        return null
     }
 
     /** User id actual (generado por el SDK o provisto por el cliente). Null si tracking off. */
@@ -1044,6 +1071,9 @@ class DeepdotsPopups {
     /** Test seam: lookups de geo arrancados por esta instancia (se cuenta de forma síncrona). */
     internal var debugGeoLookupCount = 0
         private set
+
+    /** Solo test: esperas entre reintentos del GET de popups (por defecto [POPUPS_FETCH_RETRY_DELAYS_MS]). */
+    internal var debugPopupsFetchRetryDelaysMs: List<Long>? = null
 
     /** Solo test: observa cada lote de analytics (envelope + meta) antes de que salga por el sink. */
     internal var debugAnalyticsFlushListener: ((AnalyticsEnvelope, AnalyticsFlushMeta) -> Unit)? = null

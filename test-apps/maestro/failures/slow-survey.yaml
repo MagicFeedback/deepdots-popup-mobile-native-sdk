@@ -2,6 +2,11 @@
 # popup opens after the SDK's 1.2 s reveal ceiling with the survey still loading; it can be
 # closed while loading, no second popup appears, and the host keeps working.
 # network: gsm gprs
+# Not below API 30: on Android 8 (API 26) the emulator's GSM+GPRS throttle drops TCP segments,
+# the TLS 1.2 handshake to api-dev does not finish within the ~10 s Google's front end allows,
+# and the server closes every connection, so the popups never load (packet capture, 4-nov-2026).
+# That is the emulator plus the server limit, not the SDK. API 30+ passes; 27–29 are not tested.
+# min-android-api: 30
 appId: com.deepdots.testapp
 tags: [failure, android-only]
 ---
