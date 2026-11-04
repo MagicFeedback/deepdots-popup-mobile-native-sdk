@@ -1,0 +1,22 @@
+# Synthetic monitor (DD-26) · trigger → render: time_on_page 3 s on /checkout opens the popup
+# with its survey.
+# env: MONITOR_SCENARIO (failure test only: `fault-popups-error`, a popup config whose API answers
+# 406, so no popup shows and this flow fails as a real regression would)
+appId: com.deepdots.testapp
+tags: [monitor]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: ${MONITOR_SCENARIO || 'checkout-time'}
+- tapOn:
+    id: tab-cart
+- tapOn:
+    id: go-checkout
+- extendedWaitUntil:
+    visible: "Did anything stop you from completing your order?"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "How likely are you to recommend NORDLY to a friend?"
+    timeout: 20000
+- takeScreenshot: monitor-trigger-render
