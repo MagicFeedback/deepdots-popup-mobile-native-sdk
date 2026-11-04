@@ -26,10 +26,13 @@ tags: [visual]
 - extendedWaitUntil:
     visible: "Tell us what you think of this product"
     timeout: 20000
-- runFlow:
-    file: ../subflows/wait-survey.yaml
-    env:
-      QUESTION: "Did you find what you were looking for?"
+# The survey must be there before the screenshot: mandatory wait (wait-survey's is optional,
+# and on a slow CI runner the popup can be revealed before the survey loads).
+- extendedWaitUntil:
+    visible: "Did you find what you were looking for?"
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
 - runFlow:
     file: ../subflows/visual-shot.yaml
     env:

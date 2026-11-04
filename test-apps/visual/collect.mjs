@@ -38,9 +38,10 @@ export function findShots(dir) {
   return out;
 }
 
-/** SDK version the app reported in the run (`[lab] sdk requested=… resolved=…`), if any. */
+/** SDK version the app reported in the run, if any. */
 export function sdkVersionFrom(labLog) {
-  const m = labLog.match(/sdk requested=\S+ resolved=(\S+)/) ?? labLog.match(/SDK (?:version )?(\d+\.\d+\.\d+\S*)/);
+  // `[lab] sdk init 0.7.9 (SPM)` / `[lab] sdk init local (local :shared)`: the app's own line.
+  const m = labLog.match(/sdk init (\S+(?: \([^)]*\))?)/) ?? labLog.match(/sdk requested=\S+ resolved=(\S+)/);
   return m ? m[1] : null;
 }
 

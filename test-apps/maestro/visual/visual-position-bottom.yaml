@@ -14,11 +14,13 @@ tags: [visual]
 - extendedWaitUntil:
     visible: "E2E · Bottom left"
     timeout: 20000
-# The title is in the accessibility tree before the popup is revealed: wait for the survey too.
-- runFlow:
-    file: ../subflows/wait-survey.yaml
-    env:
-      QUESTION: "How likely are you to recommend NORDLY to a friend?"
+# The survey must be there before the screenshot: mandatory wait (wait-survey's is optional,
+# and on a slow CI runner the popup can be revealed before the survey loads).
+- extendedWaitUntil:
+    visible: "How likely are you to recommend NORDLY to a friend?"
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
 - extendedWaitUntil:
     visible: "Send"
     timeout: 15000
