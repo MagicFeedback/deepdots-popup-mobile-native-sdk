@@ -3,6 +3,23 @@ appId: com.deepdots.testapp
 ---
 - tapOn:
     id: tab-shop
+# Right after a rapid navigation (time-cancel) the first tab tap can be swallowed by the screen
+# transition still settling (seen on the iPhone SE): tap again if Shop did not open.
+- runFlow:
+    when:
+      notVisible:
+        id: product-ull-socks
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - tapOn:
+          id: tab-shop
+# On a small screen (iPhone SE) the product can be below the fold.
+- scrollUntilVisible:
+    element:
+      id: product-ull-socks
+    direction: DOWN
+    timeout: 10000
 - tapOn:
     id: product-ull-socks
 - tapOn:

@@ -28,8 +28,8 @@ tags: [lemu]
       text: client-exact-launch
     timeout: 60000
 - extendedWaitUntil:
-    visible: "Hvordan vil du vurdere din oplevelse med appen?"
+    visible: "Hvordan vil du vurdere.*"
     timeout: 12000
     optional: true
-- assertNotVisible: "Hvordan vil du vurdere din oplevelse med appen?"
+- assertNotVisible: "Hvordan vil du vurdere.*"
 - runFlow: ../subflows/host-usable.yaml

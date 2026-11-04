@@ -1,8 +1,18 @@
+# The Lemu question is matched by its start ("Hvordan vil du vurdere.*" in the flows): it wraps on a small screen.
 # Taps an option inside the survey. Android exposes the WebView's text late (or only after the
-# page settles), so it is waited for first. env: OPTION
+# page settles), so it is waited for first. On a small screen (iPhone SE) the 0-10 / 1-5 scale
+# becomes a vertical list and the option can sit below the fold: it is scrolled into view first,
+# or the tap lands outside it. env: OPTION
 appId: com.deepdots.testapp
 ---
 - extendedWaitUntil:
     visible: ${OPTION}
     timeout: 20000
+# centerElement: an option clipped by the survey box (under the popup's footer) still counts as
+# visible, and a tap there lands on Send; centring it brings it into the box first.
+- scrollUntilVisible:
+    element: ${OPTION}
+    direction: DOWN
+    centerElement: true
+    timeout: 10000
 - tapOn: ${OPTION}

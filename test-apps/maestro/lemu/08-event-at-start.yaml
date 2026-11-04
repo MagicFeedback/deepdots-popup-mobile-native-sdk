@@ -12,12 +12,12 @@ tags: [lemu]
       SCENARIO: client-exact
       EVENT: jhgjgjhg
 - extendedWaitUntil:
-    visible: "Hvordan vil du vurdere din oplevelse med appen?"
+    visible: "Hvordan vil du vurdere.*"
     timeout: 30000
 - runFlow:
     file: ../subflows/close-popup.yaml
     env:
-      TITLE: "Hvordan vil du vurdere din oplevelse med appen?"
+      TITLE: "Hvordan vil du vurdere.*"
       CLOSE_LABEL: "Luk pop op"
 - assertVisible:
     id: lab-scenario

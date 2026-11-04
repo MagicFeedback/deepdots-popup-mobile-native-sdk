@@ -34,8 +34,8 @@ tags: [regression, known-issue]
     index: 1
     optional: true
 - inputText: "MF-3246 native regression ${SDK_VERSION}"
-# The keyboard covers Send. Android: hideKeyboard. iOS: the WebView keyboard has no standard
-# dismiss action; its toolbar's "Done" closes it.
+# The keyboard can cover Send. Android: hideKeyboard. iOS: the WebView keyboard has no standard
+# dismiss action; its toolbar's "Done" closes it (iPhone only: the iPad keyboard has no toolbar).
 - runFlow:
     when:
       platform: Android
@@ -44,6 +44,7 @@ tags: [regression, known-issue]
 - runFlow:
     when:
       platform: iOS
+      visible: "Done"
     commands:
       - tapOn: "Done"
 - tapOn: "Send"

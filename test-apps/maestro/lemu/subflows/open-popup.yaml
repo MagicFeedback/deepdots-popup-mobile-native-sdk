@@ -14,6 +14,6 @@ appId: com.deepdots.testapp
     visible: "Luk pop op"
     timeout: 30000
 - extendedWaitUntil:
-    visible: "Hvordan vil du vurdere din oplevelse med appen?"
+    visible: "Hvordan vil du vurdere.*"
     timeout: 10000
     optional: true
