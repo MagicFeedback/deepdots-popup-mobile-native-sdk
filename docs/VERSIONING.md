@@ -147,3 +147,4 @@ version (`0.7.4` after `0.8.0`), is not marked as the latest GitHub Release and 
 into `main`. Host apps pin an exact version (Gradle, `exact:` in SPM), so nobody gets it
 without asking for it. The survey renderer and stylesheet are supported as shipped: to get a
 newer renderer, upgrade the SDK.
+
