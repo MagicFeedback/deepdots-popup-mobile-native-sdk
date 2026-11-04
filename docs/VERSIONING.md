@@ -72,7 +72,8 @@ is green. `node scripts/release.mjs tag` checks the same before it pushes the ta
 | Release dry run | release pull request (macOS) | the publish gate, unit tests on the JVM **and the iOS simulator**, build and smoke test of the AAR and the XCFramework |
 | Test apps (release build) · Android | release pull request | any Maestro flow failing with the SDK built from that commit (emulator, API 34) |
 | Test apps (release build) · iOS | release pull request | the same on the iOS simulator |
-| Required checks | `release.yml`, before anything is published | any of the three release pull request checks not green or missing; **no merged release pull request** (no test evidence); a tagged commit whose tree is **not the one the release pull request tested** |
+| Visual regression · Android / · iOS | release pull request (same workflow, DD-28) | a screenshot that differs from its approved baseline, or a baseline that is missing or not approved, on that platform |
+| Required checks | `release.yml`, before anything is published | any of the five release pull request checks not green or missing; **no merged release pull request** (no test evidence); a tagged commit whose tree is **not the one the release pull request tested** |
 
 Android and iOS share one version, so a failure on either platform blocks the release of both;
 the check name and the release validation report say which platform failed.
