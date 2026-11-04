@@ -4,6 +4,18 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- **The SDK identifies itself on the data it sends (DD-3, Collection dashboard).** Every popup
+  response now carries `deepdots_channel=popup` and `deepdots_sdk=android@<version>` /
+  `ios@<version>` in its survey metadata, also with tracking off, so a response that came through
+  a popup can be told apart from a MagicSurvey link and attributed to an SDK version (same keys as
+  the Web SDK). Every analytics batch carries `deepdots_sdk` too. A wrapper declares itself with
+  `SdkIdentity.setWrapper(name, version)` before `init` (the Flutter plugin does): `deepdots_sdk`
+  becomes `flutter@<version>` and the native core goes in `deepdots_sdk_core`. The version is
+  generated at build time from `PUBLISHING_VERSION` (`generateSdkBuildInfo` in
+  `shared/build.gradle.kts`), never kept by hand; `SdkIdentity.version` exposes it to hosts.
+
 ### Changed
 
 - **Surveys SDK 2.2.39** (`@magicfeedback/native`, from 2.2.31), vendored on Android and from the

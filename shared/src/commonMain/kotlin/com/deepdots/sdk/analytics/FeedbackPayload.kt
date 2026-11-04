@@ -113,6 +113,8 @@ fun buildAnalyticsFeedbackBody(
     metadata.pushKV("deepdots_user_id", envelope.userId)
     metadata.pushKV("deepdots_session_id", envelope.sessionId)
     metadata.pushKV("deepdots_platform", context.platform)
+    metadata.pushKV("deepdots_sdk", context.sdk)
+    metadata.pushKV("deepdots_sdk_core", context.sdkCore)
     metadata.pushKV("deepdots_language", context.language)
     context.device?.let { d ->
         metadata.pushKV("deepdots_device_type", d.deviceType)

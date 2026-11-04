@@ -80,6 +80,22 @@ class FeedbackPayloadParityTest {
     }
 
     @Test
+    fun identifies_the_sdk_in_deepdots_sdk_and_the_native_core_only_under_a_wrapper() {
+        val plain = mdMap(buildAnalyticsFeedbackBody(envelope(context = AnalyticsContext(platform = "android", sdk = "android@0.7.10")), keys))
+        assertEquals("android@0.7.10", plain["deepdots_sdk"])
+        assertTrue("deepdots_sdk_core" !in plain)
+
+        val wrapped = mdMap(
+            buildAnalyticsFeedbackBody(
+                envelope(context = AnalyticsContext(platform = "ios", sdk = "flutter@0.1.0", sdkCore = "ios@0.7.10")),
+                keys,
+            ),
+        )
+        assertEquals("flutter@0.1.0", wrapped["deepdots_sdk"])
+        assertEquals("ios@0.7.10", wrapped["deepdots_sdk_core"])
+    }
+
+    @Test
     fun context_in_deepdots_prefixed_metadata_attributes_without_prefix() {
         val body = buildAnalyticsFeedbackBody(envelope(), keys)
         val md = mdMap(body)
