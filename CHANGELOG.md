@@ -6,6 +6,14 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ### Fixed
 
+- **iOS: the keyboard no longer covers the popup's Back and Send.** The SDK relied on the Compose
+  view controller to move the focused field above the keyboard, but the survey's text field lives
+  in a WKWebView, which Compose does not see as focused: nothing moved, and on a free-text page
+  (focused on its own after Next) the keyboard covered the footer until it was dismissed. Seen on
+  every iPhone in the device matrix (iPhone SE to iPhone 17). The popup now keeps itself above the
+  keyboard with the IME inset, as on Android, and the view controller no longer shifts the view on
+  focus, so it is not moved twice.
+
 - **The close button (X) stays visible when the survey does not fit.** With a tall survey page,
   the whole card scrolled, and after a "required" message it scrolled to the bottom on its own:
   the title and the X went out of view, so the popup could not be closed without scrolling back
