@@ -1,1 +1,440 @@
-{"baselines":{},"approvals":[]}
+{
+  "baselines": {
+    "android-pixel-6-api34/complex-1-open.png": {
+      "sha256": "e276700bb1ca5eb00b0fff5316ad0aa4dada3079e37025a19e8d9589449f583f",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-pixel-6-api34/complex-1-required-error.png": {
+      "sha256": "4f911a93a7c6ce7447ae1bd13d4a5c15a5936af05533abbb7b45ed44dd4743ee",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-pixel-6-api34/complex-2-selected.png": {
+      "sha256": "b6bf004b3634605fb6739862d174688a6e706875e354fbe084b8758c8af8a881",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-pixel-6-api34/complex-3-boolean-email.png": {
+      "sha256": "ad77f78568eef47498d6fc3cf239dc54d813d88bb20413d4a7b46a4123a7f623",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-pixel-6-api34/complex-4-text.png": {
+      "sha256": "387b5eea509bc3a9a085949c098df6083d1d18a55d1afc787cc8eb91e02ad3f4",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-pixel-6-api34/complex-5-thanks.png": {
+      "sha256": "0f69042343ea138e2cb935a4860d0b067e98eb41fcc39d7089356d27f08c3436",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-pixel-6-api34/dark-font.png": {
+      "sha256": "0396f03fd79d7c361d875362d79a701fc0c30368ab517e702767bb093247f887",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-pixel-6-api34/position-bottom.png": {
+      "sha256": "c5d5c2a8f905c049b96f763ada864edfa8bb7b2785affc3535b55f0e81512d37",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-pixel-6-api34/position-top.png": {
+      "sha256": "f8b8eaa37a58f8edd01d9063ca36b9e9b2249f90867f669b1bc04cfd03cd0a1f",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-pixel-6-api34/simple-1-open.png": {
+      "sha256": "302e9f803aedfbf2546b7ec4ea429309b6a16a8250b69511db7a9b050424531b",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-pixel-6-api34/text-large.png": {
+      "sha256": "345f9e0859aa12ebd052d878e193a953fe9303cdb1dee0ef62924910f8690d7f",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-small-720x1280-api34/complex-1-open.png": {
+      "sha256": "ae113f345ba8f0356dff3b68cb9241851f9edb72ee96296069325bb0722746a3",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-small-720x1280-api34/complex-1-required-error.png": {
+      "sha256": "c01d380a3cefecc6a211261f3e18e9d20c7cddebe2283e50d3b969beceb5f989",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-small-720x1280-api34/complex-2-selected.png": {
+      "sha256": "4047e11d532ab3b2d4b195fde73915d864a7b570161e410fb82b9fa1c12c7302",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-small-720x1280-api34/complex-3-boolean-email.png": {
+      "sha256": "a2ff5d7474b1337ec5ec4e36b42a5d93c0354fec7937b5320c7f84cc227e18bd",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-small-720x1280-api34/complex-4-text.png": {
+      "sha256": "247bc6be5443fb99bd183771053904fe276f3115a753422ccc738a99ed5efca2",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-small-720x1280-api34/complex-5-thanks.png": {
+      "sha256": "89c19e237afdb73f9873f26633b2b0f9a0a68fe1a77a2b8035aecad9e3b6396b",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-small-720x1280-api34/dark-font.png": {
+      "sha256": "e0bf0932f23e5d7fa58aed8a8834e8a1e10bf7c97b82b91a33e2c72587bbb5dd",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-small-720x1280-api34/position-bottom.png": {
+      "sha256": "9c5d6fc5990b0bab86e2f18c2f8a4158da2abdf2453399daccbe541c5457e3fd",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-small-720x1280-api34/position-top.png": {
+      "sha256": "10f536bdf59c40210b8410bc921756906412a7108f322258ec4e7b1f55b15341",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-small-720x1280-api34/simple-1-open.png": {
+      "sha256": "c2c02823d42d5152607eac252f857e9e5134c59e47df702d719a5c0155cb6483",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "android-small-720x1280-api34/text-large.png": {
+      "sha256": "059b1a11bc8e560d6f2a1b8b4746223d2f858e2f1f22083de3ddac26ae902db7",
+      "approvalId": "20261104T131515Z-41828530913"
+    },
+    "ios-iphone-16-ios18/complex-1-open.png": {
+      "sha256": "0a811e94c5b6dd3b8f9cbd46cfe18e4e63bcede24a5be788e9b97093c25c4229",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-16-ios18/complex-1-required-error.png": {
+      "sha256": "418a44fa664ef3fc4cf88ef67fd8d076379aad45a9e4f4a2882714d5a40de971",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-16-ios18/complex-2-selected.png": {
+      "sha256": "70954f01dbca03e1c2317738974c1ed8bd35e35fd8fabd7209c0f5eafc18e48b",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-16-ios18/complex-3-boolean-email.png": {
+      "sha256": "a8de098d61642cfb8ac9f216ac5ba0460aec1086ca097c0898f5a7d2c483bffd",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-16-ios18/complex-4-text.png": {
+      "sha256": "f464429050c950394fd0f338f8eec7e66b24e60f15fffbe15064a83341b4393f",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-16-ios18/complex-5-thanks.png": {
+      "sha256": "0c494b1f439a99762e3cf5ac6c879d3e7ee33ec4e384c64a272bbc6bb3026850",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-16-ios18/dark-font.png": {
+      "sha256": "0d4ccd28da83eaafe5231d0e188c6dbb434f176e5a2ae114a5426c591d7ed3c8",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-16-ios18/position-bottom.png": {
+      "sha256": "9bd85b8a34970a68b1f65ce3729bb0b9fdf85b10f0ec369963ad2ad056d101ef",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-16-ios18/position-top.png": {
+      "sha256": "0e8b8e6477610c9a99172dca0e149ffe7cc8be53af1fe7eaa8d0c1291f4a77da",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-16-ios18/simple-1-open.png": {
+      "sha256": "264a56c9b951c4fa22040872f82f6963edc3564557e00817352c40aacb3dbc1e",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-16-ios18/text-large.png": {
+      "sha256": "f488beee2d18cf3b53a069927403c125040f46f0caa1220f18c72cdd4064c7bd",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-se-3rd-generation-ios18/complex-1-open.png": {
+      "sha256": "73a348c3ace3100db90d488a5b09dd19371ab125b4c40e597b14558ac129a574",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-se-3rd-generation-ios18/complex-1-required-error.png": {
+      "sha256": "6480eb987f1cb72e4c8f3a315cb99479015f26a80933c65b0cbb1a7985fa2e97",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-se-3rd-generation-ios18/complex-2-selected.png": {
+      "sha256": "83844d37a5541e3e9471bf6058ddb3c9156e711a4f3bc5e53e764d804b14d6d0",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-se-3rd-generation-ios18/complex-3-boolean-email.png": {
+      "sha256": "92c6fd2bcf5007c4bd9d1c1962e0ed121a578137940a51bebf7794c92af0c5bf",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-se-3rd-generation-ios18/complex-4-text.png": {
+      "sha256": "aaae7fa141ad1ca3b831dbc08b1a1aaa4b15b7f0ea31ab0da87a9cadae1e5210",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-se-3rd-generation-ios18/complex-5-thanks.png": {
+      "sha256": "be8a25657f2c0852c1ad96f200115486e5be3cb2c74520b91fafc38db50932bf",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-se-3rd-generation-ios18/dark-font.png": {
+      "sha256": "6aa29c0eea2e3dc0b986ad2d2dcbe25bf33a3dc731b653b05b1be3b338f30d21",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-se-3rd-generation-ios18/position-bottom.png": {
+      "sha256": "cec8d276e32571c5fdf355ed567182d03226eda445b2551e652a22d1c3e5c65b",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-se-3rd-generation-ios18/position-top.png": {
+      "sha256": "d660033a6a1d90eccd1e8e3fc15652c3c6b697fa1f714b44dc62b32863707b1a",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-se-3rd-generation-ios18/simple-1-open.png": {
+      "sha256": "137dca66736b126dfb1a19648791c95b0c33991c0b901411c38f976961de2376",
+      "approvalId": "20261104T131511Z-41828530913"
+    },
+    "ios-iphone-se-3rd-generation-ios18/text-large.png": {
+      "sha256": "b0c63bfe0b4ca80820db324d82b7a86a3e695fa5a3dd7786e7c233d6a8084b71",
+      "approvalId": "20261104T131511Z-41828530913"
+    }
+  },
+  "approvals": [
+    {
+      "id": "20261104T131511Z-41828530913",
+      "approvedAt": "2026-11-04T13:15:11.859Z",
+      "approvedBy": "sarias980",
+      "reason": "Initial ios baselines (DD-28): CI candidates of run 41828530913 (SDK local, commit 4d87e6c), reviewed state by state; merging the PR is the approval",
+      "source": {
+        "runId": "41828530913",
+        "runUrl": "https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/41828530913",
+        "sdk": "local",
+        "sdkVersion": "local (SPM)",
+        "platform": "ios",
+        "devices": {
+          "ios-iphone-16-ios18": "iOS 18.5 simulator · iPhone 16",
+          "ios-iphone-se-3rd-generation-ios18": "iOS 18.5 simulator · iPhone SE 3rd generation"
+        }
+      },
+      "files": [
+        {
+          "key": "ios-iphone-16-ios18/complex-1-open.png",
+          "sha256": "0a811e94c5b6dd3b8f9cbd46cfe18e4e63bcede24a5be788e9b97093c25c4229",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-16-ios18/complex-1-required-error.png",
+          "sha256": "418a44fa664ef3fc4cf88ef67fd8d076379aad45a9e4f4a2882714d5a40de971",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-16-ios18/complex-2-selected.png",
+          "sha256": "70954f01dbca03e1c2317738974c1ed8bd35e35fd8fabd7209c0f5eafc18e48b",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-16-ios18/complex-3-boolean-email.png",
+          "sha256": "a8de098d61642cfb8ac9f216ac5ba0460aec1086ca097c0898f5a7d2c483bffd",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-16-ios18/complex-4-text.png",
+          "sha256": "f464429050c950394fd0f338f8eec7e66b24e60f15fffbe15064a83341b4393f",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-16-ios18/complex-5-thanks.png",
+          "sha256": "0c494b1f439a99762e3cf5ac6c879d3e7ee33ec4e384c64a272bbc6bb3026850",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-16-ios18/dark-font.png",
+          "sha256": "0d4ccd28da83eaafe5231d0e188c6dbb434f176e5a2ae114a5426c591d7ed3c8",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-16-ios18/position-bottom.png",
+          "sha256": "9bd85b8a34970a68b1f65ce3729bb0b9fdf85b10f0ec369963ad2ad056d101ef",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-16-ios18/position-top.png",
+          "sha256": "0e8b8e6477610c9a99172dca0e149ffe7cc8be53af1fe7eaa8d0c1291f4a77da",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-16-ios18/simple-1-open.png",
+          "sha256": "264a56c9b951c4fa22040872f82f6963edc3564557e00817352c40aacb3dbc1e",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-16-ios18/text-large.png",
+          "sha256": "f488beee2d18cf3b53a069927403c125040f46f0caa1220f18c72cdd4064c7bd",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/complex-1-open.png",
+          "sha256": "73a348c3ace3100db90d488a5b09dd19371ab125b4c40e597b14558ac129a574",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/complex-1-required-error.png",
+          "sha256": "6480eb987f1cb72e4c8f3a315cb99479015f26a80933c65b0cbb1a7985fa2e97",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/complex-2-selected.png",
+          "sha256": "83844d37a5541e3e9471bf6058ddb3c9156e711a4f3bc5e53e764d804b14d6d0",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/complex-3-boolean-email.png",
+          "sha256": "92c6fd2bcf5007c4bd9d1c1962e0ed121a578137940a51bebf7794c92af0c5bf",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/complex-4-text.png",
+          "sha256": "aaae7fa141ad1ca3b831dbc08b1a1aaa4b15b7f0ea31ab0da87a9cadae1e5210",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/complex-5-thanks.png",
+          "sha256": "be8a25657f2c0852c1ad96f200115486e5be3cb2c74520b91fafc38db50932bf",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/dark-font.png",
+          "sha256": "6aa29c0eea2e3dc0b986ad2d2dcbe25bf33a3dc731b653b05b1be3b338f30d21",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/position-bottom.png",
+          "sha256": "cec8d276e32571c5fdf355ed567182d03226eda445b2551e652a22d1c3e5c65b",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/position-top.png",
+          "sha256": "d660033a6a1d90eccd1e8e3fc15652c3c6b697fa1f714b44dc62b32863707b1a",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/simple-1-open.png",
+          "sha256": "137dca66736b126dfb1a19648791c95b0c33991c0b901411c38f976961de2376",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/text-large.png",
+          "sha256": "b0c63bfe0b4ca80820db324d82b7a86a3e695fa5a3dd7786e7c233d6a8084b71",
+          "previousSha256": null
+        }
+      ]
+    },
+    {
+      "id": "20261104T131515Z-41828530913",
+      "approvedAt": "2026-11-04T13:15:15.221Z",
+      "approvedBy": "sarias980",
+      "reason": "Initial android baselines (DD-28): CI candidates of run 41828530913 (SDK local, commit 4d87e6c), reviewed state by state; merging the PR is the approval",
+      "source": {
+        "runId": "41828530913",
+        "runUrl": "https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/41828530913",
+        "sdk": "local",
+        "sdkVersion": "local (local :shared)",
+        "platform": "android",
+        "devices": {
+          "android-pixel-6-api34": "Android API 34 emulator · pixel_6 · 1080x2400 @420dpi",
+          "android-small-720x1280-api34": "Android API 34 emulator · small-720x1280 · 720x1280 @320dpi"
+        }
+      },
+      "files": [
+        {
+          "key": "android-pixel-6-api34/complex-1-open.png",
+          "sha256": "e276700bb1ca5eb00b0fff5316ad0aa4dada3079e37025a19e8d9589449f583f",
+          "previousSha256": null
+        },
+        {
+          "key": "android-pixel-6-api34/complex-1-required-error.png",
+          "sha256": "4f911a93a7c6ce7447ae1bd13d4a5c15a5936af05533abbb7b45ed44dd4743ee",
+          "previousSha256": null
+        },
+        {
+          "key": "android-pixel-6-api34/complex-2-selected.png",
+          "sha256": "b6bf004b3634605fb6739862d174688a6e706875e354fbe084b8758c8af8a881",
+          "previousSha256": null
+        },
+        {
+          "key": "android-pixel-6-api34/complex-3-boolean-email.png",
+          "sha256": "ad77f78568eef47498d6fc3cf239dc54d813d88bb20413d4a7b46a4123a7f623",
+          "previousSha256": null
+        },
+        {
+          "key": "android-pixel-6-api34/complex-4-text.png",
+          "sha256": "387b5eea509bc3a9a085949c098df6083d1d18a55d1afc787cc8eb91e02ad3f4",
+          "previousSha256": null
+        },
+        {
+          "key": "android-pixel-6-api34/complex-5-thanks.png",
+          "sha256": "0f69042343ea138e2cb935a4860d0b067e98eb41fcc39d7089356d27f08c3436",
+          "previousSha256": null
+        },
+        {
+          "key": "android-pixel-6-api34/dark-font.png",
+          "sha256": "0396f03fd79d7c361d875362d79a701fc0c30368ab517e702767bb093247f887",
+          "previousSha256": null
+        },
+        {
+          "key": "android-pixel-6-api34/position-bottom.png",
+          "sha256": "c5d5c2a8f905c049b96f763ada864edfa8bb7b2785affc3535b55f0e81512d37",
+          "previousSha256": null
+        },
+        {
+          "key": "android-pixel-6-api34/position-top.png",
+          "sha256": "f8b8eaa37a58f8edd01d9063ca36b9e9b2249f90867f669b1bc04cfd03cd0a1f",
+          "previousSha256": null
+        },
+        {
+          "key": "android-pixel-6-api34/simple-1-open.png",
+          "sha256": "302e9f803aedfbf2546b7ec4ea429309b6a16a8250b69511db7a9b050424531b",
+          "previousSha256": null
+        },
+        {
+          "key": "android-pixel-6-api34/text-large.png",
+          "sha256": "345f9e0859aa12ebd052d878e193a953fe9303cdb1dee0ef62924910f8690d7f",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/complex-1-open.png",
+          "sha256": "ae113f345ba8f0356dff3b68cb9241851f9edb72ee96296069325bb0722746a3",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/complex-1-required-error.png",
+          "sha256": "c01d380a3cefecc6a211261f3e18e9d20c7cddebe2283e50d3b969beceb5f989",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/complex-2-selected.png",
+          "sha256": "4047e11d532ab3b2d4b195fde73915d864a7b570161e410fb82b9fa1c12c7302",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/complex-3-boolean-email.png",
+          "sha256": "a2ff5d7474b1337ec5ec4e36b42a5d93c0354fec7937b5320c7f84cc227e18bd",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/complex-4-text.png",
+          "sha256": "247bc6be5443fb99bd183771053904fe276f3115a753422ccc738a99ed5efca2",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/complex-5-thanks.png",
+          "sha256": "89c19e237afdb73f9873f26633b2b0f9a0a68fe1a77a2b8035aecad9e3b6396b",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/dark-font.png",
+          "sha256": "e0bf0932f23e5d7fa58aed8a8834e8a1e10bf7c97b82b91a33e2c72587bbb5dd",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/position-bottom.png",
+          "sha256": "9c5d6fc5990b0bab86e2f18c2f8a4158da2abdf2453399daccbe541c5457e3fd",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/position-top.png",
+          "sha256": "10f536bdf59c40210b8410bc921756906412a7108f322258ec4e7b1f55b15341",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/simple-1-open.png",
+          "sha256": "c2c02823d42d5152607eac252f857e9e5134c59e47df702d719a5c0155cb6483",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/text-large.png",
+          "sha256": "059b1a11bc8e560d6f2a1b8b4746223d2f858e2f1f22083de3ddac26ae902db7",
+          "previousSha256": null
+        }
+      ]
+    }
+  ]
+}

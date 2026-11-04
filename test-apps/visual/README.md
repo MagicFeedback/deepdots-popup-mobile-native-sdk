@@ -51,6 +51,15 @@ lines without the time (the only thing that changed between runs: 0 px elsewhere
 (`devices.<device>.masks`, rectangles in screenshot pixels, optionally per state) if a device
 ever needs one.
 
+## Tolerance
+
+`threshold 0.01` (per-pixel colour distance, antialiasing ignored), **`maxDiffPixels 300`** per
+screenshot, any size change fails. Measured on 4-nov-2026 between two CI runs: 0 px everywhere
+except a blinking text cursor (139 px, Android `complex-4-text`) and WebView sub-pixel rendering
+(16 px, iPhone SE `simple-1-open`); 300 is about twice the worst. A real layout change is far
+above it: two swapped popup buttons changed 6,400–7,150 px per screenshot (web failure test).
+Raise it per device (`devices.<device>.compare`) only with a measurement.
+
 ## Run it locally
 
 ```bash
