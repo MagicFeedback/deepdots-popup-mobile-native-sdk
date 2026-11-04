@@ -46,7 +46,9 @@ tags: [lemu]
 - inputText: "not-an-email"
 - runFlow: subflows/send.yaml
 - assertVisible: "Indtast venligst din e-mailadresse."
-- assertVisible: "Please answer the required question to continue."
+# An email with a typo: "Please enter a valid email address." from surveys SDK 2.2.39 on
+# (INVALID_EMAIL); the published 0.7.x on 2.2.31 still say "required question".
+- assertVisible: "Please (enter a valid email address|answer the required question to continue)\\."
 - tapOn: "not-an-email"
 - eraseText: 20
 - inputText: "qa+lemu-test@deepdots.com"
