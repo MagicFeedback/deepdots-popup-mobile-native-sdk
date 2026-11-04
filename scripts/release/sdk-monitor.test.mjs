@@ -1,7 +1,7 @@
 // npm test --prefix scripts/release (node:test). Same body as the vitest test of the web popup-sdk.
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { buildReport, decide, emptyState, failureMessage, fromPlaywright, recoveryMessage, scenarioOf, toRows, watch } from './sdk-monitor.mjs';
+import { buildReport, decide, emptyState, keepUndelivered, failureMessage, fromPlaywright, recoveryMessage, scenarioOf, toRows, watch } from './sdk-monitor.mjs';
 
 const expect = (actual) => ({
   toBe: (expected) => assert.equal(actual, expected),
@@ -87,6 +87,16 @@ describe('decide', () => {
     const back = decide(rows([check('submit', 'pass')]), later.state, now, env);
     expect(back.recovered).toHaveLength(1);
     expect(back.state.incidents).toEqual({});
+  });
+
+  it('a message that did not reach Slack is told on the next run', () => {
+    const fail = rows([check('submit', 'fail')]);
+    const first = decide(fail, emptyState(), now, env);
+    const lost = keepUndelivered(first.state, first.alert.map((v) => ({ v, ok: false })), []);
+    expect(decide(fail, lost, new Date('2026-11-05T08:05:00Z'), env).alert).toHaveLength(1);
+    const pass = decide(rows([check('submit', 'pass')]), first.state, now, env);
+    const kept = keepUndelivered(pass.state, [], pass.recovered.map((v) => ({ v, ok: false })));
+    expect(decide(rows([check('submit', 'pass')]), kept, now, env).recovered).toHaveLength(1);
   });
 
   it('a monitor_error is told once and closes when the platform runs again', () => {
