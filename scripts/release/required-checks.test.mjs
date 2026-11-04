@@ -8,10 +8,12 @@ test('required checks: the latest run of each, all green', () => {
     { name: 'Release dry run', conclusion: 'success', started_at: '2', html_url: 'u1' },
     { name: 'Test apps (release build) / Android · SDK local', conclusion: 'success', started_at: '2', html_url: 'u2' },
     { name: 'Test apps (release build) / iOS · SDK local', conclusion: 'success', started_at: '2', html_url: 'u3' },
+    { name: 'Test apps (release build) / Visual regression · Android · SDK local', conclusion: 'success', started_at: '1' },
+    { name: 'Test apps (release build) / Visual regression · iOS · SDK local', conclusion: 'success', started_at: '1' },
     { name: 'Version & changelog', conclusion: 'failure', started_at: '3' },
   ];
   const r = requiredChecksFrom(runs);
-  assert.deepEqual(r.map((x) => x.conclusion), ['success', 'success', 'success']);
+  assert.deepEqual(r.map((x) => x.conclusion), ['success', 'success', 'success', 'success', 'success']);
   assert.deepEqual(failingChecks(r), []);
 });
 
@@ -20,12 +22,16 @@ test('required checks: a red or missing test app blocks the release', () => {
     { name: 'Release dry run', conclusion: 'success', started_at: '1' },
     { name: 'Test apps (release build) / Android · SDK local', conclusion: 'failure', started_at: '1', html_url: 'u' },
     { name: 'Test apps (release build) / iOS · SDK local', conclusion: 'success', started_at: '1' },
+    { name: 'Test apps (release build) / Visual regression · Android · SDK local', conclusion: 'success', started_at: '1' },
+    { name: 'Test apps (release build) / Visual regression · iOS · SDK local', conclusion: 'success', started_at: '1' },
   ]);
   assert.deepEqual(failingChecks(red), ['"Test apps (release build) · Android" failure u']);
   const missing = requiredChecksFrom([{ name: 'Release dry run', conclusion: 'success', started_at: '1' }]);
   assert.deepEqual(failingChecks(missing), [
     '"Test apps (release build) · Android" missing',
     '"Test apps (release build) · iOS" missing',
+    '"Visual regression · Android" missing',
+    '"Visual regression · iOS" missing',
   ]);
 });
 
@@ -34,6 +40,8 @@ test('required checks: a red iOS test app blocks the release even with Android g
     { name: 'Release dry run', conclusion: 'success', started_at: '1' },
     { name: 'Test apps (release build) / Android · SDK local', conclusion: 'success', started_at: '1' },
     { name: 'Test apps (release build) / iOS · SDK local', conclusion: 'failure', started_at: '1', html_url: 'i' },
+    { name: 'Test apps (release build) / Visual regression · Android · SDK local', conclusion: 'success', started_at: '1' },
+    { name: 'Test apps (release build) / Visual regression · iOS · SDK local', conclusion: 'success', started_at: '1' },
   ]);
   assert.deepEqual(failingChecks(r), ['"Test apps (release build) · iOS" failure i']);
 });
@@ -51,8 +59,10 @@ const GREEN = [
   { name: 'Release dry run', conclusion: 'success', started_at: '1' },
   { name: 'Test apps (release build) / Android · SDK local', conclusion: 'success', started_at: '1' },
   { name: 'Test apps (release build) / iOS · SDK local', conclusion: 'success', started_at: '1' },
+  { name: 'Test apps (release build) / Visual regression · Android · SDK local', conclusion: 'success', started_at: '1' },
+  { name: 'Test apps (release build) / Visual regression · iOS · SDK local', conclusion: 'success', started_at: '1' },
 ];
-const RED_ANDROID = GREEN.map((c) => (c.name.includes('Android') ? { ...c, conclusion: 'failure', html_url: 'a' } : c));
+const RED_ANDROID = GREEN.map((c) => (c.name.endsWith('/ Android · SDK local') ? { ...c, conclusion: 'failure', html_url: 'a' } : c));
 const REASON = '## Summary\nx\n\n## Release gate override\nmacOS runners down for 6 h; hotfix for a crash in prod. iOS checked by hand.\n';
 
 function fakeApi({ pulls = [{ number: 81, merged_at: 't', merge_commit_sha: 'tag', base: { ref: 'dev' } }], tagTree = 'T', headTree = 'T', runs = GREEN, labels = [], body = '', events = [], permission = 'admin' } = {}) {
@@ -131,5 +141,16 @@ test('required checks: a green visual-regression job does not stand in for a red
     { name: 'Test apps (release build) / iOS · SDK local', conclusion: 'success', started_at: '1' },
     { name: 'Test apps (release build) / Visual regression · iOS · SDK local', conclusion: 'failure', started_at: '2' },
   ]);
-  assert.deepEqual(failingChecks(r), ['"Test apps (release build) · Android" failure f']);
+  assert.deepEqual(failingChecks(r), ['"Test apps (release build) · Android" failure f', '"Visual regression · iOS" failure']);
+});
+
+test('required checks: an unapproved visual change on one platform blocks the release and names it (DD-28)', () => {
+  const r = requiredChecksFrom([
+    { name: 'Release dry run', conclusion: 'success', started_at: '1' },
+    { name: 'Test apps (release build) / Android · SDK local', conclusion: 'success', started_at: '1' },
+    { name: 'Test apps (release build) / iOS · SDK local', conclusion: 'success', started_at: '1' },
+    { name: 'Test apps (release build) / Visual regression · Android · SDK local', conclusion: 'failure', started_at: '1', html_url: 'v' },
+    { name: 'Test apps (release build) / Visual regression · iOS · SDK local', conclusion: 'success', started_at: '1' },
+  ]);
+  assert.deepEqual(failingChecks(r), ['"Visual regression · Android" failure v']);
 });

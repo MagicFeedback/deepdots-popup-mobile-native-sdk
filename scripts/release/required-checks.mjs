@@ -4,7 +4,9 @@
  *   - "Release dry run": gate + tests + build + smoke en macOS (MF-3242);
  *   - los test apps de Android e iOS con la SDK compilada desde ese commit ("Android · SDK local"
  *     e "iOS · SDK local" de test-apps.yml, llamado por release-check.yml): un flujo de Maestro
- *     roto en cualquiera de las dos plataformas bloquea la release.
+ *     roto en cualquiera de las dos plataformas bloquea la release;
+ *   - la regresión visual de Android e iOS (DD-28, mismo workflow): un cambio visual sin aprobar
+ *     bloquea la release.
  *
  *   required-checks.mjs --sha <commit etiquetado>
  *
@@ -29,6 +31,10 @@ export const REQUIRED_CHECKS = [
   // Exacto tras el "/": "… / Visual regression · Android · SDK local" (DD-28) es otro check.
   { name: 'Test apps (release build) · Android', match: (n) => /(^|\/ )Android · SDK local$/.test(n) },
   { name: 'Test apps (release build) · iOS', match: (n) => /(^|\/ )iOS · SDK local$/.test(n) },
+  // Regresión visual (DD-28): capturas iguales a las baselines aprobadas. Un cambio visual sin
+  // aprobar bloquea la release de esa plataforma (DD-27).
+  { name: 'Visual regression · Android', match: (n) => /(^|\/ )Visual regression · Android · SDK local$/.test(n) },
+  { name: 'Visual regression · iOS', match: (n) => /(^|\/ )Visual regression · iOS · SDK local$/.test(n) },
 ];
 
 /** El check-run más reciente de cada check requerido, o `missing`. */
