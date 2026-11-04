@@ -177,4 +177,16 @@ class DefaultLabelsTest {
         assertTrue(!DefaultLabels.isRtlLanguage(null))
         assertTrue(!DefaultLabels.isRtlLanguage("is-IS"))
     }
+    @Test
+    fun invalidEmailHasItsOwnTextInEveryLanguage() {
+        // INVALID_EMAIL (@magicfeedback/native 2.2.39): un email con una errata no es "pregunta
+        // obligatoria sin responder"; cada idioma lo dice con su propio texto.
+        assertEquals("Please enter a valid email address.", DefaultLabels.labels("en").errorInvalidEmail)
+        assertEquals("Indtast venligst en gyldig e-mailadresse.", DefaultLabels.labels("da").errorInvalidEmail)
+        DefaultLabels.supportedLanguages.forEach { tag ->
+            val l = DefaultLabels.labels(tag)
+            assertTrue(l.errorInvalidEmail.isNotBlank(), "'$tag' sin errorInvalidEmail")
+            assertTrue(l.errorInvalidEmail != l.errorRequired, "'$tag': errorInvalidEmail igual que errorRequired")
+        }
+    }
 }

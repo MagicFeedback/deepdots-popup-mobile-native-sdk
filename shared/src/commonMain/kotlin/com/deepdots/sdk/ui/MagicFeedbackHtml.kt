@@ -381,14 +381,18 @@ ${PopupReveal.REVEAL_JS}
                         try {
                           ddSubmitting = false;
                           ddSetSurveyBusy(document.body, false);
-                          var err = payload && payload.error ? String(payload.error) : '';
+                          var errObj = payload && payload.error ? payload.error : null;
+                          var err = errObj ? (typeof errObj.message === 'string' ? errObj.message : String(errObj)) : '';
+                          // Codigo de SubmitError (@magicfeedback/native >= 2.2.37). Sin codigo, el
+                          // criterio de siempre por texto. Mismo reparto que classifySubmitError (Web).
+                          var code = errObj && typeof errObj === 'object' && typeof errObj.code === 'string' ? errObj.code : '';
                           var completed = !!(payload && payload.completed);
                           var progress = (payload && payload.progress) || 0;
                           var total = (payload && payload.total) || 0;
-                          if (err) {
-                             var lower = err.toLowerCase();
-                             if (lower.indexOf('no response') !== -1) { emitJSON('validation_error_required'); }
-                             else { emitJSON('submit_error', { error: err }); }
+                          if (err || code) {
+                             if (code === 'INVALID_EMAIL') { emitJSON('validation_error_invalid_email'); }
+                             else if (code === 'REQUIRED' || (!code && err.toLowerCase().indexOf('no response') !== -1)) { emitJSON('validation_error_required'); }
+                             else { emitJSON('submit_error', { message: err, code: code }); }
                           }
                           if (completed) { showSuccessScreen(); emitJSON('survey_completed'); }
                           else { emitJSON('after_submit', { error: err, completed: completed, progress: progress, total: total }); }
