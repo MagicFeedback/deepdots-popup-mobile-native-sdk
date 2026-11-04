@@ -245,19 +245,15 @@ jobs:
 
   # Visual regression (DD-28): the screenshots of the `local` run against the approved baselines
   # (test-apps/visual/baselines, approvals.json). On a short PR suite only the captured states
-  # are checked; the release PR and the Monday run check every baseline.
-  visual:
-    name: Visual regression · ${{ matrix.platform.name }} · SDK local
-    needs: [versions, android, ios]
+  # are checked; the release PR and the Monday run check every baseline. One job per platform
+  # (not a matrix), so the check name is fixed even when the job is skipped: the release gate
+  # (scripts/release/required-checks.mjs) matches it exactly.
+  visual-android:
+    name: Visual regression · Android · SDK local
+    needs: [versions, android]
     if: always() && contains(needs.versions.outputs.list, '"local"') && needs.versions.outputs.visual != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - { name: Android, id: android }
-          - { name: iOS, id: ios }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -266,7 +262,7 @@ jobs:
       - run: npm ci --prefix scripts/visual
       - uses: actions/download-artifact@v4
         with:
-          name: test-apps-${{ matrix.platform.id }}-local
+          name: test-apps-android-local
           path: run
       - name: Compare with the approved baselines
         env:
@@ -274,13 +270,46 @@ jobs:
         run: |
           for d in run run/small; do [ -f "$d/device.json" ] && node test-apps/visual/collect.mjs --run "$d" --dest actual --sdk local; done
           node scripts/visual/check.mjs --suite test-apps/visual --actual actual --out visual-report \
-            --title "Visual regression · ${{ matrix.platform.name }}" $PARTIAL
+            --title "Visual regression · Android" $PARTIAL
       - name: Summary
         if: always()
         run: cat visual-report/summary.md >> "$GITHUB_STEP_SUMMARY" || echo "No visual summary (no screenshots)" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: visual-report-${{ matrix.platform.id }}-local
+          name: visual-report-android-local
+          path: visual-report
+          retention-days: 30
+
+  visual-ios:
+    name: Visual regression · iOS · SDK local
+    needs: [versions, ios]
+    if: always() && contains(needs.versions.outputs.list, '"local"') && needs.versions.outputs.visual != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --prefix scripts/visual
+      - uses: actions/download-artifact@v4
+        with:
+          name: test-apps-ios-local
+          path: run
+      - name: Compare with the approved baselines
+        env:
+          PARTIAL: ${{ needs.versions.outputs.flows != '' && !startsWith(needs.versions.outputs.flows, 'visual/') && '--captured-only' || '' }}
+        run: |
+          for d in run run/small; do [ -f "$d/device.json" ] && node test-apps/visual/collect.mjs --run "$d" --dest actual --sdk local; done
+          node scripts/visual/check.mjs --suite test-apps/visual --actual actual --out visual-report \
+            --title "Visual regression · iOS" $PARTIAL
+      - name: Summary
+        if: always()
+        run: cat visual-report/summary.md >> "$GITHUB_STEP_SUMMARY" || echo "No visual summary (no screenshots)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-report-ios-local
           path: visual-report
           retention-days: 30
