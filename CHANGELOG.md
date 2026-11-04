@@ -6,6 +6,14 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ### Fixed
 
+- **iOS: a survey taller than its box can be scrolled again.** The survey's WebView sat inside
+  the popup's scrollable middle with the default (cooperative) touch handling: the middle took
+  every vertical drag, could not move because its content already fitted, and the WebView never
+  scrolled. On a small iPhone (SE) the 0–10 scale, shown as a vertical list there, could not be
+  scrolled past 3, so 4–10 could not be chosen. The survey now gets its touches directly and
+  scrolls its own content; its content stays available to VoiceOver. The console bridge of the
+  iOS WebView also drops optional chaining (iOS 13.0–13.3).
+
 - **iOS: the keyboard no longer covers the popup's Back and Send.** The SDK relied on the Compose
   view controller to move the focused field above the keyboard, but the survey's text field lives
   in a WKWebView, which Compose does not see as focused: nothing moved, and on a free-text page
