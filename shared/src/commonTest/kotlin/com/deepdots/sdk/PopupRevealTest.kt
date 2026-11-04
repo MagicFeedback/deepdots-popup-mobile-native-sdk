@@ -34,7 +34,7 @@ class PopupRevealTest {
     fun techo_igual_al_del_sdk_web() {
         // Si los dos SDK abren con techos distintos, el mismo survey se comporta distinto en web
         // y en móvil sin que nadie lo haya decidido.
-        assertEquals(1200L, PopupReveal.REVEAL_TIMEOUT_MS)
+        assertEquals(1300L, PopupReveal.REVEAL_TIMEOUT_MS) // DD-27 failure test: wrong on purpose
     }
 
     @Test
