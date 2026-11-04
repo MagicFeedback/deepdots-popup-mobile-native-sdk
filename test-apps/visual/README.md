@@ -42,10 +42,14 @@ Simple / Complex", and the survey renderer version is pinned in the SDK (`MAGICF
 `POPUP_SDK_CSS_VERSION`). A change to those surveys in DEV shows up as a visual difference.
 `visual-complex` sends one answer to MAGICFEEDBACK_DEV per run (like `submit-simple`).
 
-Kept still or hidden: the status bar is fixed by run-maestro.sh (iOS `simctl status_bar override`,
-Android demo mode: 9:41, full battery and signal, no notification icons); the Lab bar's SDK
-version and the Lab log (timestamps) are masked per device in `visual.json` (magenta in the
-evidence); no text is typed (keyboard suggestions differ between runs).
+Kept still: the status bar is fixed by run-maestro.sh (iOS `simctl status_bar override`,
+Android demo mode: 9:41, full battery and signal, no notification icons, applied again after a
+font scale change); the visual flows launch the app with `visual 1`, so the Lab log shows its
+lines without the time (the only thing that changed between runs: 0 px elsewhere over 3 iOS and
+3 Android local runs); the Lab bar shows the same text on every `local` run; no text is typed
+(keyboard suggestions differ between runs). So `visual.json` has no masks; it supports them
+(`devices.<device>.masks`, rectangles in screenshot pixels, optionally per state) if a device
+ever needs one.
 
 ## Run it locally
 

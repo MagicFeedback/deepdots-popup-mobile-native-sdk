@@ -56,6 +56,7 @@ iOS quits, and the new run starts on the next launch).
 | `load` | `immediate` · `consent` | Init the SDK at launch, or after "Accept all" in the cookie dialog. |
 | `user` | text | `setUserId()` after init. Without it the SDK uses its anonymous id. |
 | `start` | `home` · `shop` · `cart` · `checkout` · `account` | First screen (not saved). |
+| `visual` | `1` | The Lab log shows its lines without the time (one-shot): the visual regression flows (DD-28) use it so screenshots do not change between runs. |
 | `consent` | `all` · `necessary` | The cookie choice is already made: no cookie dialog at launch, as in a host app without one (a popup at app start shows right away instead of waiting for the dialog). |
 
 **Reset** in the Lab panel clears the SDK's storage (cooldowns, user id) and the cookie choice.

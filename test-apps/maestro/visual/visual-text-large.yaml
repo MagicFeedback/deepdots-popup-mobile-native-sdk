@@ -7,6 +7,7 @@ tags: [visual]
 - runFlow:
     file: ../subflows/launch.yaml
     env:
+      VISUAL: "1"
       SCENARIO: rate-product
 - tapOn:
     id: tab-shop

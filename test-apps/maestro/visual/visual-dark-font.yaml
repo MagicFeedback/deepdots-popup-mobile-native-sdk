@@ -6,6 +6,7 @@ tags: [visual]
 - runFlow:
     file: ../subflows/launch.yaml
     env:
+      VISUAL: "1"
       SCENARIO: e2e-dark-font
 - runFlow:
     file: ../subflows/lab-tap.yaml

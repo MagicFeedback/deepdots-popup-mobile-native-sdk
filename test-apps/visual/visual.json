@@ -1,6 +1,9 @@
 {
-  "$comment": "DD-28 · tolerance and masks of the native visual regression. threshold = per-pixel colour distance (0-1); maxDiffPixels = differing pixels allowed per screenshot. Masks are rectangles in screenshot pixels per device (Lab bar SDK version, Lab log timestamps); `states` / `except` limit a mask to some states. Measured values: README.md.",
+  "$comment": "DD-28 · tolerance and masks of the native visual regression. threshold = per-pixel colour distance (0-1); maxDiffPixels = differing pixels allowed per screenshot. No masks: the visual flows launch the app with `visual 1` (Lab log without the time, the only thing that changed between runs: 0 px elsewhere over 3 iOS and 3 Android runs), the status bar is fixed by run-maestro.sh, and the Lab bar shows the same text on every `local` run. A mask, if ever needed: devices.<device>.masks = [{x, y, width, height, states?, except?}] in screenshot pixels.",
   "title": "Visual regression · native",
-  "compare": { "threshold": 0.01, "maxDiffPixels": 0 },
+  "compare": {
+    "threshold": 0.01,
+    "maxDiffPixels": 0
+  },
   "devices": {}
 }

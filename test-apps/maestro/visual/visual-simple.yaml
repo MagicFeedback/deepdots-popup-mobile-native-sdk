@@ -5,6 +5,7 @@ tags: [visual]
 - runFlow:
     file: ../subflows/launch.yaml
     env:
+      VISUAL: "1"
       SCENARIO: help-click
 - tapOn:
     id: tab-account
