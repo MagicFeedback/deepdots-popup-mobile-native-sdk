@@ -10,7 +10,7 @@
  * (ReleaseContractTest), que tambien pasa los fixtures por el parser real del SDK. Aqui se
  * validan los fixtures contra ese schema, para que el gate de la PR no necesite Gradle.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Ajv from 'ajv';
 import { checkManifestConsistency, gradleVersion, tomlVersions } from './rules.mjs';
@@ -57,6 +57,15 @@ export function repoFacts({ root = '.' } = {}) {
     magicfeedbackVersion: kotlinConst(html, 'MAGICFEEDBACK_VERSION'),
     popupSdkCssVersion: kotlinConst(html, 'POPUP_SDK_CSS_VERSION'),
     surveySdkVersions: kotlinStringList(surveySdk, 'SUPPORTED_SURVEY_SDK_VERSIONS'),
+    // DD-70: gate de cada versión asignable (test-apps/maestro/flows/survey-sdk-<v>.yaml + escenario).
+    surveySdkFlows: existsSync(join(root, 'test-apps/maestro/flows'))
+      ? readdirSync(join(root, 'test-apps/maestro/flows')).map((f) => /^survey-sdk-(.+)\.yaml$/.exec(f)?.[1]).filter(Boolean)
+      : null,
+    surveySdkScenarios: (() => {
+      const raw = at('test-apps/scenarios.json');
+      if (!raw) return null;
+      return Object.keys(JSON.parse(raw).scenarios ?? {}).map((k) => /^survey-sdk-(.+)$/.exec(k)?.[1]).filter(Boolean);
+    })(),
     minSdk: toml['android-minSdk'] ?? null,
     compileSdk: toml['android-compileSdk'] ?? null,
     targetSdk: toml['android-targetSdk'] ?? null,

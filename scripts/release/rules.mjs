@@ -256,6 +256,15 @@ export function checkManifestConsistency({ manifest, facts }) {
       facts.surveySdkVersions?.join(', '),
       'SurveySdkVersion.kt (SUPPORTED_SURVEY_SDK_VERSIONS)',
     );
+    // Cada version asignable distinta de la vendorizada tiene su flujo de gate y su escenario
+    // de DEV (survey fijado a una release de MagicSurvey que la usa).
+    if (facts.surveySdkFlows && facts.surveySdkScenarios) {
+      for (const v of facts.surveySdkVersions ?? []) {
+        if (v === facts.magicfeedbackVersion) continue;
+        if (!facts.surveySdkFlows.includes(v)) errors.push(`Falta test-apps/maestro/flows/survey-sdk-${v}.yaml: cada version de SUPPORTED_SURVEY_SDK_VERSIONS distinta de MAGICFEEDBACK_VERSION se prueba en el gate (DD-70).`);
+        if (!facts.surveySdkScenarios.includes(v)) errors.push(`Falta el escenario survey-sdk-${v} en test-apps/scenarios.json (popup de DEV con el survey fijado a una release de MagicSurvey con sdkVersion ${v}).`);
+      }
+    }
   }
   expect('hosts.android.minSdk', manifest.hosts?.android?.minSdk, facts.minSdk, 'gradle/libs.versions.toml (android-minSdk)');
   expect('hosts.android.compileSdk', manifest.hosts?.android?.compileSdk, facts.compileSdk, 'gradle/libs.versions.toml (android-compileSdk)');

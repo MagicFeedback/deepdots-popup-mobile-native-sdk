@@ -28,7 +28,7 @@ test('lee las versiones del codigo', () => {
 /** Copia de lo que lee validateManifest, para romperlo sin tocar el repo. */
 function sandbox(mutate) {
   const dir = mkdtempSync(join(tmpdir(), 'native-manifest-'));
-  for (const p of ['release', 'docs/VERSIONING.md', 'gradle.properties', 'gradle/libs.versions.toml', 'shared/build.gradle.kts', 'scripts/prepare_spm_release.sh', 'shared/src/commonMain/kotlin/com/deepdots/sdk/ui/MagicFeedbackHtml.kt', 'shared/src/commonMain/kotlin/com/deepdots/sdk/ui/SurveySdkVersion.kt']) {
+  for (const p of ['release', 'docs/VERSIONING.md', 'gradle.properties', 'gradle/libs.versions.toml', 'shared/build.gradle.kts', 'scripts/prepare_spm_release.sh', 'shared/src/commonMain/kotlin/com/deepdots/sdk/ui/MagicFeedbackHtml.kt', 'shared/src/commonMain/kotlin/com/deepdots/sdk/ui/SurveySdkVersion.kt', 'test-apps/scenarios.json', 'test-apps/maestro/flows']) {
     cpSync(join(ROOT, p), join(dir, p), { recursive: true });
   }
   const manifestPath = join(dir, 'release/compatibility.json');

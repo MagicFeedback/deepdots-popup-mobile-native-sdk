@@ -456,7 +456,8 @@ ${PopupReveal.REVEAL_JS}
               var ASSIGNED_SRCS = $assignedSourcesJs;
               var ASSIGNED_CSS = $assignedCssJs;
               var ddAssignedStyle = null;
-              function markSurveySdk(v){ try { document.documentElement.setAttribute('data-survey-sdk', v); } catch(_){} }
+              // La línea de consola la comprueba el gate de release (test-apps/scripts/run-maestro.sh).
+              function markSurveySdk(v){ try { document.documentElement.setAttribute('data-survey-sdk', v); console.log('[MagicFeedback] survey-sdk ' + v); } catch(_){} }
               function useBundled(reason){
                 if(ASSIGNED_SRCS.length){ console.warn('[MagicFeedback] survey SDK ${surveySdk.version} ' + reason + ', using bundled $MAGICFEEDBACK_VERSION'); }
                 var link = document.getElementById('dd-survey-css');

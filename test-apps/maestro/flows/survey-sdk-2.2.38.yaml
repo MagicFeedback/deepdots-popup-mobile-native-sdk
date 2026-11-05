@@ -1,0 +1,58 @@
+# DD-70 release gate: a survey assigned in the Admin to a MagicSurvey release built with
+# @magicfeedback/native 2.2.38 is drawn with 2.2.38 (JS and CSS), not with the vendored version.
+# One flow per version of SUPPORTED_SURVEY_SDK_VERSIONS other than MAGICFEEDBACK_VERSION
+# (scripts/release/rules.mjs checks it). Scenario survey-sdk-2.2.38: time_on_page 3 s on /checkout,
+# survey pinned to 3.4.0.
+#
+# The flow answers the survey page by page (in Polish) with that version. Which version drew it
+# is checked by test-apps/scripts/run-maestro.sh in the device log: the WebView logs
+# "[MagicFeedback] survey-sdk 2.2.38 assigned" only once that version's CSS and JS are in; if
+# either fails it falls back to the vendored version ("… bundled") and the run fails.
+#
+# Only SDKs that know surveyFrontend.sdkVersion (local and 0.7.10+); the published ones before
+# DD-70 ignore it. Needs POPUP_SDK_CSS_VERSION with survey-css/ (popup-sdk 1.19.0+): with an
+# older one the CSS of 2.2.38 does not exist, the popup keeps 2.2.39, and the gate fails.
+appId: com.deepdots.testapp
+tags: [smoke]
+# Texts are regular expressions in Maestro ('?' is a quantifier): the Polish questions go as patterns.
+---
+- runFlow:
+    when:
+      true: ${SDK_VERSION == 'local' || (function (v) { var p = v.split('.').map(Number); return p[0] > 0 || p[1] > 7 || (p[1] == 7 && p[2] >= 10); })(SDK_VERSION)}
+    commands:
+      - runFlow:
+          file: ../subflows/launch.yaml
+          env:
+            SCENARIO: survey-sdk-2.2.38
+            LANG: pl
+      - tapOn:
+          id: tab-cart
+      - tapOn:
+          id: go-checkout
+      - extendedWaitUntil:
+          visible: "DD-70 · survey SDK 2.2.38"
+          timeout: 15000
+      - extendedWaitUntil:
+          visible: "Czy znalaz.*czego szuka.*"
+          timeout: 30000
+      - tapOn: "Tak, absolutnie"
+      - tapOn: "Send"
+      - extendedWaitUntil:
+          visible: "Oce.* szczeg.*produktu"
+          timeout: 15000
+      - tapOn:
+          text: "★"
+          index: 3
+      - tapOn: "Send"
+      - extendedWaitUntil:
+          visible: "Czy zrobi.*NORDLY.*"
+          timeout: 15000
+      - tapOn: "Tak"
+      - tapOn: "Send"
+      - extendedWaitUntil:
+          visible: "Czy chcia.*powiedzie.*"
+          timeout: 15000
+      - runFlow:
+          file: ../subflows/close-popup.yaml
+          env:
+            TITLE: "DD-70 · survey SDK 2.2.38"

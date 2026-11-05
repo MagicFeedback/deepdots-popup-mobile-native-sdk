@@ -17,7 +17,7 @@ package com.deepdots.sdk.ui
  * una versión sin hoja no se acepta. Espejo de `SUPPORTED_SURVEY_SDK_VERSIONS` del SDK web; con
  * un popup-sdk anterior a 1.19.0 la hoja no existe y todo cae en la vendorizada.
  */
-internal val SUPPORTED_SURVEY_SDK_VERSIONS: List<String> = listOf("2.2.37", "2.2.38", "2.2.39")
+internal val SUPPORTED_SURVEY_SDK_VERSIONS: List<String> = listOf("2.2.38", "2.2.39")
 
 internal enum class SurveySdkSource { ASSIGNED, BUNDLED }
 

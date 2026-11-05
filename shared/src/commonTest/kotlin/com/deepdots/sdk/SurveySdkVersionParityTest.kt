@@ -24,14 +24,14 @@ class SurveySdkVersionParityTest {
 
     @Test
     fun supported_list_is_the_same_as_web_and_contains_the_vendored_version() {
-        assertEquals(listOf("2.2.37", "2.2.38", "2.2.39"), SUPPORTED_SURVEY_SDK_VERSIONS)
+        assertEquals(listOf("2.2.38", "2.2.39"), SUPPORTED_SURVEY_SDK_VERSIONS)
         assertTrue(isSupportedSurveySdk(MAGICFEEDBACK_VERSION))
     }
 
     @Test
     fun only_listed_versions_are_supported() {
         assertFalse(isSupportedSurveySdk("2.2.36"))
-        assertTrue(isSupportedSurveySdk("2.2.37"))
+        assertFalse(isSupportedSurveySdk("2.2.37"))
         assertTrue(isSupportedSurveySdk("2.2.38"))
         assertFalse(isSupportedSurveySdk("2.2.40"))
         assertFalse(isSupportedSurveySdk("2.3.0"))

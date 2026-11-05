@@ -279,5 +279,25 @@ else
   echo "[lab] isolation OK: no request to api.deepdots.com, only $(grep -ac 'api-dev.deepdots.com' "$OUT/device.log") log lines with api-dev.deepdots.com"
 fi
 
+# DD-70: a passing survey-sdk-<v> flow must really have drawn the survey with <v> (JS and CSS).
+# The WebView logs "[MagicFeedback] survey-sdk <v> assigned" only once that version's CSS and JS
+# are in; any fallback logs "<vendored> bundled". Maestro cannot read that from the screen.
+# SDKs before 0.7.10 skip those flows (they ignore surveyFrontend.sdkVersion).
+knows_survey_sdk() { [ "$SDK" = "local" ] && return 0; local IFS=.; set -- $SDK; [ "${1:-0}" -gt 0 ] || [ "${2:-0}" -gt 7 ] || { [ "${2:-0}" -eq 7 ] && [ "${3:-0}" -ge 10 ]; }; }
+if knows_survey_sdk; then
+  for f in $FLOWS; do
+    name=$(basename "$f" .yaml)
+    case "$name" in survey-sdk-*) ;; *) continue ;; esac
+    v=${name#survey-sdk-}
+    printf '%s\n' "${failed[@]}" | grep -qx "$name" && continue
+    if grep -aqF "[MagicFeedback] survey-sdk $v assigned" "$OUT/device.log"; then
+      echo "[lab] survey SDK $v assigned (JS + CSS) in $name"
+    else
+      echo "::error::[lab] FAIL $name: the survey was not drawn with $v ($(grep -aoE '\[MagicFeedback\] survey-sdk [0-9.]+ [a-z]+' "$OUT/device.log" | tail -1))"
+      failed+=("$name")
+    fi
+  done
+fi
+
 if [ ${#failed[@]} -gt 0 ]; then echo "[lab] failed: ${failed[*]}"; exit 1; fi
 echo "[lab] all flows OK (sdk $SDK, $PLATFORM)"

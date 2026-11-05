@@ -190,6 +190,17 @@ test('DD-70: las versiones asignables del manifiesto tienen que coincidir con Su
   assert.match(checkManifestConsistency({ manifest: MANIFEST, facts }).join(), /assignedVersions es undefined/);
 });
 
+test('DD-70: cada version asignable no vendorizada necesita flujo y escenario de gate', () => {
+  const base = { ...FACTS, surveySdkVersions: ['2.2.30', '2.2.31'], surveySdkFlows: ['2.2.30'], surveySdkScenarios: ['2.2.30'] };
+  const manifest = { ...MANIFEST, surveyRenderer: { version: '2.2.31', assignedVersions: ['2.2.30', '2.2.31'] } };
+  // 2.2.31 es la vendorizada (FACTS.magicfeedbackVersion): no necesita flujo.
+  assert.deepEqual(checkManifestConsistency({ manifest, facts: base }), []);
+  const errors = checkManifestConsistency({ manifest, facts: { ...base, surveySdkFlows: [], surveySdkScenarios: [] } });
+  assert.equal(errors.length, 2);
+  assert.match(errors.join('\n'), /survey-sdk-2\.2\.30\.yaml/);
+  assert.match(errors.join('\n'), /escenario survey-sdk-2\.2\.30/);
+});
+
 test('si no encuentra el dato en el codigo, tambien bloquea', () => {
   assert.match(checkManifestConsistency({ manifest: MANIFEST, facts: { ...FACTS, magicfeedbackVersion: null } }).join(), /No encuentro surveyRenderer.version/);
 });
