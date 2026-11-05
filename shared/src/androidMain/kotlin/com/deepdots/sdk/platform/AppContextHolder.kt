@@ -22,7 +22,11 @@ object AppContextHolder {
 /** Provider vacío: su único trabajo es capturar el application context al arrancar el proceso. */
 class DeepdotsInitProvider : ContentProvider() {
     override fun onCreate(): Boolean {
-        AppContextHolder.applicationContext = context?.applicationContext
+        val app = context?.applicationContext
+        AppContextHolder.applicationContext = app
+        // Activity actual y pantallas desde el arranque (detección automática): así se ve la
+        // primera Activity aunque el host llame a init() más tarde.
+        (app as? android.app.Application)?.let { runCatching { ActivityTracker.install(it) } }
         return true
     }
 

@@ -8,6 +8,28 @@ Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. 
 
 ### Added
 
+- **Automatic lifecycle, context, screens and Kotlin crashes: the host only calls `init`.**
+  Step 3 of the common auto-detection contract. New `InitOptions.autoTrack`
+  (`AutoTrack(lifecycle, screens, scroll, clicks, errors)`, all `true`) and
+  `InitOptions.screenName` (rename a detected screen; `null` keeps it).
+  - Lifecycle: Android `ProcessLifecycleOwner` (`ON_START` → foreground, `ON_STOP` → background,
+    new dependency `androidx.lifecycle:lifecycle-process`), iOS `NotificationCenter`
+    (`willEnterForeground` / `didEnterBackground`; `willResignActive` only flushes, never ends
+    the session).
+  - Context: the Activity on screen (`ActivityLifecycleCallbacks`, registered by
+    `DeepdotsInitProvider`) and the key window's root view controller on iOS. A popup triggered
+    with nothing on screen waits for the next one.
+  - Screens: Activity / Fragment class names (Fragments only if the app has `androidx.fragment`)
+    and `viewDidAppear` on iOS, as `/<ClassName>`. Compose helper `TrackDeepdotsScreen(sdk, name)`
+    and a SwiftUI modifier snippet in the README.
+  - iOS: uncaught Kotlin exceptions through `setUnhandledExceptionHook`, chained to any previous
+    hook. `autoTrack.errors = false` now also skips the existing crash handlers.
+  - A manual call wins per signal: `onForeground`/`onBackground` turn automatic lifecycle off,
+    `setPath` turns automatic screens off (dropping the detected screen without a `page_view` or
+    `exit` trigger) and `attachContext` pins the context. Existing hosts send the same data.
+  - A secondary `InitOptions` constructor keeps the previous parameter list, so Swift hosts that
+    pass every argument still compile.
+
 - **Popups follow the survey version assigned in the Admin (DD-70).** `GET /sdk/{publicKey}/popups`
   sends `surveyFrontend.sdkVersion` per popup (latest or pinned). When it is one of
   `SUPPORTED_SURVEY_SDK_VERSIONS` (2.2.38, 2.2.39; also `release/compatibility.json` →

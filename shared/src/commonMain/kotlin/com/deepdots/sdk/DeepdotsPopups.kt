@@ -4,6 +4,7 @@ package com.deepdots.sdk
 
 import com.deepdots.sdk.util.SdkLock
 import com.deepdots.sdk.models.Action
+import com.deepdots.sdk.models.AutoTrack
 import com.deepdots.sdk.models.Actions
 import com.deepdots.sdk.models.CooldownCondition
 import com.deepdots.sdk.models.Event
@@ -38,6 +39,12 @@ import com.deepdots.sdk.analytics.resolveLanguage
 import com.deepdots.sdk.analytics.writeCachedGeo
 import com.deepdots.sdk.contact.ContactManager
 import com.deepdots.sdk.analytics.CrashReporter
+import com.deepdots.sdk.tracking.AutoSignals
+import com.deepdots.sdk.tracking.AutoTrackTarget
+import com.deepdots.sdk.tracking.chooseContext
+import com.deepdots.sdk.platform.detectedPlatformContext
+import com.deepdots.sdk.platform.hasDetectedPlatformContext
+import com.deepdots.sdk.platform.installPlatformAutoTracking
 import com.deepdots.sdk.analytics.DeviceSnapshot
 import com.deepdots.sdk.analytics.crashRecordToParams
 import com.deepdots.sdk.analytics.installCrashHandlers
@@ -219,8 +226,32 @@ class DeepdotsPopups {
     private val lastShown = mutableMapOf<String, Long>()
     private var currentPath: String? = null
     private var initOptionsContextCache: PlatformContext? = null
+    /** `attachContext()` llamado: el contexto detectado deja de usarse (lo manual manda). */
+    private var manualContext = false
+    /** `InitOptions.autoTrack` / `screenName` en vigor. */
+    private var autoTrack = AutoTrack()
+    private var screenNameHook: ((String) -> String?)? = null
+    /** El host llamó a `onForeground()`/`onBackground()`: el ciclo de vida detectado se ignora. */
+    private var manualLifecycle = false
+    /** El host llamó a `setPath()`: las pantallas detectadas se ignoran. */
+    private var manualScreens = false
+    /** La ruta en curso es una pantalla detectada (no de `setPath()`). */
+    private var autoScreenActive = false
+    /**
+     * Puente con [AutoSignals]: la interfaz es interna y esta clase es pública, así que va en un
+     * objeto aparte. Lo retiene la instancia; el registro solo guarda una referencia débil.
+     */
+    private val autoTarget = object : AutoTrackTarget {
+        override fun autoForeground() = this@DeepdotsPopups.autoForeground()
+        override fun autoBackground() = this@DeepdotsPopups.autoBackground()
+        override fun autoInactive() = this@DeepdotsPopups.autoInactive()
+        override fun autoScreen(name: String) = this@DeepdotsPopups.autoScreen(name)
+        override fun autoContextAvailable() = this@DeepdotsPopups.autoContextAvailable()
+    }
     private val triggerJobs = mutableListOf<Job>()
     private val popupQueue = ArrayDeque<String>()
+    /** Popups que salieron de la cola sin contexto en el que pintar; vuelven con el siguiente. */
+    private val awaitingContext = mutableListOf<String>()
     private var processingQueue = false
     /**
      * Protege la cola de popups y la de exits diferidos. Se tocan desde el hilo del host
@@ -296,6 +327,8 @@ class DeepdotsPopups {
 
         initialized = true
         initOptions = options
+        autoTrack = options.autoTrack
+        screenNameHook = options.screenName
         environment = options.environment ?: Environment.Production
         SdkRuntime.env = when (environment) {
             Environment.Development -> "dev"
@@ -385,7 +418,7 @@ class DeepdotsPopups {
             enabled = { tracking?.isTrackingEnabled() == true },
         )
         crashReporter = crash
-        if (tracking?.isTrackingEnabled() == true) {
+        if (tracking?.isTrackingEnabled() == true && autoTrack.errors) {
             installCrashHandlers(crash) { tracking?.isTrackingEnabled() == true }
         }
         // Marca de inicio de sesión (base para Crash-Free Users #14).
@@ -422,6 +455,12 @@ class DeepdotsPopups {
         }
         // Engagement time (#8): cuenta tiempo activo en primer plano (resume al arrancar).
         engagement = com.deepdots.sdk.analytics.EngagementTracker(now = { nowMs() }).also { it.resume() }
+
+        // Detección automática: ciclo de vida, pantallas y contexto llegan de la plataforma por
+        // AutoSignals (Android ProcessLifecycleOwner + ActivityLifecycleCallbacks, iOS
+        // NotificationCenter + viewDidAppear). Al registrarse recibe la pantalla actual si ya hay.
+        installPlatformAutoTracking(lifecycle = autoTrack.lifecycle, screens = autoTrack.screens)
+        AutoSignals.register(autoTarget)
 
         // Los popups se reciben SIEMPRE de la API (no se definen en init).
         val publicKey = options.popupOptions.publicKey
@@ -699,6 +738,11 @@ class DeepdotsPopups {
      * `inactive` es transitorio (llamada entrante, app switcher) y partiría la sesión en dos.
      */
     fun onBackground() {
+        takeOverLifecycle()
+        goBackground()
+    }
+
+    private fun goBackground() {
         closeSession(SessionEndReason.BACKGROUND)
         engagement?.pause()
     }
@@ -710,8 +754,75 @@ class DeepdotsPopups {
      * y tendrá su `page_view` al salir de ella, aunque el host no vuelva a llamar a `setPath()`.
      */
     fun onForeground() {
+        takeOverLifecycle()
+        goForeground()
+    }
+
+    private fun goForeground() {
         engagement?.resume()
         openSession(SessionStartReason.FOREGROUND)
+    }
+
+    private fun takeOverLifecycle() {
+        if (manualLifecycle) return
+        manualLifecycle = true
+        if (autoTrack.lifecycle) log("Manual onForeground/onBackground: automatic lifecycle off for this instance")
+    }
+
+    private fun autoLifecycleOn(): Boolean = initialized && autoTrack.lifecycle && !manualLifecycle
+
+    /** Foreground detectado por la plataforma (no cuenta como llamada manual). */
+    internal fun autoForeground() {
+        if (!autoLifecycleOn()) return
+        goForeground()
+        processQueue()
+    }
+
+    /** Background detectado por la plataforma: fin de sesión, como `onBackground()`. */
+    internal fun autoBackground() {
+        if (!autoLifecycleOn()) return
+        goBackground()
+    }
+
+    /**
+     * `willResignActive` en iOS: llamada entrante, centro de control, selector de apps. Es
+     * transitorio y NO cierra la sesión (la partiría en dos); solo se vacía el buffer por si la
+     * app no vuelve.
+     */
+    internal fun autoInactive() {
+        if (!autoLifecycleOn()) return
+        flushAnalytics()
+    }
+
+    /**
+     * Pantalla detectada (Activity / Fragment / view controller). Pasa por `screenName` y entra
+     * como un `setPath()` que no cuenta como manual. Ignorada si el host ya usa `setPath()`.
+     */
+    internal fun autoScreen(detected: String) {
+        if (!initialized || !autoTrack.screens || manualScreens) return
+        val renamed = screenNameHook?.let { hook ->
+            try {
+                hook(detected)
+            } catch (t: Throwable) {
+                log("screenName threw; using the detected name", t.message ?: "unknown")
+                null
+            }
+        }?.takeIf { it.isNotBlank() } ?: detected
+        val path = if (renamed.startsWith("/")) renamed else "/$renamed"
+        applyPath(path)
+        autoScreenActive = true
+    }
+
+    /** Hay contexto otra vez (Activity resumed / app activa): la cola de popups puede seguir. */
+    internal fun autoContextAvailable() {
+        if (!initialized) return
+        processQueue()
+    }
+
+    /** Devuelve a la cola los popups que esperaban contexto (antes de procesarla). */
+    private fun releaseAwaitingContext() = queueLock.withLock {
+        for (id in awaitingContext) if (!popupQueue.contains(id)) popupQueue.add(id)
+        awaitingContext.clear()
     }
 
     /**
@@ -882,10 +993,23 @@ class DeepdotsPopups {
     }
 
     fun attachContext(context: PlatformContext) {
+        if (!manualContext) {
+            manualContext = true
+            log("Manual attachContext: the detected context is no longer used")
+        }
+        useContext(context)
+    }
+
+    /** Contexto explícito (attachContext / show / trigger) sin fijarlo como manual. */
+    private fun useContext(context: PlatformContext) {
         initOptionsContextCache = context
         log("Context attached")
         processQueue()
     }
+
+    /** Contexto para la cola: el manual si lo hay; si no, el detectado o el último usado. */
+    private fun queueContext(): PlatformContext? =
+        chooseContext(manualContext, initOptionsContextCache, if (manualContext) null else detectedPlatformContext())
 
     fun on(event: Event, listener: (EventData) -> Unit) {
         scope.launch { eventBus.on(event, listener) }
@@ -897,7 +1021,7 @@ class DeepdotsPopups {
 
     fun show(options: ShowOptions, context: PlatformContext) {
         if (!ensureInitialized()) return
-        attachContext(context)
+        useContext(context)
         val popup = findPopupDefinition(options.surveyId)
         if (popup == null) {
             log("Popup not found for surveyId", options.surveyId)
@@ -908,7 +1032,7 @@ class DeepdotsPopups {
 
     fun showByPopupId(popupId: String, context: PlatformContext) {
         if (!ensureInitialized()) return
-        attachContext(context)
+        useContext(context)
         val popup = popupDefinitions[popupId]
         if (popup == null) {
             log("Popup definition not found", popupId)
@@ -919,7 +1043,7 @@ class DeepdotsPopups {
 
     fun triggerSurvey(surveyId: String, context: PlatformContext, popupId: String? = null) {
         if (!ensureInitialized()) return
-        attachContext(context)
+        useContext(context)
         val popup = findPopupDefinition(surveyId, popupId)
         if (popup == null) {
             log("No popup definition for trigger", "surveyId=$surveyId popupId=$popupId")
@@ -1001,6 +1125,22 @@ class DeepdotsPopups {
     }
 
     fun setPath(path: String?) {
+        if (!manualScreens) {
+            manualScreens = true
+            if (autoScreenActive) {
+                // La pantalla detectada no era del host: se descarta sin page_view ni trigger
+                // `exit` (un host que ya llamaba a setPath no ve datos nuevos).
+                navObserver?.discard()
+                navStarted = false
+                currentPath = null
+                autoScreenActive = false
+            }
+            if (autoTrack.screens) log("Manual setPath: automatic screens off for this instance")
+        }
+        applyPath(path)
+    }
+
+    private fun applyPath(path: String?) {
         // Fase 2: alimentar el observador de navegación (su propia dedup/normalización).
         path?.let { feedNavigation(it) }
         val normalizedPath = normalizeUrl(path ?: "")
@@ -1292,7 +1432,10 @@ class DeepdotsPopups {
     }
 
     private fun processQueue() {
-        val context = initOptionsContextCache ?: return
+        // En iOS el contexto detectado se resuelve en el hilo principal (showDefinition); aquí
+        // solo se mira si puede haberlo.
+        if (initOptionsContextCache == null && (manualContext || !hasDetectedPlatformContext())) return
+        releaseAwaitingContext()
         val start = queueLock.withLock {
             if (processingQueue) false else true.also { processingQueue = true }
         }
@@ -1306,24 +1449,33 @@ class DeepdotsPopups {
                     popupQueue.removeFirstOrNull().also { if (it == null) processingQueue = false }
                 } ?: break
                 val popup = popupDefinitions[popupId] ?: continue
-                showDefinition(popup, context)
+                showDefinition(popup, null)
                 delay(300L)
             }
         }
     }
 
+    /** [explicit] null = el de la cola ([queueContext]), resuelto en el hilo principal. */
     private fun showDefinition(
         popup: PopupDefinition,
-        context: PlatformContext,
+        explicit: PlatformContext?,
         extra: Map<String, Any?> = emptyMap(),
     ) {
-        initOptionsContextCache = context
+        if (explicit != null) initOptionsContextCache = explicit
         // Un popup a la vez (paridad con Web 1.17.2, MF-3245/MF-3246): con otro abierto, este se
         // salta SIN efectos (ni `PopupShown`, ni SHOWED, ni cooldown). Antes el mismo trigger con
         // su popup abierto lo pintaba otra vez encima y contaba dos SHOWED. La comprobación mira
         // la ventana real (contenedor / view controller del SDK), en el hilo principal, y en el
         // mismo bloque que pinta: dos disparos seguidos no pueden pasar los dos.
         scope.launch(Dispatchers.Main) {
+            val context = explicit ?: queueContext() ?: run {
+                // Sin pantalla en la que pintar (app en background, entre Activities): vuelve a
+                // la cola y sale cuando la plataforma avise de que hay contexto.
+                queueLock.withLock { if (!awaitingContext.contains(popup.id)) awaitingContext += popup.id }
+                log("No context to show the popup yet; queued", popup.id)
+                return@launch
+            }
+            initOptionsContextCache = context
             if (isPopupShowing(context)) {
                 log("Another popup is open; skipped", popup.id)
                 return@launch

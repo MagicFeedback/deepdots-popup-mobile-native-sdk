@@ -26,8 +26,8 @@ JBR embebido de Android Studio, prefijando todas las tareas:
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew <tarea>
 ```
 
-- Tests unitarios (JVM): `:shared:testDebugUnitTest` — 296 tests
-- Tests comunes en el simulador iOS: `:shared:iosSimulatorArm64Test` — 271 (los que faltan
+- Tests unitarios (JVM): `:shared:testDebugUnitTest` — 387 tests
+- Tests comunes en el simulador iOS: `:shared:iosSimulatorArm64Test` — 345 (los que faltan
   viven en `androidUnitTest` porque necesitan `runBlocking` o APIs de Android)
 - ⚠️ En un worktree nuevo copia `local.properties` (ignorado, lleva `sdk.dir`) del checkout
   principal; sin él Gradle falla con "SDK location not found".
@@ -62,6 +62,38 @@ de envío); `DeviceInfo` rellena `os_version`/`device_model` con APIs nativas en
 background task, `util/BackgroundTask.kt`, que pide `FeedbackSink`); el default de fuente sin
 `font` es per-plataforma.
 
+## Detección automática (el host solo llama a `init`)
+
+Paso 3 del contrato común (`SDK-AUTO-DETECTION-CONTRACT.md`, fuera del repo). `InitOptions.autoTrack`
+(`AutoTrack(lifecycle, screens, scroll, clicks, errors)`, todo `true`) + `InitOptions.screenName`.
+
+- **Piezas:** `platform/AutoTracking.kt` (`expect`: `installPlatformAutoTracking`,
+  `detectedPlatformContext`, `hasDetectedPlatformContext`) emite en `tracking/AutoSignals.kt`, que
+  reparte a cada instancia (referencias débiles, guarda la última pantalla para un `init` tardío).
+  `DeepdotsPopups.autoForeground/autoBackground/autoInactive/autoScreen/autoContextAvailable`
+  deciden con `autoTrack` y con lo manual.
+- **Android:** `ActivityTracker` (`ActivityLifecycleCallbacks`, lo registra `DeepdotsInitProvider`):
+  Activity actual (started, se limpia en stop/destroy) y nombre de pantalla, posteado al siguiente
+  ciclo para que un Fragment reanudado (`FragmentScreens`, `androidx.fragment` como
+  `compileOnly`) le gane. `ProcessLifecycleOwner` (`lifecycle-process`) para foreground/background.
+- **iOS:** `NotificationCenter` (willEnterForeground / didEnterBackground / willResignActive solo
+  flush / didBecomeActive = hay contexto); pantallas con swizzle de `-[UIViewController
+  viewDidAppear:]` (`method_setImplementation` + `staticCFunction`, llama primero al IMP original);
+  filtro en `screenNameForClass` (commonMain, testeado). Contexto = root VC de la key window,
+  resuelto en el hilo principal dentro de `showDefinition` (por eso `processQueue` ya no captura
+  el contexto; un popup sin contexto espera en `awaitingContext`). `PlatformContext` es `actual`
+  por target, así que `DetectedContext.ios.kt` está duplicado en iosArm64Main/iosSimulatorArm64Main.
+- **Crashes iOS:** `setUnhandledExceptionHook` encadenado al anterior (además del de NSException).
+- **Lo manual manda:** `onForeground/onBackground` → `manualLifecycle`; `setPath` → `manualScreens`
+  y, si la ruta en curso era detectada, `NavigationObserver.discard()` (sin `page_view` ni `exit`:
+  el plugin de Flutter o un host con `setPath` no ve "MainActivity"); `attachContext` → `manualContext`
+  (`show`/`trigger*` con contexto usan `useContext`, que no fija). Helper Compose
+  `ui/DeepdotsScreen.kt` (`TrackDeepdotsScreen`) = `setPath`.
+- ⚠️ **Swift no ve los defaults de Kotlin:** `InitOptions` tiene un constructor secundario con la
+  lista de parámetros anterior (sin defaults) para no romper hosts de iOS. Si añades un campo,
+  mantén ese constructor tal cual y añade el campo solo al principal.
+- Tests: `DeepdotsPopupsAutoTrackTest` (+ `ScreenNameForClassTest`), `FragmentScreensTest` (JVM).
+
 ## Tracking y analytics
 
 Estado: **capa completa y al nivel del Web** (reconstruida el 2026-07-30 — el trabajo anterior
@@ -78,9 +110,9 @@ nunca llegó a Git y `dev` no compilaba; ver el commit `6f93dc2`).
 - **Fin de sesión:** el último lote va con **`completed:true`** + evento `deepdots_session_end`
   (`SessionEndReason`), y los `sessionId` se olvidan para que el siguiente abra registro nuevo.
   Lo disparan `onBackground()`, `setUserId()`, `setTrackingEnabled(false)` y `endSession()`.
-  ⚠️ **`onBackground()` es fin de sesión** → llámalo en `onStop`/`didEnterBackground`, NUNCA en
+  ⚠️ **`onBackground()` es fin de sesión** → `onStop`/`didEnterBackground`, NUNCA
   `onPause`/`willResignActive` (en iOS `inactive` es transitorio y partiría la sesión en dos).
-  `onForeground()` abre una nueva.
+  `onForeground()` abre una nueva. Con la detección automática (arriba) el host ya no las llama.
 - **Pantalla en curso en el engagement (2026-10-16, paridad con Web #28):** el latido
   `deepdots_user_engagement` lleva `screen`, `path` y `screen_seconds` (`NavigationObserver.current()`),
   los tres o ninguno; el engagement del cierre no (el observador ya emitió el `page_view`). El

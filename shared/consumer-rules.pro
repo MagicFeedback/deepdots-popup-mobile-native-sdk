@@ -7,3 +7,7 @@
 # Ktor arrastra slf4j-api, que busca un binder opcional que nadie trae: R8 falla con
 # "Missing class org.slf4j.impl.StaticLoggerBinder". Sin binder, slf4j usa su no-op.
 -dontwarn org.slf4j.impl.StaticLoggerBinder
+
+# Pantallas por Fragment (detección automática): androidx.fragment es compileOnly en el SDK y solo
+# se usa si la app lo trae. Sin esto, R8 falla con "Missing class" en apps sin Fragments.
+-dontwarn androidx.fragment.**
