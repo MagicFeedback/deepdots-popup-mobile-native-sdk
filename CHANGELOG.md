@@ -6,6 +6,12 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ### Added
 
+- **The popup's own texts in the 24 official EU languages (DD-67).** `DefaultLabels` (buttons,
+  progress counter, follow-up badge, accessibility descriptions and notices) now translates
+  bg, cs, el, et, ga, hr, hu, it, lt, lv, mt, nl, pl, ro, sk and sl too, 28 locales in all. A
+  Polish survey used to show the native Back/Send buttons in English. Machine-translated, pending
+  native review (`DD-67-native-review.md`). Mirror of the Web SDK's `src/i18n/labels.ts`.
+
 - **The SDK identifies itself on the data it sends (DD-3, Collection dashboard).** Every popup
   response now carries `deepdots_channel=popup` and `deepdots_sdk=android@<version>` /
   `ios@<version>` in its survey metadata, also with tracking off, so a response that came through
