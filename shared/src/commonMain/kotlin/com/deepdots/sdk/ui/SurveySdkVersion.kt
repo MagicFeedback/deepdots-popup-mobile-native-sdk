@@ -6,30 +6,25 @@ package com.deepdots.sdk.ui
  *
  * La API devuelve en cada popup `surveyFrontend.sdkVersion`: el survey SDK con el que se
  * construyó la versión de MagicSurvey asignada al survey en el Admin (latest o fijada). Si está
- * en [SUPPORTED_SURVEY_SDK_MIN]..<[SUPPORTED_SURVEY_SDK_BELOW] y no es la vendorizada, el WebView
- * la carga del CDN (jsDelivr, unpkg) antes que la copia local; si no, la de siempre.
+ * en [SUPPORTED_SURVEY_SDK_VERSIONS] y no es la vendorizada, el WebView carga su hoja y su JS del
+ * CDN antes que la copia local; si cualquiera falla, la hoja y la JS de siempre.
  */
 
 /**
- * Mínimo soportado (incluido): la versión más antigua con la que pasan las test apps de este SDK.
- * 2.2.37 es la que llevaba el popup web 1.18.0; los eventos y códigos de error que lee el HTML
- * (`onLoadedEvent` con `error`, `SubmitError`, `onBackEvent`) ya están en ella.
+ * Versiones de survey SDK que este SDK acepta cuando la API asigna otra: las que tienen su hoja
+ * vendorizada en el popup-sdk fijado en [POPUP_SDK_CSS_VERSION]
+ * (`dist/assets/assets/survey-css/<v>.css`, desde popup-sdk 1.19.0). JS y CSS van juntos, así que
+ * una versión sin hoja no se acepta. Espejo de `SUPPORTED_SURVEY_SDK_VERSIONS` del SDK web; con
+ * un popup-sdk anterior a 1.19.0 la hoja no existe y todo cae en la vendorizada.
  */
-internal const val SUPPORTED_SURVEY_SDK_MIN: String = "2.2.37"
-
-/**
- * Tope (excluido): la minor siguiente. El CSS del survey no se descarga con la versión asignada,
- * va pineado al del popup-sdk ([POPUP_SDK_CSS_VERSION]), así que solo se aceptan parches de la
- * minor de [MAGICFEEDBACK_VERSION]. Una 2.3.0 no llega a este SDK hasta un release que la declare.
- */
-internal const val SUPPORTED_SURVEY_SDK_BELOW: String = "2.3.0"
+internal val SUPPORTED_SURVEY_SDK_VERSIONS: List<String> = listOf("2.2.37", "2.2.38", "2.2.39")
 
 internal enum class SurveySdkSource { ASSIGNED, BUNDLED }
 
 internal enum class BundledReason(val wire: String) {
     NOT_ASSIGNED("not_assigned"),
     INVALID("invalid"),
-    OUT_OF_RANGE("out_of_range"),
+    UNSUPPORTED("unsupported"),
     SAME_AS_BUNDLED("same_as_bundled"),
 }
 
@@ -47,7 +42,7 @@ internal data class SurveySdkChoice(
     }
 
     /**
-     * Versión inválida: se avisa siempre, no solo con debug. Fuera de rango NO: es lo normal para
+     * Versión inválida: se avisa siempre, no solo con debug. No soportada NO: es lo normal para
      * surveys en versiones antiguas (prod latest 3.2.0 → 2.2.36) y saldría en cada apertura.
      */
     val isProblem: Boolean
@@ -66,10 +61,7 @@ internal fun compareSemver(a: String, b: String): Int {
     return 0
 }
 
-internal fun isSupportedSurveySdk(version: String): Boolean =
-    isSemver(version) &&
-        compareSemver(version, SUPPORTED_SURVEY_SDK_MIN) >= 0 &&
-        compareSemver(version, SUPPORTED_SURVEY_SDK_BELOW) < 0
+internal fun isSupportedSurveySdk(version: String): Boolean = version in SUPPORTED_SURVEY_SDK_VERSIONS
 
 /** Decide la versión a cargar a partir de `surveyFrontend.sdkVersion` de la API. */
 internal fun chooseSurveySdkVersion(requested: String?): SurveySdkChoice {
@@ -81,7 +73,7 @@ internal fun chooseSurveySdkVersion(requested: String?): SurveySdkChoice {
     )
     if (requested.isNullOrEmpty()) return bundled(BundledReason.NOT_ASSIGNED)
     if (!isSemver(requested)) return bundled(BundledReason.INVALID)
-    if (!isSupportedSurveySdk(requested)) return bundled(BundledReason.OUT_OF_RANGE)
+    if (!isSupportedSurveySdk(requested)) return bundled(BundledReason.UNSUPPORTED)
     if (requested == MAGICFEEDBACK_VERSION) return bundled(BundledReason.SAME_AS_BUNDLED)
     return SurveySdkChoice(requested, SurveySdkSource.ASSIGNED, requested = requested)
 }
@@ -90,4 +82,10 @@ internal fun chooseSurveySdkVersion(requested: String?): SurveySdkChoice {
 internal fun surveySdkUrls(version: String): List<String> = listOf(
     "https://cdn.jsdelivr.net/npm/@magicfeedback/native@$version/dist/magicfeedback-sdk.browser.js",
     "https://unpkg.com/@magicfeedback/native@$version/dist/magicfeedback-sdk.browser.js",
+)
+
+/** Hoja vendorizada de una versión, del popup-sdk fijado en [POPUP_SDK_CSS_VERSION]. */
+internal fun surveySdkCssUrls(version: String): List<String> = listOf(
+    "https://cdn.jsdelivr.net/npm/@magicfeedback/popup-sdk@$POPUP_SDK_CSS_VERSION/dist/assets/assets/survey-css/$version.css",
+    "https://unpkg.com/@magicfeedback/popup-sdk@$POPUP_SDK_CSS_VERSION/dist/assets/assets/survey-css/$version.css",
 )

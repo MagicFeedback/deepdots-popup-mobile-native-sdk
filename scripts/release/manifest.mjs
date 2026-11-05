@@ -33,6 +33,12 @@ export function kotlinConst(source, name) {
   return new RegExp(`const val ${name}\\s*:\\s*String\\s*=\\s*"([^"]+)"`).exec(source ?? '')?.[1] ?? null;
 }
 
+/** `internal val NAME: List<String> = listOf("a", "b")` de Kotlin → ["a", "b"]; null si no esta. */
+export function kotlinStringList(source, name) {
+  const m = new RegExp(`val ${name}\\s*:\\s*List<String>\\s*=\\s*listOf\\(([^)]*)\\)`).exec(source ?? '');
+  return m ? [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]) : null;
+}
+
 /** `.iOS(.v13)` → "13.0"; `.iOS("15.4")` → "15.4". */
 export function spmIosMinimum(source) {
   const m = /\.iOS\(\s*(?:\.v(\d+)(?:_(\d+))?|"(\d+(?:\.\d+)?)")\s*\)/.exec(source ?? '');
@@ -50,8 +56,7 @@ export function repoFacts({ root = '.' } = {}) {
     version: gradleVersion(at('gradle.properties')),
     magicfeedbackVersion: kotlinConst(html, 'MAGICFEEDBACK_VERSION'),
     popupSdkCssVersion: kotlinConst(html, 'POPUP_SDK_CSS_VERSION'),
-    surveySdkMin: kotlinConst(surveySdk, 'SUPPORTED_SURVEY_SDK_MIN'),
-    surveySdkBelow: kotlinConst(surveySdk, 'SUPPORTED_SURVEY_SDK_BELOW'),
+    surveySdkVersions: kotlinStringList(surveySdk, 'SUPPORTED_SURVEY_SDK_VERSIONS'),
     minSdk: toml['android-minSdk'] ?? null,
     compileSdk: toml['android-compileSdk'] ?? null,
     targetSdk: toml['android-targetSdk'] ?? null,

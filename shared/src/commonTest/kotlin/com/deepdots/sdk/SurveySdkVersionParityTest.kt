@@ -2,12 +2,13 @@ package com.deepdots.sdk
 
 import com.deepdots.sdk.ui.BundledReason
 import com.deepdots.sdk.ui.MAGICFEEDBACK_VERSION
-import com.deepdots.sdk.ui.SUPPORTED_SURVEY_SDK_BELOW
-import com.deepdots.sdk.ui.SUPPORTED_SURVEY_SDK_MIN
+import com.deepdots.sdk.ui.POPUP_SDK_CSS_VERSION
+import com.deepdots.sdk.ui.SUPPORTED_SURVEY_SDK_VERSIONS
 import com.deepdots.sdk.ui.SurveySdkSource
 import com.deepdots.sdk.ui.buildMagicFeedbackHtml
 import com.deepdots.sdk.ui.chooseSurveySdkVersion
 import com.deepdots.sdk.ui.isSupportedSurveySdk
+import com.deepdots.sdk.ui.surveySdkCssUrls
 import com.deepdots.sdk.ui.surveySdkUrls
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -22,23 +23,30 @@ import kotlin.test.assertTrue
 class SurveySdkVersionParityTest {
 
     @Test
-    fun range_is_the_same_as_web_and_contains_the_vendored_version() {
-        assertEquals("2.2.37", SUPPORTED_SURVEY_SDK_MIN)
-        assertEquals("2.3.0", SUPPORTED_SURVEY_SDK_BELOW)
+    fun supported_list_is_the_same_as_web_and_contains_the_vendored_version() {
+        assertEquals(listOf("2.2.37", "2.2.38", "2.2.39"), SUPPORTED_SURVEY_SDK_VERSIONS)
         assertTrue(isSupportedSurveySdk(MAGICFEEDBACK_VERSION))
     }
 
     @Test
-    fun range_min_included_below_excluded() {
+    fun only_listed_versions_are_supported() {
         assertFalse(isSupportedSurveySdk("2.2.36"))
         assertTrue(isSupportedSurveySdk("2.2.37"))
-        assertTrue(isSupportedSurveySdk("2.2.99"))
+        assertTrue(isSupportedSurveySdk("2.2.38"))
+        assertFalse(isSupportedSurveySdk("2.2.40"))
         assertFalse(isSupportedSurveySdk("2.3.0"))
-        assertFalse(isSupportedSurveySdk("3.0.0"))
     }
 
     @Test
-    fun assigned_in_range() {
+    fun css_of_a_version_comes_from_the_pinned_popup_sdk() {
+        assertEquals(
+            "https://cdn.jsdelivr.net/npm/@magicfeedback/popup-sdk@$POPUP_SDK_CSS_VERSION/dist/assets/assets/survey-css/2.2.38.css",
+            surveySdkCssUrls("2.2.38")[0],
+        )
+    }
+
+    @Test
+    fun assigned_and_supported() {
         val c = chooseSurveySdkVersion("2.2.38")
         assertEquals("2.2.38", c.version)
         assertEquals(SurveySdkSource.ASSIGNED, c.source)
@@ -52,8 +60,8 @@ class SurveySdkVersionParityTest {
             "" to BundledReason.NOT_ASSIGNED,
             "latest" to BundledReason.INVALID,
             "2.2" to BundledReason.INVALID,
-            "2.2.36" to BundledReason.OUT_OF_RANGE,
-            "2.3.0" to BundledReason.OUT_OF_RANGE,
+            "2.2.36" to BundledReason.UNSUPPORTED,
+            "2.3.0" to BundledReason.UNSUPPORTED,
             MAGICFEEDBACK_VERSION to BundledReason.SAME_AS_BUNDLED,
         )
         for ((requested, reason) in cases) {
@@ -63,7 +71,7 @@ class SurveySdkVersionParityTest {
             assertEquals(reason, c.reason, "$requested")
         }
         assertEquals(
-            "survey SDK $MAGICFEEDBACK_VERSION (bundled: out_of_range, requested 2.3.1)",
+            "survey SDK $MAGICFEEDBACK_VERSION (bundled: unsupported, requested 2.3.1)",
             chooseSurveySdkVersion("2.3.1").describe(),
         )
         assertFalse(chooseSurveySdkVersion("2.3.1").isProblem)
@@ -88,6 +96,11 @@ class SurveySdkVersionParityTest {
         val h = html("2.2.38")
         val assigned = "var ASSIGNED_SRCS = ['${surveySdkUrls("2.2.38")[0]}','${surveySdkUrls("2.2.38")[1]}'];"
         assertTrue(h.contains(assigned), "assigned sources")
+        val css = "var ASSIGNED_CSS = ['${surveySdkCssUrls("2.2.38")[0]}','${surveySdkCssUrls("2.2.38")[1]}'];"
+        assertTrue(h.contains(css), "assigned css")
+        // La hoja primero; la JS asignada solo después de ponerla.
+        assertTrue(h.contains("if(ASSIGNED_SRCS.length){ fetchAssignedCss(0); } else { useBundled(''); }"))
+        assertTrue(h.contains("<link id=\"dd-survey-css\""))
         // La cadena de siempre (copia local + CDN de la vendorizada) sigue de respaldo.
         assertTrue(h.contains("var LOCAL_SRC = 'file:///android_asset/magicfeedback/magicfeedback-sdk.browser.js';"))
         assertTrue(h.contains(surveySdkUrls(MAGICFEEDBACK_VERSION)[0]))
@@ -96,10 +109,11 @@ class SurveySdkVersionParityTest {
     }
 
     @Test
-    fun html_without_assignment_or_out_of_range_keeps_the_vendored_chain() {
+    fun html_without_assignment_or_unsupported_keeps_the_vendored_chain() {
         for (v in listOf(null, "2.3.0", MAGICFEEDBACK_VERSION)) {
             val h = html(v)
             assertTrue(h.contains("var ASSIGNED_SRCS = [];"), "$v")
+            assertTrue(h.contains("var ASSIGNED_CSS = [];"), "$v")
             assertFalse(h.contains("@magicfeedback/native@2.3.0"), "$v")
         }
     }

@@ -20,7 +20,7 @@ test('lee las versiones del codigo', () => {
   assert.equal(spmIosMinimum('platforms: [\n  .iOS(.v13)\n]'), '13.0');
   assert.equal(spmIosMinimum('.iOS("15.4")'), '15.4');
   const facts = repoFacts({ root: ROOT });
-  for (const key of ['version', 'magicfeedbackVersion', 'popupSdkCssVersion', 'surveySdkMin', 'surveySdkBelow', 'minSdk', 'iosSpmMinimum', 'iosLinkerMinimum']) {
+  for (const key of ['version', 'magicfeedbackVersion', 'popupSdkCssVersion', 'surveySdkVersions', 'minSdk', 'iosSpmMinimum', 'iosLinkerMinimum']) {
     assert.ok(facts[key], key);
   }
 });

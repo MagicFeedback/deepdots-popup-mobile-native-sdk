@@ -181,13 +181,13 @@ test('manifiesto que no coincide con el codigo se bloquea', () => {
   assert.match(errors.join('\n'), /Fixture repetido/);
 });
 
-test('DD-70: el rango asignable del manifiesto tiene que coincidir con SurveySdkVersion.kt', () => {
-  const facts = { ...FACTS, surveySdkMin: '2.2.37', surveySdkBelow: '2.3.0' };
-  const ok = { ...MANIFEST, surveyRenderer: { version: '2.2.31', assignedRange: { min: '2.2.37', below: '2.3.0' } } };
+test('DD-70: las versiones asignables del manifiesto tienen que coincidir con SurveySdkVersion.kt', () => {
+  const facts = { ...FACTS, surveySdkVersions: ['2.2.37', '2.2.38', '2.2.39'] };
+  const ok = { ...MANIFEST, surveyRenderer: { version: '2.2.31', assignedVersions: ['2.2.37', '2.2.38', '2.2.39'] } };
   assert.deepEqual(checkManifestConsistency({ manifest: ok, facts }), []);
-  const wrong = { ...ok, surveyRenderer: { version: '2.2.31', assignedRange: { min: '2.2.30', below: '2.3.0' } } };
-  assert.match(checkManifestConsistency({ manifest: wrong, facts }).join(), /assignedRange\.min es 2\.2\.30.*SUPPORTED_SURVEY_SDK_MIN/);
-  assert.match(checkManifestConsistency({ manifest: MANIFEST, facts }).join(), /assignedRange\.min es undefined/);
+  const wrong = { ...ok, surveyRenderer: { version: '2.2.31', assignedVersions: ['2.2.38'] } };
+  assert.match(checkManifestConsistency({ manifest: wrong, facts }).join(), /assignedVersions es 2\.2\.38 .*2\.2\.37, 2\.2\.38, 2\.2\.39.*SUPPORTED_SURVEY_SDK_VERSIONS/);
+  assert.match(checkManifestConsistency({ manifest: MANIFEST, facts }).join(), /assignedVersions es undefined/);
 });
 
 test('si no encuentra el dato en el codigo, tambien bloquea', () => {

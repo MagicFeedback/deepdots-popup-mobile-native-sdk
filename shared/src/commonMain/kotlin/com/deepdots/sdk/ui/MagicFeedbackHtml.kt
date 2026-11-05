@@ -54,6 +54,10 @@ internal fun buildMagicFeedbackHtml(
     val assignedSourcesJs = if (surveySdk.source == SurveySdkSource.ASSIGNED) {
         surveySdkUrls(surveySdk.version).joinToString(",", "[", "]") { "'$it'" }
     } else "[]"
+    // Y su hoja vendorizada (la del popup-sdk fijado en POPUP_SDK_CSS_VERSION): JS y CSS van juntos.
+    val assignedCssJs = if (surveySdk.source == SurveySdkSource.ASSIGNED) {
+        surveySdkCssUrls(surveySdk.version).joinToString(",", "[", "]") { "'$it'" }
+    } else "[]"
     // Solo letras, '-' y '_': va dentro de un literal JS.
     val langLiteral = lang?.trim()
         ?.takeIf { it.isNotEmpty() && it.all { c -> c.isLetter() || c == '-' || c == '_' } }
@@ -195,7 +199,7 @@ internal fun buildMagicFeedbackHtml(
             .deepdots-success img{max-width:100%;height:auto;margin:0 auto 16px auto;display:block;}
             .deepdots-success p{margin:0;font-size:16px;font-weight:600;line-height:1.4;}
           </style>
-          <link rel="stylesheet" href="$urlStyleDefault" />
+          <link id="dd-survey-css" rel="stylesheet" href="$urlStyleDefault" />
           <style>
             /* El margen lateral del popup lo pone el chrome nativo (la tarjeta de Compose), así
                que el survey no debe añadir el suyo: con el padding del paquete (12px del
@@ -446,22 +450,45 @@ ${PopupReveal.REVEAL_JS}
               function tryLocalThenCdn(){
                 if(LOCAL_SRC){ addScript(LOCAL_SRC, null, function(){ if(!initMF()){ tryCdn(); } }, function(){ tryCdn(); }); } else { tryCdn(); }
               }
-              // DD-70: versión de survey SDK asignada al survey en el Admin (jsDelivr, unpkg).
+              // DD-70: versión de survey SDK asignada al survey en el Admin: primero su hoja (la
+              // vendorizada del popup-sdk, jsDelivr y unpkg) y luego su JS. Si cualquiera falla, la
+              // hoja y la JS de siempre: nunca JS de una versión con CSS de otra.
               var ASSIGNED_SRCS = $assignedSourcesJs;
+              var ASSIGNED_CSS = $assignedCssJs;
+              var ddAssignedStyle = null;
               function markSurveySdk(v){ try { document.documentElement.setAttribute('data-survey-sdk', v); } catch(_){} }
+              function useBundled(reason){
+                if(ASSIGNED_SRCS.length){ console.warn('[MagicFeedback] survey SDK ${surveySdk.version} ' + reason + ', using bundled $MAGICFEEDBACK_VERSION'); }
+                var link = document.getElementById('dd-survey-css');
+                if(ddAssignedStyle){ ddAssignedStyle.remove(); ddAssignedStyle = null; }
+                if(link){ link.disabled = false; }
+                markSurveySdk('$MAGICFEEDBACK_VERSION bundled');
+                tryLocalThenCdn();
+              }
               function tryAssigned(i){
-                if(i >= ASSIGNED_SRCS.length){
-                  if(ASSIGNED_SRCS.length){ console.warn('[MagicFeedback] survey SDK ${surveySdk.version} failed, using bundled $MAGICFEEDBACK_VERSION'); }
-                  markSurveySdk('$MAGICFEEDBACK_VERSION bundled');
-                  tryLocalThenCdn();
-                  return;
-                }
+                if(i >= ASSIGNED_SRCS.length){ useBundled('failed'); return; }
                 addScript(ASSIGNED_SRCS[i], null,
                   // El sondeo de 250 ms puede haber inicializado ya con este script: initialized cuenta.
                   function(){ if(initialized || initMF()){ markSurveySdk('${surveySdk.version} assigned'); } else { tryAssigned(i + 1); } },
                   function(){ tryAssigned(i + 1); });
               }
-              tryAssigned(0);
+              function fetchAssignedCss(i){
+                if(i >= ASSIGNED_CSS.length || typeof fetch !== 'function'){ useBundled('CSS failed'); return; }
+                fetch(ASSIGNED_CSS[i]).then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+                  .then(function(css){
+                    if(!css) throw new Error('empty');
+                    // En el sitio del <link>, para que las reglas propias de debajo sigan ganando.
+                    var link = document.getElementById('dd-survey-css');
+                    ddAssignedStyle = document.createElement('style');
+                    ddAssignedStyle.id = 'dd-survey-css-assigned';
+                    ddAssignedStyle.textContent = css;
+                    if(link){ link.parentNode.insertBefore(ddAssignedStyle, link.nextSibling); link.disabled = true; }
+                    else { document.head.appendChild(ddAssignedStyle); }
+                    tryAssigned(0);
+                  })
+                  .catch(function(){ fetchAssignedCss(i + 1); });
+              }
+              if(ASSIGNED_SRCS.length){ fetchAssignedCss(0); } else { useBundled(''); }
               var t0 = Date.now();
               var poll = setInterval(function(){
                 if(mfReady || initMF()){ clearInterval(poll); }
