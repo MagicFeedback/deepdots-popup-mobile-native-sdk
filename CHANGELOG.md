@@ -4,7 +4,7 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
-Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.3.0–3.4.1); bundled: 2.2.39. Compatibility table: docs.deepdots.com/popup-native/reference/survey-compatibility/.
+Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. Compatibility table: docs.deepdots.com/popup-native/reference/survey-compatibility/.
 
 ### Added
 
