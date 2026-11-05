@@ -29,5 +29,6 @@ expect fun SurveyView(
     backgroundColor: Color,
     onEvent: (String) -> Unit,
     onController: (SurveyController) -> Unit = {},
-    font: PopupFont? = null
+    font: PopupFont? = null,
+    surveySdkVersion: String? = null,
 )

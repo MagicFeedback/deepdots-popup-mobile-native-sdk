@@ -31,4 +31,7 @@ object SdkRuntime {
      * (`style.showProgressBar` del survey). Se fija en init desde `InitOptions.showProgressBar`.
      */
     var showProgressBar: Boolean? = null
+
+    /** `InitOptions.debug`: con debug se loguea qué survey SDK pinta cada popup (DD-70). */
+    var debug: Boolean = false
 }

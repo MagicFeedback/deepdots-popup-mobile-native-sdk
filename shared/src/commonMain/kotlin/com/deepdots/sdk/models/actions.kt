@@ -20,7 +20,12 @@ data class PopupDefinition(
     val surveyId: String,
     val productId: String,
     val style: Style = Style(),
-    val segments: Segments? = null
+    val segments: Segments? = null,
+    /**
+     * `surveyFrontend.sdkVersion` de la API (DD-70): versión de `@magicfeedback/native` asignada al
+     * survey en el Admin (latest o fijada). Null = la vendorizada.
+     */
+    val surveySdkVersion: String? = null,
 )
 
 data class Actions(

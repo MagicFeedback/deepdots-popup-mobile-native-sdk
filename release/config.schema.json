@@ -169,6 +169,16 @@
             "string",
             "null"
           ]
+        },
+        "surveyFrontend": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ServerSurveyFrontend"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -351,6 +361,24 @@
             {
               "type": "null"
             }
+          ]
+        }
+      },
+      "required": []
+    },
+    "ServerSurveyFrontend": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sdkVersion": {
+          "type": [
+            "string",
+            "null"
           ]
         }
       },
@@ -817,6 +845,13 @@
               "type": "null"
             }
           ]
+        },
+        "surveySdkVersion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-kotlin": "String?"
         }
       },
       "required": [

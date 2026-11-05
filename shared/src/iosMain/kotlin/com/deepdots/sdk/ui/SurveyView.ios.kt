@@ -46,7 +46,8 @@ actual fun SurveyView(
     backgroundColor: Color,
     onEvent: (String) -> Unit,
     onController: (SurveyController) -> Unit,
-    font: PopupFont?
+    font: PopupFont?,
+    surveySdkVersion: String?,
 ) {
     // Keep a reference to WKWebView for controller actions
     var webViewRef by remember { mutableStateOf<WKWebView?>(null) }
@@ -120,7 +121,7 @@ actual fun SurveyView(
                 )
                 // Also force light UI controls so native form widgets don't adopt dark styling.
                 wv.overrideUserInterfaceStyle = UIUserInterfaceStyle.UIUserInterfaceStyleLight
-                val html = platformSurveyHtml(surveyId, productId, font)
+                val html = platformSurveyHtml(surveyId, productId, font, surveySdkVersion)
                 wv.loadHTMLString(html, baseURL = NSURL(string = "https://magicfeedback.app/"))
                 webViewRef = wv
                 wv as UIView
@@ -142,7 +143,7 @@ actual fun SurveyView(
     }
 }
 
-actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?): String {
+actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?, surveySdkVersion: String?): String {
     val bundle = NSBundle.mainBundle
     val resPath = bundle.pathForResource("magicfeedback/magicfeedback-sdk.browser", ofType = "js")
     val localScript = resPath?.let { "file://${it}" }
@@ -153,6 +154,7 @@ actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFo
         assetSize = null,
         bridgeEmitCall = "window.webkit.messageHandlers.DeepdotsBridge.postMessage",
         isIOS = true,
-        font = font
+        font = font,
+        surveySdkVersion = surveySdkVersion,
     )
 }

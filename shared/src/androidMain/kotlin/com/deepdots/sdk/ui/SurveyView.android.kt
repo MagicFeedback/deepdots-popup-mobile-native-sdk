@@ -38,7 +38,8 @@ actual fun SurveyView(
     backgroundColor: Color,
     onEvent: (String) -> Unit,
     onController: (SurveyController) -> Unit,
-    font: PopupFont?
+    font: PopupFont?,
+    surveySdkVersion: String?,
 ) {
     var loading by remember { mutableStateOf(true) }
     Box(
@@ -154,7 +155,8 @@ actual fun SurveyView(
                     assetSize = assetSize,
                     bridgeEmitCall = "DeepdotsBridge.emit",
                     isIOS = false,
-                    font = font
+                    font = font,
+                    surveySdkVersion = surveySdkVersion,
                 )
                 loadDataWithBaseURL("https://magicfeedback.app/", html, "text/html", "utf-8", null)
             }
@@ -172,12 +174,13 @@ actual fun SurveyView(
 }
 
 // Provide actual implementation for platformSurveyHtml so native Android code could also fetch it if needed.
-actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?): String = buildMagicFeedbackHtml(
+actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?, surveySdkVersion: String?): String = buildMagicFeedbackHtml(
     surveyId = surveyId,
     productId = productId,
     localAssetUrl = "file:///android_asset/magicfeedback/magicfeedback-sdk.browser.js",
     assetSize = null,
     bridgeEmitCall = "DeepdotsBridge.emit",
     isIOS = false,
-    font = font
+    font = font,
+    surveySdkVersion = surveySdkVersion,
 )
