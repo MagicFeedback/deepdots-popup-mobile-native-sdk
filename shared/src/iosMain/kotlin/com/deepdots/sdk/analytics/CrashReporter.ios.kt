@@ -1,5 +1,8 @@
 package com.deepdots.sdk.analytics
 
+import kotlin.experimental.ExperimentalNativeApi
+import kotlin.native.ReportUnhandledExceptionHook
+import kotlin.native.setUnhandledExceptionHook
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.staticCFunction
 import platform.Foundation.NSException
@@ -20,10 +23,43 @@ import platform.Foundation.NSSetUncaughtExceptionHandler
 private var iosCrashReporter: CrashReporter? = null
 private var iosCrashEnabled: (() -> Boolean)? = null
 
+private var kotlinHookInstalled = false
+
+/**
+ * Excepciones de Kotlin no capturadas (las de Obj-C/Swift van por NSSetUncaughtExceptionHandler).
+ * Se instala una vez por proceso y ENCADENA al hook anterior (otro SDK de crashes del host): ese
+ * sigue recibiendo la excepción y, si no había, Kotlin/Native termina el proceso como siempre.
+ */
+@OptIn(ExperimentalNativeApi::class)
+private fun installKotlinUnhandledHook() {
+    if (kotlinHookInstalled) return
+    kotlinHookInstalled = true
+    var previous: ReportUnhandledExceptionHook? = null
+    previous = setUnhandledExceptionHook { throwable ->
+        try {
+            val r = iosCrashReporter
+            if (r != null && iosCrashEnabled?.invoke() == true) {
+                r.captureUnhandled(
+                    crashType = throwable::class.simpleName ?: "Throwable",
+                    message = throwable.message ?: "",
+                    stack = throwable.stackTraceToString(),
+                )
+            }
+        } catch (_: Throwable) {
+            /* nunca interferir con la terminación del proceso */
+        }
+        previous?.invoke(throwable)
+    }
+}
+
+/** Para tests: el hook de Kotlin quedó instalado. */
+internal fun debugKotlinUnhandledHookInstalled(): Boolean = kotlinHookInstalled
+
 @OptIn(ExperimentalForeignApi::class)
 actual fun installCrashHandlers(reporter: CrashReporter, enabled: () -> Boolean) {
     iosCrashReporter = reporter
     iosCrashEnabled = enabled
+    installKotlinUnhandledHook()
     NSSetUncaughtExceptionHandler(
         staticCFunction { exception: NSException? ->
             val r = iosCrashReporter ?: return@staticCFunction

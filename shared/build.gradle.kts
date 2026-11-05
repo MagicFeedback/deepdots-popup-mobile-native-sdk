@@ -116,6 +116,10 @@ kotlin {
                 implementation("io.coil-kt:coil-compose:2.7.0")
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.androidx.recyclerview)
+                // Ciclo de vida automático (ON_START/ON_STOP del proceso).
+                implementation(libs.androidx.lifecycle.process)
+                // Pantallas por Fragment solo si la app ya trae androidx.fragment.
+                compileOnly(libs.androidx.fragment)
             }
         }
         val commonMain by getting {

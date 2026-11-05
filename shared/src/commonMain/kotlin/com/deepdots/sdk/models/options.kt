@@ -79,11 +79,92 @@ data class InitOptions(
      * inicio y antes de completar. Paridad con Web/RN `DeepdotsInitParams.showProgressBar`.
      */
     val showProgressBar: Boolean? = null,
+    /**
+     * Qué detecta el SDK por sí solo (contrato común de los SDK de popups,
+     * `SDK-AUTO-DETECTION-CONTRACT.md`). Todo activado por defecto. Una llamada manual a la API
+     * de una señal (`onForeground`/`onBackground`, `setPath`, `attachContext`) apaga su
+     * detección en esta instancia: lo manual siempre manda. Ver [AutoTrack].
+     */
+    val autoTrack: AutoTrack = AutoTrack(),
+    /**
+     * Renombra la pantalla detectada sola (nombre de la Activity / Fragment / view controller,
+     * p. ej. `CheckoutActivity`). Devuelve el nombre o la ruta que quieras (`"checkout"` o
+     * `"/checkout"`); con `null` se usa el detectado. No se aplica a `setPath()`. Paridad con
+     * Web/RN/Flutter `screenName`.
+     */
+    val screenName: ((String) -> String?)? = null,
     val metadata: Map<String, Any>? = null // arbitrary host-supplied metadata forwarded to the backend
-)
+) {
+    /**
+     * La lista de parámetros anterior a `autoTrack`/`screenName`, sin defaults. Swift no ve los
+     * argumentos por defecto de Kotlin y pasa TODOS los parámetros: sin esto, un host de iOS que
+     * ya llamaba a `InitOptions(debug:…metadata:)` dejaría de compilar. Detección automática con
+     * los valores por defecto. En Kotlin, una llamada con todos estos argumentos resuelve aquí y
+     * equivale a la del constructor principal.
+     */
+    constructor(
+        debug: Boolean?,
+        environment: Environment?,
+        mode: Mode?,
+        popupOptions: PopupOptions,
+        provideLang: () -> String?,
+        autoLaunch: Boolean?,
+        storage: KeyValueStorage?,
+        trackingEnabled: Boolean?,
+        analytics: AnalyticsKeys?,
+        onFeedbackSession: ((FeedbackSession) -> Unit)?,
+        geolocation: Boolean?,
+        contactAttributes: Map<String, Any?>?,
+        renderChrome: Boolean?,
+        showProgressBar: Boolean?,
+        metadata: Map<String, Any>?,
+    ) : this(
+        debug = debug,
+        environment = environment,
+        mode = mode,
+        popupOptions = popupOptions,
+        provideLang = provideLang,
+        autoLaunch = autoLaunch,
+        storage = storage,
+        trackingEnabled = trackingEnabled,
+        analytics = analytics,
+        onFeedbackSession = onFeedbackSession,
+        geolocation = geolocation,
+        contactAttributes = contactAttributes,
+        renderChrome = renderChrome,
+        showProgressBar = showProgressBar,
+        autoTrack = AutoTrack(),
+        screenName = null,
+        metadata = metadata,
+    )
+}
 
 data class ShowOptions(
     val surveyId: String,
     val productId: String,
     val data: Map<String, Any>? = null
+)
+
+/**
+ * Señales que el SDK detecta solo. Mismo nombre y forma en los cuatro SDK de popups
+ * (`autoTrack: { lifecycle, screens, scroll, clicks, errors }`).
+ *
+ * - [lifecycle]: foreground/background de la app (Android `ProcessLifecycleOwner`, iOS
+ *   `NotificationCenter`). Con él el host no llama a `onForeground()`/`onBackground()`.
+ * - [screens]: pantallas (`page_view`, `segments.path`, trigger `exit`) por el nombre de la
+ *   Activity / Fragment en Android y del view controller (`viewDidAppear`) en iOS.
+ * - [scroll], [clicks]: sin detección nativa todavía (`onScroll` / `triggerClick` siguen siendo
+ *   del host); existen por paridad de forma con el resto de SDK.
+ * - [errors]: crashes no capturados (Android `Thread.setDefaultUncaughtExceptionHandler`, iOS
+ *   `NSSetUncaughtExceptionHandler` + `setUnhandledExceptionHook`), encadenados al handler previo.
+ *
+ * El contexto para pintar el popup (la Activity actual / la key window) se detecta siempre;
+ * `attachContext()` lo fija a mano.
+ */
+data class AutoTrack(
+    val lifecycle: Boolean = true,
+    val screens: Boolean = true,
+    val scroll: Boolean = true,
+    val clicks: Boolean = true,
+    val errors: Boolean = true,
 )

@@ -12,6 +12,7 @@ Multiplatform SDK (Android + iOS) to show popups and launch surveys using trigge
    - iOS (Swift Package Manager - Binary) [Official]
 4. Quick Start (Server mode)
    - Initialization
+   - What the SDK detects by itself
    - Manual popup display
    - Listen for events
 5. Triggers & Conditions (remote)
@@ -105,6 +106,44 @@ instance.initialize(options: options)
 instance.setPath(path: "/home")
 ```
 
+### What the SDK detects by itself
+After `init` the SDK needs no lifecycle, context or screen code from the host. Everything is on
+by default (`InitOptions.autoTrack`, same shape as the Web, React Native and Flutter SDKs):
+
+| Signal | Android | iOS | Turn off |
+|---|---|---|---|
+| Foreground / background (session start / end) | `ProcessLifecycleOwner` `ON_START` / `ON_STOP` | `willEnterForeground` / `didEnterBackground`; `willResignActive` only flushes | `autoTrack = AutoTrack(lifecycle = false)` |
+| Where to show the popup | the Activity on screen (`ActivityLifecycleCallbacks`) | the key window's root view controller | call `attachContext(...)` |
+| Screens (`page_view`, `segments.path`, `exit` trigger) | Activity / Fragment class name (`/CheckoutActivity`) | view controller class name on `viewDidAppear` | `AutoTrack(screens = false)` |
+| Uncaught crashes | `Thread.setDefaultUncaughtExceptionHandler` | `NSSetUncaughtExceptionHandler` + Kotlin `setUnhandledExceptionHook` | `AutoTrack(errors = false)` |
+
+- **Manual calls win.** The first `onForeground()`/`onBackground()` turns automatic lifecycle off
+  for that instance, the first `setPath()` turns automatic screens off (the detected screen it
+  replaces is dropped without a `page_view`), and `attachContext()` pins the context. Opening or
+  closing a session twice does nothing, so an existing integration sends the same data as before.
+- **Rename detected screens** with `screenName = { name -> if (name == "CheckoutActivity") "checkout" else null }`
+  (`null` keeps the detected name). It does not apply to `setPath()`.
+- Containers are not screens: `NavHostFragment`, dialog fragments, navigation / tab controllers,
+  UIKit and SwiftUI hosting controllers, and the Compose host. Fragment screens need
+  `androidx.fragment` in the app (the SDK does not add it). A sheet presented on iOS 13+ does not
+  give the screen back when it closes (the screen below gets no `viewDidAppear`).
+- **Compose / SwiftUI:** the Activity or hosting controller does not say which screen is showing.
+  Use the helper at each destination, which counts as `setPath()`:
+  ```kotlin
+  composable("checkout") { TrackDeepdotsScreen(sdk, "checkout"); CheckoutScreen() }
+  ```
+  ```swift
+  struct DeepdotsScreen: ViewModifier {
+      let sdk: DeepdotsPopups; let name: String
+      func body(content: Content) -> some View { content.onAppear { sdk.setPath(path: "/\(name)") } }
+  }
+  // CheckoutView().modifier(DeepdotsScreen(sdk: sdk, name: "checkout"))
+  ```
+- `scroll` and `clicks` exist for parity; on native `onScroll(...)` and `triggerClick(...)` are
+  still called by the host.
+- iOS (Swift): `InitOptions(debug:…metadata:)` without `autoTrack`/`screenName` still compiles
+  and uses the defaults; pass both (`autoTrack: AutoTrack(lifecycle: true, screens: true, scroll: true, clicks: true, errors: true), screenName: nil`) to change them.
+
 ### Manual popup display
 ```kotlin
 sdk.show(ShowOptions(surveyId = "survey-123", productId = "product-xyz"), PlatformContext(activity))
@@ -171,7 +210,8 @@ val options = InitOptions(
 - `Open` comes when the API accepts the session's first batch, `Closed` when it accepts the
   closing one (`completed: true`). A session whose only batch is the closing one reports just
   `Closed`.
-- On mobile the session ends with `onBackground()` (also `endSession()`, `setUserId(...)` and
+- On mobile the session ends when the app goes to the background (detected automatically, or
+  `onBackground()`; also `endSession()`, `setUserId(...)` and
   `setTrackingEnabled(false)`). `Closed` does not come when the app is killed or suspended
   before the closing request returns, nor when the closing request fails (network error, 5xx):
   its events are re-sent with the next session and the API closes the old record itself, later.

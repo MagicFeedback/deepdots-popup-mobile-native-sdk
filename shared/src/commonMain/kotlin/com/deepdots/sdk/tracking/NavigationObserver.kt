@@ -120,6 +120,17 @@ class NavigationObserver(
     }
 
     /**
+     * Olvida la pantalla en curso y la última ruta SIN emitir su visita. Para cuando el host toma
+     * el control de las pantallas (`setPath()`) sobre una detectada sola: esa pantalla no era
+     * suya y no debe contar. Sin equivalente en Web (allí la ruta es siempre la de la URL).
+     */
+    fun discard() {
+        currentScreen = null
+        currentPath = null
+        lastHref = null
+    }
+
+    /**
      * Retoma el seguimiento en la pantalla actual tras un `stop()`, cuando se abre una sesión
      * nueva sin navegar (vuelta del background, cambio de usuario, tracking reactivado), con la
      * entrada en el momento de la reapertura. Sin esto, la pantalla a la que vuelve el usuario

@@ -572,6 +572,33 @@
       },
       "required": []
     },
+    "models.AutoTrack": {
+      "type": "object",
+      "x-kotlin": "models.AutoTrack",
+      "properties": {
+        "lifecycle": {
+          "type": "boolean",
+          "x-kotlin": "Boolean"
+        },
+        "screens": {
+          "type": "boolean",
+          "x-kotlin": "Boolean"
+        },
+        "scroll": {
+          "type": "boolean",
+          "x-kotlin": "Boolean"
+        },
+        "clicks": {
+          "type": "boolean",
+          "x-kotlin": "Boolean"
+        },
+        "errors": {
+          "type": "boolean",
+          "x-kotlin": "Boolean"
+        }
+      },
+      "required": []
+    },
     "models.CooldownCondition": {
       "type": "object",
       "x-kotlin": "models.CooldownCondition",
@@ -721,6 +748,13 @@
             "null"
           ],
           "x-kotlin": "Boolean?"
+        },
+        "autoTrack": {
+          "$ref": "#/definitions/models.AutoTrack",
+          "x-kotlin": "AutoTrack"
+        },
+        "screenName": {
+          "x-kotlin": "((String) -> String?)?"
         },
         "metadata": {
           "type": [
