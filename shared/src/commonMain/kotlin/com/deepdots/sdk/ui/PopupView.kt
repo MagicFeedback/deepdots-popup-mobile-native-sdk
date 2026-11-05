@@ -376,6 +376,7 @@ fun PopupView(
                                     popup.productId,
                                     backgroundColor = bgColor,
                                     font = popup.style.font,
+                                    surveySdkVersion = popup.surveySdkVersion,
                                     onEvent = { eventJson ->
                                         val name: String
                                         val payload: String?

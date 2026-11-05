@@ -6,6 +6,16 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ### Added
 
+- **Popups follow the survey version assigned in the Admin (DD-70).** `GET /sdk/{publicKey}/popups`
+  sends `surveyFrontend.sdkVersion` per popup (latest or pinned). When it is inside the supported
+  range (`SUPPORTED_SURVEY_SDK_MIN` 2.2.37 ..< `SUPPORTED_SURVEY_SDK_BELOW` 2.3.0, also in
+  `release/compatibility.json` → `surveyRenderer.assignedRange`) and differs from
+  `MAGICFEEDBACK_VERSION`, the WebView loads that exact `@magicfeedback/native` from jsDelivr, then
+  unpkg, before the usual chain (vendored copy + CDN of the vendored version). Missing, out of range
+  or failing to load → the vendored version as before; out of range is always logged, the choice
+  with `debug`. The survey CSS stays pinned to `POPUP_SDK_CSS_VERSION`. New
+  `PopupDefinition.surveySdkVersion` (last parameter, default null).
+
 - **The SDK identifies itself on the data it sends (DD-3, Collection dashboard).** Every popup
   response now carries `deepdots_channel=popup` and `deepdots_sdk=android@<version>` /
   `ios@<version>` in its survey metadata, also with tracking off, so a response that came through

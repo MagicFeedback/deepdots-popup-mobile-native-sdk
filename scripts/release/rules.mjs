@@ -247,6 +247,11 @@ export function checkManifestConsistency({ manifest, facts }) {
   expect('version', manifest.version, facts.version, 'gradle.properties (PUBLISHING_VERSION)');
   expect('surveyRenderer.version', manifest.surveyRenderer?.version, facts.magicfeedbackVersion, 'MagicFeedbackHtml.kt (MAGICFEEDBACK_VERSION)');
   expect('popupSdkCss.version', manifest.popupSdkCss?.version, facts.popupSdkCssVersion, 'MagicFeedbackHtml.kt (POPUP_SDK_CSS_VERSION)');
+  // DD-70: el rango de survey SDK asignable se declara en el codigo y en el manifiesto (lo lee el gate).
+  if (facts.surveySdkMin !== undefined || manifest.surveyRenderer?.assignedRange) {
+    expect('surveyRenderer.assignedRange.min', manifest.surveyRenderer?.assignedRange?.min, facts.surveySdkMin, 'SurveySdkVersion.kt (SUPPORTED_SURVEY_SDK_MIN)');
+    expect('surveyRenderer.assignedRange.below', manifest.surveyRenderer?.assignedRange?.below, facts.surveySdkBelow, 'SurveySdkVersion.kt (SUPPORTED_SURVEY_SDK_BELOW)');
+  }
   expect('hosts.android.minSdk', manifest.hosts?.android?.minSdk, facts.minSdk, 'gradle/libs.versions.toml (android-minSdk)');
   expect('hosts.android.compileSdk', manifest.hosts?.android?.compileSdk, facts.compileSdk, 'gradle/libs.versions.toml (android-compileSdk)');
   expect('hosts.android.targetSdk', manifest.hosts?.android?.targetSdk, facts.targetSdk, 'gradle/libs.versions.toml (android-targetSdk)');

@@ -43,12 +43,15 @@ export function spmIosMinimum(source) {
 export function repoFacts({ root = '.' } = {}) {
   const at = (p) => readOrNull(join(root, p));
   const html = at('shared/src/commonMain/kotlin/com/deepdots/sdk/ui/MagicFeedbackHtml.kt');
+  const surveySdk = at('shared/src/commonMain/kotlin/com/deepdots/sdk/ui/SurveySdkVersion.kt');
   const toml = tomlVersions(at('gradle/libs.versions.toml'));
   const linker = /-mios-version-min=(\d+(?:\.\d+)?)/.exec(at('shared/build.gradle.kts') ?? '')?.[1] ?? null;
   return {
     version: gradleVersion(at('gradle.properties')),
     magicfeedbackVersion: kotlinConst(html, 'MAGICFEEDBACK_VERSION'),
     popupSdkCssVersion: kotlinConst(html, 'POPUP_SDK_CSS_VERSION'),
+    surveySdkMin: kotlinConst(surveySdk, 'SUPPORTED_SURVEY_SDK_MIN'),
+    surveySdkBelow: kotlinConst(surveySdk, 'SUPPORTED_SURVEY_SDK_BELOW'),
     minSdk: toml['android-minSdk'] ?? null,
     compileSdk: toml['android-compileSdk'] ?? null,
     targetSdk: toml['android-targetSdk'] ?? null,

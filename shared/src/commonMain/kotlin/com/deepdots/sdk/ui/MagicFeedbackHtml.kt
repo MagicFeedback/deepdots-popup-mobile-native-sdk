@@ -42,8 +42,18 @@ internal fun buildMagicFeedbackHtml(
     // Surveys multi-idioma: idioma que se pide a @magicfeedback/native. Por defecto el del host
     // (`InitOptions.provideLang`) o, si no, el del dispositivo. Si el survey no lo tiene, la API
     // sirve su idioma por defecto.
-    lang: String? = resolveLanguage(SdkRuntime.provideLang?.invoke())
+    lang: String? = resolveLanguage(SdkRuntime.provideLang?.invoke()),
+    // DD-70: `surveyFrontend.sdkVersion` del popup (versión asignada al survey en el Admin).
+    surveySdkVersion: String? = null,
 ): String {
+    val surveySdk = chooseSurveySdkVersion(surveySdkVersion)
+    if (surveySdk.isProblem) println("[DeepdotsPopups] ${surveySdk.describe()}")
+    else if (SdkRuntime.debug) println("[DeepdotsPopups] ${surveySdk.describe()}")
+    // La asignada va primero, del CDN; si no carga, la cadena de siempre (copia local + CDN de la
+    // vendorizada). Solo letras/dígitos/puntos (SemVer validado): va dentro de un literal JS.
+    val assignedSourcesJs = if (surveySdk.source == SurveySdkSource.ASSIGNED) {
+        surveySdkUrls(surveySdk.version).joinToString(",", "[", "]") { "'$it'" }
+    } else "[]"
     // Solo letras, '-' y '_': va dentro de un literal JS.
     val langLiteral = lang?.trim()
         ?.takeIf { it.isNotEmpty() && it.all { c -> c.isLetter() || c == '-' || c == '_' } }
@@ -436,7 +446,22 @@ ${PopupReveal.REVEAL_JS}
               function tryLocalThenCdn(){
                 if(LOCAL_SRC){ addScript(LOCAL_SRC, null, function(){ if(!initMF()){ tryCdn(); } }, function(){ tryCdn(); }); } else { tryCdn(); }
               }
-              tryLocalThenCdn();
+              // DD-70: versión de survey SDK asignada al survey en el Admin (jsDelivr, unpkg).
+              var ASSIGNED_SRCS = $assignedSourcesJs;
+              function markSurveySdk(v){ try { document.documentElement.setAttribute('data-survey-sdk', v); } catch(_){} }
+              function tryAssigned(i){
+                if(i >= ASSIGNED_SRCS.length){
+                  if(ASSIGNED_SRCS.length){ console.warn('[MagicFeedback] survey SDK ${surveySdk.version} failed, using bundled $MAGICFEEDBACK_VERSION'); }
+                  markSurveySdk('$MAGICFEEDBACK_VERSION bundled');
+                  tryLocalThenCdn();
+                  return;
+                }
+                addScript(ASSIGNED_SRCS[i], null,
+                  // El sondeo de 250 ms puede haber inicializado ya con este script: initialized cuenta.
+                  function(){ if(initialized || initMF()){ markSurveySdk('${surveySdk.version} assigned'); } else { tryAssigned(i + 1); } },
+                  function(){ tryAssigned(i + 1); });
+              }
+              tryAssigned(0);
               var t0 = Date.now();
               var poll = setInterval(function(){
                 if(mfReady || initMF()){ clearInterval(poll); }
@@ -451,4 +476,4 @@ ${PopupReveal.REVEAL_JS}
 /**
  * Expect platform implementation to expose pre-built HTML string so iOS native app can obtain it directly.
  */
-expect fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont? = null): String
+expect fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont? = null, surveySdkVersion: String? = null): String

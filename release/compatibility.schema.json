@@ -78,6 +78,16 @@
             "ios": { "enum": ["vendored", "cdn"] }
           }
         },
+        "assignedRange": {
+          "description": "DD-70: rango de @magicfeedback/native que el WebView acepta cuando la API asigna otra version al survey (surveyFrontend.sdkVersion). min incluido, below excluido; fuera de rango se usa version.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "below"],
+          "properties": {
+            "min": { "$ref": "#/definitions/semver" },
+            "below": { "$ref": "#/definitions/semver" }
+          }
+        },
         "notes": { "type": "string" }
       }
     },

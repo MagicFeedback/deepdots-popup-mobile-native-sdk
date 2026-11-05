@@ -128,6 +128,14 @@ class DeepdotsPopups {
         val segments: ServerSegmentsDto? = null,
         val surveyId: String,
         val productId: String? = null,
+        val surveyFrontend: ServerSurveyFrontendDto? = null,
+    )
+
+    /** `surveyFrontend` de GET /sdk/{publicKey}/popups (DD-70). Solo se lee `sdkVersion`. */
+    @Serializable
+    private data class ServerSurveyFrontendDto(
+        val version: String? = null,
+        val sdkVersion: String? = null,
     )
 
     @Serializable
@@ -297,6 +305,7 @@ class DeepdotsPopups {
         SdkRuntime.metadata = options.metadata
         SdkRuntime.provideLang = options.provideLang
         SdkRuntime.renderChrome = options.renderChrome ?: true
+        SdkRuntime.debug = options.debug == true
         SdkRuntime.showProgressBar = options.showProgressBar
         SdkRuntime.userId = when (val userIdMeta = options.metadata?.get("userId")) {
             is String -> userIdMeta
@@ -1856,6 +1865,7 @@ class DeepdotsPopups {
                 productId = dto.productId ?: "",
                 style = mapStyle(parseServerStyle(source["style"] ?: dto.style)),
                 segments = mapSegments(dto.segments),
+                surveySdkVersion = dto.surveyFrontend?.sdkVersion,
             ),
         )
     }
