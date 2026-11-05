@@ -4,7 +4,31 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.3.0–3.4.1); bundled: 2.2.39. Compatibility table: docs.deepdots.com/popup-native/reference/survey-compatibility/.
+
 ### Added
+
+- **Popups follow the survey version assigned in the Admin (DD-70).** `GET /sdk/{publicKey}/popups`
+  sends `surveyFrontend.sdkVersion` per popup (latest or pinned). When it is one of
+  `SUPPORTED_SURVEY_SDK_VERSIONS` (2.2.38, 2.2.39; also `release/compatibility.json` →
+  `surveyRenderer.assignedVersions`) and differs from `MAGICFEEDBACK_VERSION`, the WebView first
+  loads that version's survey CSS (the popup-sdk's vendored `survey-css/<v>.css` at
+  `POPUP_SDK_CSS_VERSION`, in place of the usual stylesheet) and then that exact
+  `@magicfeedback/native` from jsDelivr, then unpkg. If the CSS or the JS fails, the usual CSS and
+  the vendored JS come back together. ⚠️ The per-version sheets exist from popup-sdk 1.19.0: with
+  `POPUP_SDK_CSS_VERSION` 1.18.0 every assignment falls back to the vendored version, so bump it
+  with the 1.19.0 release. An invalid version is always logged, the choice only with `debug`.
+  New `PopupDefinition.surveySdkVersion` (last parameter, default null).
+- **Release gate for the assignable survey SDK versions (DD-70).** Every version of
+  `SUPPORTED_SURVEY_SDK_VERSIONS` other than `MAGICFEEDBACK_VERSION` has a Maestro flow
+  `test-apps/maestro/flows/survey-sdk-<v>.yaml` and a DEV scenario `survey-sdk-<v>` (survey pinned
+  in the Admin to a MagicSurvey release built with that version); `scripts/release/rules.mjs`
+  requires both. The flow answers the survey with that version, and `run-maestro.sh` fails it
+  unless the device log has `[MagicFeedback] survey-sdk <v> assigned` (the SDK logs it, println /
+  NSLog, once
+  that version's CSS and JS are in). It runs in the full suite of the release PR (`local`), so the
+  0.7.10 release only passes once `POPUP_SDK_CSS_VERSION` points at a popup-sdk with `survey-css/`
+  (1.19.0).
 
 - **The popup's own texts in the 24 official EU languages (DD-67).** `DefaultLabels` (buttons,
   progress counter, follow-up badge, accessibility descriptions and notices) now translates

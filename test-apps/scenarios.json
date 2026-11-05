@@ -158,6 +158,12 @@
       "describe": "event e2e_style, dark theme, font family Georgia",
       "title": "E2E · Dark theme and custom font",
       "events": ["e2e_style"]
+    },
+    "survey-sdk-2.2.38": {
+      "publicKey": "3eKf99lStFXL1koy4HKMTTbCs3yO9k0r",
+      "popupOptionId": "1dc592a0-d904-11f1-a5b0-45f433fd27de",
+      "describe": "DD-70 release gate: time_on_page 3 s + segments.path /checkout, survey 'DD-70 gate · survey SDK 2.2.38' (3df976b0, copy of SDK Test App · Complex, es/en/pl) pinned in the Admin to MagicSurvey 3.4.0 = @magicfeedback/native 2.2.38. Do not unpin.",
+      "title": "DD-70 · survey SDK 2.2.38"
     }
   }
 }

@@ -20,7 +20,8 @@
     "package": "@magicfeedback/native",
     "version": "2.2.39",
     "delivery": { "android": "vendored", "ios": "cdn" },
-    "notes": "Android carga el bundle vendorizado de los assets del AAR. En iOS el XCFramework no lleva el bundle: el WebView lo carga del CDN (jsDelivr, luego unpkg) en la version exacta, salvo que la app lo incluya en su bundle."
+    "assignedVersions": ["2.2.38", "2.2.39"],
+    "notes": "Android carga el bundle vendorizado de los assets del AAR. En iOS el XCFramework no lleva el bundle: el WebView lo carga del CDN (jsDelivr, luego unpkg) en la version exacta, salvo que la app lo incluya en su bundle. DD-70: si la API asigna al survey otra version de assignedVersions, el WebView carga su hoja (survey-css del popup-sdk de popupSdkCss.version) y su JS del CDN; si algo falla, esta y su CSS."
   },
   "popupSdkCss": {
     "package": "@magicfeedback/popup-sdk",

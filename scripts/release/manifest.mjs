@@ -10,7 +10,7 @@
  * (ReleaseContractTest), que tambien pasa los fixtures por el parser real del SDK. Aqui se
  * validan los fixtures contra ese schema, para que el gate de la PR no necesite Gradle.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Ajv from 'ajv';
 import { checkManifestConsistency, gradleVersion, tomlVersions } from './rules.mjs';
@@ -33,6 +33,12 @@ export function kotlinConst(source, name) {
   return new RegExp(`const val ${name}\\s*:\\s*String\\s*=\\s*"([^"]+)"`).exec(source ?? '')?.[1] ?? null;
 }
 
+/** `internal val NAME: List<String> = listOf("a", "b")` de Kotlin → ["a", "b"]; null si no esta. */
+export function kotlinStringList(source, name) {
+  const m = new RegExp(`val ${name}\\s*:\\s*List<String>\\s*=\\s*listOf\\(([^)]*)\\)`).exec(source ?? '');
+  return m ? [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]) : null;
+}
+
 /** `.iOS(.v13)` → "13.0"; `.iOS("15.4")` → "15.4". */
 export function spmIosMinimum(source) {
   const m = /\.iOS\(\s*(?:\.v(\d+)(?:_(\d+))?|"(\d+(?:\.\d+)?)")\s*\)/.exec(source ?? '');
@@ -43,12 +49,23 @@ export function spmIosMinimum(source) {
 export function repoFacts({ root = '.' } = {}) {
   const at = (p) => readOrNull(join(root, p));
   const html = at('shared/src/commonMain/kotlin/com/deepdots/sdk/ui/MagicFeedbackHtml.kt');
+  const surveySdk = at('shared/src/commonMain/kotlin/com/deepdots/sdk/ui/SurveySdkVersion.kt');
   const toml = tomlVersions(at('gradle/libs.versions.toml'));
   const linker = /-mios-version-min=(\d+(?:\.\d+)?)/.exec(at('shared/build.gradle.kts') ?? '')?.[1] ?? null;
   return {
     version: gradleVersion(at('gradle.properties')),
     magicfeedbackVersion: kotlinConst(html, 'MAGICFEEDBACK_VERSION'),
     popupSdkCssVersion: kotlinConst(html, 'POPUP_SDK_CSS_VERSION'),
+    surveySdkVersions: kotlinStringList(surveySdk, 'SUPPORTED_SURVEY_SDK_VERSIONS'),
+    // DD-70: gate de cada versión asignable (test-apps/maestro/flows/survey-sdk-<v>.yaml + escenario).
+    surveySdkFlows: existsSync(join(root, 'test-apps/maestro/flows'))
+      ? readdirSync(join(root, 'test-apps/maestro/flows')).map((f) => /^survey-sdk-(.+)\.yaml$/.exec(f)?.[1]).filter(Boolean)
+      : null,
+    surveySdkScenarios: (() => {
+      const raw = at('test-apps/scenarios.json');
+      if (!raw) return null;
+      return Object.keys(JSON.parse(raw).scenarios ?? {}).map((k) => /^survey-sdk-(.+)$/.exec(k)?.[1]).filter(Boolean);
+    })(),
     minSdk: toml['android-minSdk'] ?? null,
     compileSdk: toml['android-compileSdk'] ?? null,
     targetSdk: toml['android-targetSdk'] ?? null,

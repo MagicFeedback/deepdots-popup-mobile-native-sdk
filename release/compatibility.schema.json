@@ -78,6 +78,13 @@
             "ios": { "enum": ["vendored", "cdn"] }
           }
         },
+        "assignedVersions": {
+          "description": "DD-70: versiones de @magicfeedback/native que el WebView acepta cuando la API asigna otra al survey (surveyFrontend.sdkVersion): las que tienen hoja en survey-css del popup-sdk de popupSdkCss.version. Fuera de la lista se usa version.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/semver" }
+        },
         "notes": { "type": "string" }
       }
     },
