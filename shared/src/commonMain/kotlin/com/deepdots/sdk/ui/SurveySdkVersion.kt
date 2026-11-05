@@ -46,10 +46,12 @@ internal data class SurveySdkChoice(
             (requested?.let { ", requested $it" } ?: "") + ")"
     }
 
-    /** Pidió una versión y no se puede usar: se avisa siempre, no solo con debug. */
+    /**
+     * Versión inválida: se avisa siempre, no solo con debug. Fuera de rango NO: es lo normal para
+     * surveys en versiones antiguas (prod latest 3.2.0 → 2.2.36) y saldría en cada apertura.
+     */
     val isProblem: Boolean
-        get() = source == SurveySdkSource.BUNDLED &&
-            (reason == BundledReason.INVALID || reason == BundledReason.OUT_OF_RANGE)
+        get() = source == SurveySdkSource.BUNDLED && reason == BundledReason.INVALID
 }
 
 private val SEMVER = Regex("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$")

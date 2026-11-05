@@ -66,7 +66,9 @@ class SurveySdkVersionParityTest {
             "survey SDK $MAGICFEEDBACK_VERSION (bundled: out_of_range, requested 2.3.1)",
             chooseSurveySdkVersion("2.3.1").describe(),
         )
-        assertTrue(chooseSurveySdkVersion("2.3.1").isProblem)
+        assertFalse(chooseSurveySdkVersion("2.3.1").isProblem)
+        assertFalse(chooseSurveySdkVersion("2.2.36").isProblem)
+        assertTrue(chooseSurveySdkVersion("latest").isProblem)
         assertFalse(chooseSurveySdkVersion(null).isProblem)
     }
 
