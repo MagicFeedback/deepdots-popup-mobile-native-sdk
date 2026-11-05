@@ -105,6 +105,9 @@ class SurveySdkVersionParityTest {
         assertTrue(h.contains("var LOCAL_SRC = 'file:///android_asset/magicfeedback/magicfeedback-sdk.browser.js';"))
         assertTrue(h.contains(surveySdkUrls(MAGICFEEDBACK_VERSION)[0]))
         assertTrue(h.contains("markSurveySdk('2.2.38 assigned')"))
+        // El aviso viaja por el puente: el SDK lo escribe en el log nativo (gate de release).
+        assertTrue(h.contains("emitJSON('survey_sdk', { version: v })"))
+        assertEquals("[MagicFeedback] survey-sdk 2.2.38 assigned", com.deepdots.sdk.ui.surveySdkLogLine("2.2.38 assigned"))
         assertTrue(h.contains("tryAssigned(0);"))
     }
 

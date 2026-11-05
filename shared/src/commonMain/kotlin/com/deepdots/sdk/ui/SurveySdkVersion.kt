@@ -89,3 +89,18 @@ internal fun surveySdkCssUrls(version: String): List<String> = listOf(
     "https://cdn.jsdelivr.net/npm/@magicfeedback/popup-sdk@$POPUP_SDK_CSS_VERSION/dist/assets/assets/survey-css/$version.css",
     "https://unpkg.com/@magicfeedback/popup-sdk@$POPUP_SDK_CSS_VERSION/dist/assets/assets/survey-css/$version.css",
 )
+
+/**
+ * Aviso del WebView con la versión que pinta el survey (`{version: "2.2.38 assigned"}`). El SDK lo
+ * escribe en el log nativo ([surveySdkLogLine]); el gate de release (test-apps/scripts/run-maestro.sh)
+ * lo busca ahí. En iOS los console.log del WebView no llegan al log del sistema; el println sí.
+ */
+internal const val SURVEY_SDK_EVENT: String = "survey_sdk"
+
+internal fun surveySdkLogLine(versionAndSource: String): String = "[MagicFeedback] survey-sdk $versionAndSource"
+
+/**
+ * Escribe [surveySdkLogLine] donde lo lee el gate de release: logcat en Android (println) y el log
+ * unificado del sistema en iOS (NSLog; el println de Kotlin/Native solo va a stdout).
+ */
+internal expect fun logSurveySdk(line: String)

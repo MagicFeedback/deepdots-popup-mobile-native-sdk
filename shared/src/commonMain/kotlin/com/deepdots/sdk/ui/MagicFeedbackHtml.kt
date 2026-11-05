@@ -456,8 +456,8 @@ ${PopupReveal.REVEAL_JS}
               var ASSIGNED_SRCS = $assignedSourcesJs;
               var ASSIGNED_CSS = $assignedCssJs;
               var ddAssignedStyle = null;
-              // La línea de consola la comprueba el gate de release (test-apps/scripts/run-maestro.sh).
-              function markSurveySdk(v){ try { document.documentElement.setAttribute('data-survey-sdk', v); console.log('[MagicFeedback] survey-sdk ' + v); } catch(_){} }
+              // El SDK escribe el aviso en el log nativo; lo comprueba el gate de release (run-maestro.sh).
+              function markSurveySdk(v){ try { document.documentElement.setAttribute('data-survey-sdk', v); emitJSON('$SURVEY_SDK_EVENT', { version: v }); } catch(_){} }
               function useBundled(reason){
                 if(ASSIGNED_SRCS.length){ console.warn('[MagicFeedback] survey SDK ${surveySdk.version} ' + reason + ', using bundled $MAGICFEEDBACK_VERSION'); }
                 var link = document.getElementById('dd-survey-css');

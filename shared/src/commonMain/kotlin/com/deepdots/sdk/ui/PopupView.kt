@@ -433,6 +433,8 @@ fun PopupView(
                                             if (pageDepth > 0) ViewState.InProgressNext else ViewState.InProgressFirst
                                         when (name) {
                                             PopupReveal.READY_EVENT -> reveal()
+                                            SURVEY_SDK_EVENT ->
+                                                payloadValue("version")?.let { logSurveySdk(surveySdkLogLine(it)) }
                                             PopupReveal.CONTENT_HEIGHT_EVENT ->
                                                 payloadNumber("height")?.let { h ->
                                                     surveyContentHeightDp = h.toInt()
