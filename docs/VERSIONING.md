@@ -148,3 +148,18 @@ version (`0.7.4` after `0.8.0`), is not marked as the latest GitHub Release and 
 into `main`. Host apps pin an exact version (Gradle, `exact:` in SPM), so nobody gets it
 without asking for it. The survey renderer and stylesheet are supported as shipped: to get a
 newer renderer, upgrade the SDK.
+
+## Survey SDK compatibility line (DD-70)
+
+The release notes of every version start with
+`Survey SDK supported: <supported> (survey frontend <versions>); bundled: <MAGICFEEDBACK_VERSION>.`
+`check.mjs release` (Release dry run and `release.yml`) computes it from
+`SUPPORTED_SURVEY_SDK_VERSIONS` (`SurveySdkVersion.kt`), `MAGICFEEDBACK_VERSION` and the public
+registry view `GET https://api.deepdots.com/sdk/survey-versions` (survey frontend versions in
+`stable` or `candidate` built with a supported survey SDK), and blocks the release if the line in
+the CHANGELOG section is missing or different, printing the expected one. To get it before the
+release PR: `node scripts/release/survey-compat.mjs`. `SURVEY_VERSIONS_URL` points it elsewhere
+(DEV); `SURVEY_COMPAT_OFFLINE=1` turns an unreachable registry into a warning (emergencies only).
+Same script as the web SDK (`scripts/release/survey-compat.mjs`), with the Kotlin sources. Keep the
+docs table (`popup-native/reference/survey-compatibility`) in line with it.
+
