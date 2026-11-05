@@ -36,19 +36,19 @@ tags: [smoke]
           visible: "Czy znalaz.*czego szuka.*"
           timeout: 30000
       - tapOn: "Tak, absolutnie"
-      - tapOn: "Send"
+      - tapOn: "Send|Wyślij"
       - extendedWaitUntil:
           visible: "Oce.* szczeg.*produktu"
           timeout: 15000
       - tapOn:
           text: "★"
           index: 3
-      - tapOn: "Send"
+      - tapOn: "Send|Wyślij"
       - extendedWaitUntil:
           visible: "Czy zrobi.*NORDLY.*"
           timeout: 15000
       - tapOn: "Tak"
-      - tapOn: "Send"
+      - tapOn: "Send|Wyślij"
       - extendedWaitUntil:
           visible: "Czy chcia.*powiedzie.*"
           timeout: 15000
@@ -56,3 +56,5 @@ tags: [smoke]
           file: ../subflows/close-popup.yaml
           env:
             TITLE: "DD-70 · survey SDK 2.2.38"
+            # The native chrome follows the survey language (Polish since DD-67).
+            CLOSE_LABEL: "Close popup|Zamknij okno"

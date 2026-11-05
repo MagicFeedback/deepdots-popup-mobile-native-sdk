@@ -22,10 +22,17 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   `test-apps/maestro/flows/survey-sdk-<v>.yaml` and a DEV scenario `survey-sdk-<v>` (survey pinned
   in the Admin to a MagicSurvey release built with that version); `scripts/release/rules.mjs`
   requires both. The flow answers the survey with that version, and `run-maestro.sh` fails it
-  unless the device log has `[MagicFeedback] survey-sdk <v> assigned` (the WebView logs it once
+  unless the device log has `[MagicFeedback] survey-sdk <v> assigned` (the SDK logs it, println /
+  NSLog, once
   that version's CSS and JS are in). It runs in the full suite of the release PR (`local`), so the
   0.7.10 release only passes once `POPUP_SDK_CSS_VERSION` points at a popup-sdk with `survey-css/`
   (1.19.0).
+
+- **The popup's own texts in the 24 official EU languages (DD-67).** `DefaultLabels` (buttons,
+  progress counter, follow-up badge, accessibility descriptions and notices) now translates
+  bg, cs, el, et, ga, hr, hu, it, lt, lv, mt, nl, pl, ro, sk and sl too, 28 locales in all. A
+  Polish survey used to show the native Back/Send buttons in English. Machine-translated, pending
+  native review (`DD-67-native-review.md`). Mirror of the Web SDK's `src/i18n/labels.ts`.
 
 - **The SDK identifies itself on the data it sends (DD-3, Collection dashboard).** Every popup
   response now carries `deepdots_channel=popup` and `deepdots_sdk=android@<version>` /
