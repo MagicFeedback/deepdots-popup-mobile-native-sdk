@@ -92,9 +92,13 @@ nunca llegó a Git y `dev` no compilaba; ver el commit `6f93dc2`).
   cuerpo y se descarta, y los lotes se serializan mientras no se conozca el `sessionId`. Entrega
   **at-least-once** → el backend debe deduplicar por
   `(deepdots_user_id, nombre_evento, timestamp)`.
-- **Pendiente:** persistir el buffer y reenviarlo en el arranque siguiente (en móvil el proceso
-  puede congelarse tras el background y el POST no completa; en Web esto lo cubre `sendBeacon`).
-  Y sigue el bloqueo de backend del `406 Contact not found` con `user_id` autogenerado.
+- **Cierre persistido (DD-55, 2026-11-05, paridad con Web 1.17):** con `storage`, `FeedbackSink`
+  guarda el lote de cierre ANTES de enviarlo (`PendingClose`, clave
+  `__deepdots_analytics_pending_close__:<integration>`) y `init()` llama a `resendPendingCloses()`:
+  lo reenvía a su `sessionId` con `completed:true`. Un cierre que falla ya NO se re-encola (salía
+  con la sesión siguiente). Techo 50, máximo 24 h. Los lotes normales siguen re-encolándose en
+  memoria (no se persisten). Tests: `FeedbackSinkPendingCloseTest`, `DeepdotsPopupsSessionCloseTest`.
+- Sigue el bloqueo de backend del `406 Contact not found` con `user_id` autogenerado.
 - **Registro de la sesión (`sdkSessionId`):** `getFeedbackSessionId()` y
   `InitOptions.onFeedbackSession` (`FeedbackSession(sessionId, Open|Closed)`) exponen el
   `sessionId` que devuelve `POST /sdk/feedback`, el que la API guarda como `sdkSessionId` en el

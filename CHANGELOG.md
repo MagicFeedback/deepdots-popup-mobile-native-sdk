@@ -36,6 +36,14 @@ Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. 
   Polish survey used to show the native Back/Send buttons in English. Machine-translated, pending
   native review (`DD-67-native-review.md`). Mirror of the Web SDK's `src/i18n/labels.ts`.
 
+- **The closing batch survives the app dying (DD-55, parity with Web 1.17).** With storage (the
+  default), the batch that closes a session (`completed:true`, `deepdots_session_end`) is stored
+  before it is sent. If iOS suspends or kills the app with that request in flight, or it fails
+  with a network error or 5xx, the next `init()` resends it to its own record (its `sessionId`).
+  A failed closing batch no longer goes back to the event buffer, where it left with the next
+  session and in its record. Delivered or rejected (4xx) batches are removed; up to 50 are kept,
+  for at most 24 h. The background task around the closing request (iOS) stays as before.
+
 - **The SDK identifies itself on the data it sends (DD-3, Collection dashboard).** Every popup
   response now carries `deepdots_channel=popup` and `deepdots_sdk=android@<version>` /
   `ios@<version>` in its survey metadata, also with tracking off, so a response that came through
