@@ -338,8 +338,12 @@ class DeepdotsPopups {
                 onSessionClosed = { id -> notifyFeedbackSession(id, FeedbackSessionStatus.Closed) },
                 // Espejo para el HTML del survey (correlación survey ↔ analytics).
                 onCachedSessionIdChanged = { id -> SdkRuntime.analyticsFeedbackSessionId = id },
+                // DD-55: el cierre se guarda antes de enviarse y se reenvía en el arranque siguiente.
+                storage = storage,
             )
         }
+        // Cierres de una ejecución anterior que no llegaron a salir (la app murió con el POST).
+        feedbackSink?.resendPendingCloses()
         val analyticsSink: com.deepdots.sdk.analytics.AnalyticsSink? = feedbackSink?.sink
         val device = com.deepdots.sdk.analytics.collectDeviceInfo()
         messageGuard.reset()

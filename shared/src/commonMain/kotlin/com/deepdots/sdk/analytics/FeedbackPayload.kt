@@ -1,6 +1,9 @@
 package com.deepdots.sdk.analytics
 
 import com.deepdots.sdk.service.RejectedFeedbackException
+import com.deepdots.sdk.storage.KeyValueStorage
+import com.deepdots.sdk.util.currentTimeMillis
+import com.deepdots.sdk.util.randomUuid
 import com.deepdots.sdk.util.SdkLock
 import com.deepdots.sdk.util.beginBackgroundTask
 import kotlinx.coroutines.CoroutineScope
@@ -8,6 +11,8 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -158,6 +163,25 @@ fun buildAnalyticsFeedbackBody(
     )
 }
 
+/** Un lote de cierre guardado antes de enviarse, a la espera de entregarse (DD-55). */
+@Serializable
+internal data class PendingClose(
+    val id: String,
+    /** Cuándo se construyó (ms epoch): los de más de [PENDING_CLOSE_MAX_AGE_MS] se descartan. */
+    val at: Long,
+    val body: AnalyticsFeedbackBody,
+)
+
+/** Techo de cierres pendientes; al superarlo se descartan los más antiguos. Igual que Web. */
+internal const val PENDING_CLOSE_MAX = 50
+/** Un cierre más viejo ya no se reenvía: el backend cerró ese registro hace mucho. Igual que Web. */
+internal const val PENDING_CLOSE_MAX_AGE_MS = 24L * 60 * 60 * 1000
+
+/** Clave de los cierres pendientes en el storage, una por integración. */
+internal fun pendingCloseKey(integration: String) = "__deepdots_analytics_pending_close__:$integration"
+
+private val pendingJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
 /**
  * Transporte real del canal de analytics (`POST /sdk/feedback`). Espejo de `createFeedbackSink`
  * (Web): cachea el `sessionId` del registro abierto y lo lleva en cada lote, y además:
@@ -167,7 +191,11 @@ fun buildAnalyticsFeedbackBody(
  *  - el lote de cierre (`sessionEnd`) lleva el `sessionId` del registro que cierra y lo olvida en
  *    el acto, para que el siguiente abra uno nuevo;
  *  - un fallo transitorio (red, 5xx, 408, 429) llama a `requeue` (el manager re-encola el lote);
- *    un 4xx ([RejectedFeedbackException]) se descarta.
+ *    un 4xx ([RejectedFeedbackException]) se descarta;
+ *  - con `storage`, el lote de CIERRE se guarda ANTES de enviarse (con su `sessionId` y
+ *    `completed:true`) y, si falla de forma transitoria o la app muere con él en vuelo, se
+ *    reenvía en el arranque siguiente ([resendPendingCloses]). Ese lote NO vuelve al buffer del
+ *    manager: allí salía con la sesión siguiente y en su registro. Paridad con Web 1.17 (DD-55).
  *
  * El estado se toca desde el hilo del host (`send`, llamado por el flush) y desde la corrutina de
  * envío (la respuesta), así que va bajo [SdkLock]. Los callbacks del host se invocan FUERA del
@@ -197,7 +225,11 @@ internal class FeedbackSink(
      * en iOS, una background task. Devuelve con qué terminarla. Seam de test.
      */
     private val keepAlive: (String) -> () -> Unit = ::beginBackgroundTask,
+    /** Persistencia de los cierres pendientes (DD-55). Sin ella, un cierre fallido se re-encola. */
+    private val storage: KeyValueStorage? = null,
+    private val now: () -> Long = ::currentTimeMillis,
 ) {
+    private val pendingKey = pendingCloseKey(keys.integration)
     private val lock = SdkLock()
     private var feedbackSessionId: String? = null
     /** Primer POST (aún sin sessionId) en vuelo: los lotes siguientes lo esperan. */
@@ -222,13 +254,24 @@ internal class FeedbackSink(
             val carried = feedbackSessionId
             val waitFor = if (!closing && !meta.final && feedbackSessionId == null) firstPostInFlight else null
             // LAZY: el Job se registra como barrera antes de arrancar, sin hueco para otro hilo.
+            // El cierre se construye YA (su sessionId es `carried`) y se guarda antes de enviarse:
+            // si la app muere con el POST en vuelo, el arranque siguiente lo reenvía.
+            val persisted = if (closing && storage != null) {
+                PendingClose(
+                    id = randomUuid(),
+                    at = now(),
+                    body = buildAnalyticsFeedbackBody(envelope, keys, carried, BuildBodyOptions(sessionEnd = true)),
+                ).also { addPendingClose(it) }
+            } else {
+                null
+            }
             val job = scope.launch(start = CoroutineStart.LAZY) {
                 runCatching { waitFor?.join() }
                 // La generación se fija junto al sessionId del body: identifica la sesión del lote.
                 val (sessionId, postGeneration) = lock.withLock {
                     (if (closing) carried else feedbackSessionId) to generation
                 }
-                deliver(envelope, closing, sessionId, postGeneration, requeue)
+                deliver(envelope, closing, sessionId, postGeneration, requeue, persisted)
             }
             if (closing) {
                 feedbackSessionId = null
@@ -255,18 +298,28 @@ internal class FeedbackSink(
         sessionId: String?,
         postGeneration: Int,
         requeue: () -> Unit,
+        persisted: PendingClose? = null,
     ) {
-        val body = buildAnalyticsFeedbackBody(envelope, keys, sessionId, BuildBodyOptions(sessionEnd = closing))
+        val body = persisted?.body
+            ?: buildAnalyticsFeedbackBody(envelope, keys, sessionId, BuildBodyOptions(sessionEnd = closing))
         val returned = try {
             post(body)
         } catch (_: RejectedFeedbackException) {
+            if (persisted != null) removePendingClose(persisted.id)
             return // 4xx: ya logueado por el servicio, el lote se descarta
         } catch (t: Throwable) {
+            if (persisted != null) {
+                // Guardado: sale en el arranque siguiente, a SU registro. Re-encolarlo lo
+                // mandaría con la sesión siguiente.
+                log("analytics · transient failure sending the closing batch, kept for the next launch: ${t.message}")
+                return
+            }
             // Fallo transitorio (red/5xx/408/429): devolver el lote al buffer.
             log("analytics · transient failure sending feedback, batch requeued: ${t.message}")
             requeue()
             return
         }
+        if (persisted != null) removePendingClose(persisted.id)
 
         // El POST de cierre devuelve el sessionId del registro que acabamos de cerrar: NO se
         // re-cachea (el lote siguiente volvería a apuntar al registro cerrado), pero se avisa por
@@ -296,6 +349,60 @@ internal class FeedbackSink(
             log("analytics · feedbackSessionId cached: $opened")
             notifyHost("onSessionId") { onSessionId?.invoke(opened) }
         }
+    }
+
+    /**
+     * Reenvía los cierres que una ejecución anterior guardó y no llegó a entregar (la app murió
+     * o iOS la suspendió con el POST en vuelo). Cada uno va a SU registro (su `sessionId`) con
+     * `completed:true`; la API descarta los eventos repetidos al ensamblar. Se quitan al
+     * entregarse o si la API los rechaza (4xx); si vuelven a fallar, siguen para el próximo
+     * arranque. Lo llama `init()`.
+     */
+    fun resendPendingCloses() {
+        val toSend = lock.withLock {
+            val list = loadPendingCloses()
+            val fresh = list.filter { now() - it.at <= PENDING_CLOSE_MAX_AGE_MS }
+            if (fresh.size != list.size) savePendingCloses(fresh)
+            fresh
+        }
+        for (pending in toSend) {
+            scope.launch {
+                val closedId = try {
+                    post(pending.body) ?: pending.body.sessionId
+                } catch (_: RejectedFeedbackException) {
+                    removePendingClose(pending.id)
+                    return@launch
+                } catch (t: Throwable) {
+                    log("analytics · pending closing batch still failing, kept: ${t.message}")
+                    return@launch
+                }
+                removePendingClose(pending.id)
+                log("analytics · pending closing batch delivered: $closedId")
+                if (closedId != null) notifyHost("onSessionClosed") { onSessionClosed?.invoke(closedId) }
+            }
+        }
+    }
+
+    /** Lista guardada; tolerante a un storage vacío o corrupto. Llamar con el lock. */
+    private fun loadPendingCloses(): List<PendingClose> {
+        val raw = storage?.getString(pendingKey) ?: return emptyList()
+        return runCatching { pendingJson.decodeFromString<List<PendingClose>>(raw) }.getOrDefault(emptyList())
+    }
+
+    /** Llamar con el lock. */
+    private fun savePendingCloses(list: List<PendingClose>) {
+        val s = storage ?: return
+        runCatching {
+            if (list.isEmpty()) s.remove(pendingKey) else s.putString(pendingKey, pendingJson.encodeToString(list))
+        }
+    }
+
+    private fun addPendingClose(pending: PendingClose) {
+        lock.withLock { savePendingCloses((loadPendingCloses() + pending).takeLast(PENDING_CLOSE_MAX)) }
+    }
+
+    private fun removePendingClose(id: String) {
+        lock.withLock { savePendingCloses(loadPendingCloses().filterNot { it.id == id }) }
     }
 
     private inline fun notifyHost(name: String, block: () -> Unit) {
