@@ -1,0 +1,30 @@
+# event + "Delay (seconds)": leaving the screen while the popup waits cancels it (setPath).
+# DEV popup: rate_product with delaySeconds 8.
+# KNOWN ISSUE up to 0.7.9: the delay was ignored, so the popup showed at once on the product screen.
+# known-issue-until: 0.7.9
+appId: com.deepdots.testapp
+tags: [known-issue]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: rate-delay
+- tapOn:
+    id: tab-shop
+- tapOn:
+    id: product-fjell-jacket
+- tapOn:
+    id: rate-product
+- tapOn:
+    id: star-5
+- tapOn:
+    id: submit-rating
+- tapOn:
+    id: tab-home
+# Well past the 8 s: the popup never shows.
+- extendedWaitUntil:
+    visible: "Thanks for rating the product"
+    timeout: 14000
+    optional: true
+- assertNotVisible: "Thanks for rating the product"
+- runFlow: ../subflows/host-usable.yaml

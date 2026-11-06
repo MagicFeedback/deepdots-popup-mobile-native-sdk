@@ -80,6 +80,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 private const val ANALYTICS_MAX_BATCH_SIZE = 20
 private const val ANALYTICS_FLUSH_INTERVAL_MS = 30_000L
@@ -231,6 +232,8 @@ class DeepdotsPopups {
     private val queueLock = SdkLock()
     private val scrollTriggeredPopupIds = mutableSetOf<String>()
     private val deferredExitJobs = mutableMapOf<String, Job>()
+    /** Popups esperando su `delaySeconds` (uno por popup), bajo `queueLock`. Solo en memoria. */
+    private val delayedPopupJobs = mutableMapOf<String, Job>()
     private var popupsService: PopupsService = DefaultPopupsService()
     /**
      * `true` mientras el `GET /sdk/{publicKey}/popups` de `init()` está en vuelo. En esa ventana
@@ -699,6 +702,7 @@ class DeepdotsPopups {
      * `inactive` es transitorio (llamada entrante, app switcher) y partiría la sesión en dos.
      */
     fun onBackground() {
+        cancelDelayedPopups("app to background")
         closeSession(SessionEndReason.BACKGROUND)
         engagement?.pause()
     }
@@ -954,7 +958,8 @@ class DeepdotsPopups {
             log("No eligible event popup", normalized)
             return
         }
-        enqueuePopup(matched.id)
+        val trigger = matched.triggers.firstOrNull { it is Trigger.Event && it.name.trim() == normalized }
+        enqueueAfterDelay(matched, trigger?.delaySeconds ?: 0.0)
     }
 
     fun triggerClick(targetId: String) {
@@ -979,7 +984,8 @@ class DeepdotsPopups {
             log("No eligible click popup", normalized)
             return
         }
-        enqueuePopup(matched.id)
+        val trigger = matched.triggers.firstOrNull { it is Trigger.Click && it.targetId.trim() == normalized }
+        enqueueAfterDelay(matched, trigger?.delaySeconds ?: 0.0)
     }
 
     /**
@@ -1007,6 +1013,8 @@ class DeepdotsPopups {
         if (normalizedPath == currentPath) return
 
         val previousPath = currentPath
+        // Un popup esperando su retraso pertenece a la pantalla en la que saltó el trigger.
+        cancelDelayedPopups("route changed")
         if (!previousPath.isNullOrBlank()) {
             queueExitPopups(previousPath)
         }
@@ -1046,7 +1054,7 @@ class DeepdotsPopups {
                     if (scrollTriggeredPopupIds.contains(popup.id)) return@forEach
                     if (pct >= trigger.percentage && shouldShow(popup)) {
                         scrollTriggeredPopupIds += popup.id
-                        enqueuePopup(popup.id)
+                        enqueueAfterDelay(popup, trigger.delaySeconds)
                     }
                 }
             }
@@ -1107,6 +1115,8 @@ class DeepdotsPopups {
 
     internal fun debugQueuedPopupIds(): List<String> = queueLock.withLock { popupQueue.toList() }
 
+    internal fun debugDelayedPopupIds(): List<String> = queueLock.withLock { delayedPopupJobs.keys.toList() }
+
     /** Solo test: disparos guardados a la espera de que lleguen las definiciones. */
     internal fun debugPendingTriggerCount(): Int = pendingTriggersLock.withLock { pendingTriggers.size }
 
@@ -1158,7 +1168,7 @@ class DeepdotsPopups {
         val job = scope.launch {
             delay(delayMs)
             if (shouldShow(popup)) {
-                enqueuePopup(popup.id)
+                enqueueAfterDelay(popup, trigger.delaySeconds)
             }
         }
         triggerJobs += job
@@ -1275,13 +1285,70 @@ class DeepdotsPopups {
 
         return rawTriggers.mapNotNull { trigger ->
             when (trigger) {
-                is Trigger.TimeOnPage -> Trigger.TimeOnPage(seconds = trigger.seconds.coerceAtLeast(0.0))
-                is Trigger.Scroll -> Trigger.Scroll(percentage = trigger.percentage.coerceIn(0, 100))
-                is Trigger.Exit -> Trigger.Exit(delaySeconds = trigger.delaySeconds.coerceAtLeast(0.0))
-                is Trigger.Event -> trigger.name.trim().takeIf { it.isNotEmpty() }?.let(Trigger::Event)
-                is Trigger.Click -> trigger.targetId.trim().takeIf { it.isNotEmpty() }?.let(Trigger::Click)
+                is Trigger.TimeOnPage -> Trigger.TimeOnPage(trigger.seconds.coerceAtLeast(0.0), safeDelay(trigger.delaySeconds))
+                is Trigger.Scroll -> Trigger.Scroll(trigger.percentage.coerceIn(0, 100), safeDelay(trigger.delaySeconds))
+                is Trigger.Exit -> Trigger.Exit(delaySeconds = safeDelay(trigger.delaySeconds))
+                is Trigger.Event -> trigger.name.trim().takeIf { it.isNotEmpty() }?.let { Trigger.Event(it, safeDelay(trigger.delaySeconds)) }
+                is Trigger.Click -> trigger.targetId.trim().takeIf { it.isNotEmpty() }?.let { Trigger.Click(it, safeDelay(trigger.delaySeconds)) }
             }
         }
+    }
+
+    /**
+     * Encola `popup` ya, o tras el "Delay (seconds)" del Admin (paridad con Web `showAfterDelay`).
+     * Mientras espera: el mismo popup no se programa dos veces (manda el primer vencimiento), y
+     * cambiar de ruta (`setPath`) o pasar a background lo cancela. Al vencer se vuelve a evaluar
+     * todo (segmentos, idioma, cooldowns); si el popup se mostró entretanto, se descarta; y si hay
+     * otro abierto, `showDefinition` lo salta sin efectos, igual que hoy.
+     */
+    private fun enqueueAfterDelay(popup: PopupDefinition, delaySeconds: Double) {
+        val delayMs = (safeDelay(delaySeconds) * 1000.0).roundToLong()
+        if (delayMs <= 0L) {
+            enqueuePopup(popup.id)
+            return
+        }
+        val firedAt = currentTimeMillis()
+        val path = currentPath
+        val scheduled = queueLock.withLock {
+            if (delayedPopupJobs[popup.id]?.isActive == true) {
+                false
+            } else {
+                delayedPopupJobs[popup.id] = scope.launch {
+                    delay(delayMs)
+                    val stillPending = queueLock.withLock { delayedPopupJobs.remove(popup.id) != null }
+                    if (stillPending) showDelayedPopup(popup.id, firedAt, path)
+                }
+                true
+            }
+        }
+        log(if (scheduled) "Popup delayed ${delayMs}ms" else "Popup already waiting for its delay", popup.id)
+    }
+
+    private fun showDelayedPopup(popupId: String, firedAt: Long, path: String?) {
+        val popup = popupDefinitions[popupId] ?: return
+        if (currentPath != path) {
+            log("Delayed popup dropped: route changed", popupId)
+            return
+        }
+        if (!shouldShow(popup)) {
+            log("Delayed popup dropped by conditions at due time", popupId)
+            return
+        }
+        if ((getLastShown(popupId) ?: 0L) >= firedAt) {
+            log("Delayed popup dropped: already shown while waiting", popupId)
+            return
+        }
+        enqueuePopup(popupId)
+    }
+
+    private fun cancelDelayedPopups(reason: String) {
+        val cancelled = queueLock.withLock {
+            val ids = delayedPopupJobs.keys.toList()
+            delayedPopupJobs.values.forEach { it.cancel() }
+            delayedPopupJobs.clear()
+            ids
+        }
+        cancelled.forEach { log("Delayed popup cancelled ($reason)", it) }
     }
 
     private fun enqueuePopup(popupId: String) {
@@ -1885,15 +1952,22 @@ class DeepdotsPopups {
     private fun mapTrigger(element: JsonElement): Trigger? {
         val obj = element as? JsonObject ?: return null
         val type = obj["type"]?.jsonPrimitive?.content?.trim()?.lowercase() ?: return null
+        // "Delay (seconds)" del Admin. Opcional: ausente o inválido = 0, nunca invalida el popup.
+        val delay = safeDelay(parseDouble(obj["delaySeconds"]))
         return when (type) {
-            "time_on_page" -> parseDouble(obj["value"])?.let { Trigger.TimeOnPage(it.coerceAtLeast(0.0)) }
-            "scroll" -> parseDouble(obj["value"])?.let { Trigger.Scroll(it.roundToInt().coerceIn(0, 100)) }
-            "exit" -> Trigger.Exit(parseDouble(obj["value"])?.coerceAtLeast(0.0) ?: 0.0)
-            "event" -> parseString(obj["value"])?.trim()?.takeIf { it.isNotEmpty() }?.let(Trigger::Event)
-            "click" -> parseString(obj["value"])?.trim()?.takeIf { it.isNotEmpty() }?.let(Trigger::Click)
+            "time_on_page" -> parseDouble(obj["value"])?.let { Trigger.TimeOnPage(it.coerceAtLeast(0.0), delay) }
+            "scroll" -> parseDouble(obj["value"])?.let { Trigger.Scroll(it.roundToInt().coerceIn(0, 100), delay) }
+            // El Admin guarda el retraso del exit en `delaySeconds` (y `value` = 0); los popups de
+            // antes de ese campo lo llevaban en `value`.
+            "exit" -> Trigger.Exit(if (delay > 0.0) delay else safeDelay(parseDouble(obj["value"])))
+            "event" -> parseString(obj["value"])?.trim()?.takeIf { it.isNotEmpty() }?.let { Trigger.Event(it, delay) }
+            "click" -> parseString(obj["value"])?.trim()?.takeIf { it.isNotEmpty() }?.let { Trigger.Click(it, delay) }
             else -> null
         }
     }
+
+    private fun safeDelay(seconds: Double?): Double =
+        seconds?.takeIf { it.isFinite() && it > 0.0 } ?: 0.0
 
     private fun parseCooldown(element: JsonElement?): List<CooldownCondition> {
         val array = element as? JsonArray ?: return emptyList()

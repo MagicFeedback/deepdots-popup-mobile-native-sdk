@@ -84,6 +84,22 @@ Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. 
   start. The request is now retried twice (after 2 s and 5 s) and the pending taps and events
   are kept until the last attempt. Found while investigating the release validation on Android 8.
 
+- **The "Delay (seconds)" set in the Admin is honoured for every trigger type** (reported by
+  MOM: an event trigger with a 60 s delay showed the popup at once). `event`, `click`, `scroll`
+  and `time_on_page` ignored `trigger.delaySeconds`, and `exit` read its delay from `value`, which
+  the Admin saves as 0 (the delay lives in `delaySeconds`), so exit popups made in the Admin never
+  waited. Now the delay counts from the moment the trigger fires (for `time_on_page`, after the
+  time on page; for `exit`, on the next screen as before). Exit popups made before `delaySeconds`
+  existed, with the delay in `value`, keep working. While a popup waits: firing the same trigger
+  again neither restarts nor duplicates it; `setPath()` to another screen or `onBackground()`
+  cancels it; and when it is due everything is checked again (segments, language, cooldowns), it
+  is dropped if the same popup was shown in the meantime, and if another popup is open it is
+  skipped without effects, as before. 0 or no delay = at once, as before. Pending delays live in
+  memory only. Parity with web 1.19.0. `Trigger.TimeOnPage`, `Scroll`, `Event` and `Click` gain a
+  `delaySeconds` property; their old constructors stay (also from Swift). Tests:
+  `TriggerDelayTest`, `TriggerDelayApiPayloadTest`; Maestro `rate-delay` and `rate-delay-cancel` (DEV scenario `rate-delay`,
+  event + 8 s).
+
 ## 0.7.9 - 2026-11-04
 
 ### Fixed

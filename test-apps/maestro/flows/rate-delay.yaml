@@ -1,0 +1,32 @@
+# event + "Delay (seconds)" in the Admin (reported by MOM: event RATING + 60 s showed at once).
+# DEV popup: rate_product with delaySeconds 8. The popup must NOT be there right after
+# "Submit rating" and must show ~8 s later on the same screen.
+# KNOWN ISSUE up to 0.7.9: the SDK ignored trigger.delaySeconds and showed it at once (fixed in 0.7.10).
+# known-issue-until: 0.7.9
+appId: com.deepdots.testapp
+tags: [known-issue]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      SCENARIO: rate-delay
+- tapOn:
+    id: tab-shop
+- tapOn:
+    id: product-fjell-jacket
+- tapOn:
+    id: rate-product
+- tapOn:
+    id: star-5
+- tapOn:
+    id: submit-rating
+# ~4 s of the 8 s delay: still nothing (with the bug the popup is up within ~1-2 s).
+- extendedWaitUntil:
+    visible: "Thanks for rating the product"
+    timeout: 4000
+    optional: true
+- assertNotVisible: "Thanks for rating the product"
+- extendedWaitUntil:
+    visible: "Thanks for rating the product"
+    timeout: 15000
+- takeScreenshot: rate-delay
