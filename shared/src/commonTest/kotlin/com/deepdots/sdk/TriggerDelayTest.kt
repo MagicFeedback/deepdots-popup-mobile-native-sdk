@@ -152,14 +152,17 @@ class TriggerDelayTest {
 
     @Test
     fun firing_again_while_waiting_neither_restarts_nor_duplicates() = runBlocking {
-        val sdk = createSdk(listOf(popup("p-rating", listOf(Trigger.Event("RATING", 0.4)))))
+        // 1 s de espera y el segundo disparo a los 600 ms: si se reiniciara, saldria hacia los
+        // 1600 ms. El limite de 1400 ms deja 400 ms de margen a un runner lento (CI de macOS).
+        val sdk = createSdk(listOf(popup("p-rating", listOf(Trigger.Event("RATING", 1.0)))))
         val start = currentTimeMillis()
         sdk.triggerEvent("RATING")
-        delay(200)
+        delay(600)
         sdk.triggerEvent("RATING")
-        assertTrue(waitUntil { sdk.debugQueuedPopupIds().isNotEmpty() })
-        assertTrue(currentTimeMillis() - start < 550, "first due time kept")
-        delay(400)
+        assertTrue(waitUntil(timeoutMs = 3_000) { sdk.debugQueuedPopupIds().isNotEmpty() })
+        val elapsed = currentTimeMillis() - start
+        assertTrue(elapsed < 1_400, "first due time kept (shown after $elapsed ms)")
+        delay(1_000)
         assertEquals(listOf("p-rating"), sdk.debugQueuedPopupIds())
     }
 
