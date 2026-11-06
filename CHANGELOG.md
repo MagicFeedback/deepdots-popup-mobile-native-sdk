@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.10 - 2026-11-06
+
 Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. Compatibility table: docs.deepdots.com/popup-native/reference/survey-compatibility/.
 
 ### Added
@@ -15,9 +17,8 @@ Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. 
   loads that version's survey CSS (the popup-sdk's vendored `survey-css/<v>.css` at
   `POPUP_SDK_CSS_VERSION`, in place of the usual stylesheet) and then that exact
   `@magicfeedback/native` from jsDelivr, then unpkg. If the CSS or the JS fails, the usual CSS and
-  the vendored JS come back together. ⚠️ The per-version sheets exist from popup-sdk 1.19.0: with
-  `POPUP_SDK_CSS_VERSION` 1.18.0 every assignment falls back to the vendored version, so bump it
-  with the 1.19.0 release. An invalid version is always logged, the choice only with `debug`.
+  the vendored JS come back together (the per-version sheets exist from popup-sdk 1.19.0). An
+  invalid version is always logged, the choice only with `debug`.
   New `PopupDefinition.surveySdkVersion` (last parameter, default null).
 - **Release gate for the assignable survey SDK versions (DD-70).** Every version of
   `SUPPORTED_SURVEY_SDK_VERSIONS` other than `MAGICFEEDBACK_VERSION` has a Maestro flow
@@ -26,9 +27,7 @@ Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. 
   requires both. The flow answers the survey with that version, and `run-maestro.sh` fails it
   unless the device log has `[MagicFeedback] survey-sdk <v> assigned` (the SDK logs it, println /
   NSLog, once
-  that version's CSS and JS are in). It runs in the full suite of the release PR (`local`), so the
-  0.7.10 release only passes once `POPUP_SDK_CSS_VERSION` points at a popup-sdk with `survey-css/`
-  (1.19.0).
+  that version's CSS and JS are in). It runs in the full suite of the release PR (`local`).
 
 - **The popup's own texts in the 24 official EU languages (DD-67).** `DefaultLabels` (buttons,
   progress counter, follow-up badge, accessibility descriptions and notices) now translates
@@ -62,9 +61,8 @@ Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. 
   from an empty required question (`SEND_FAILED`, 2.2.37), and it gets the survey changes since
   2.2.31: the 24 official EU languages, the email `Option/Alt + 2` shortcut, typed submit
   errors, rating and choice layout options. The survey stylesheet now comes from popup-sdk
-  1.18.0 (`POPUP_SDK_CSS_VERSION`, from 1.10.0), the copy of the 2.2.37 CSS; the email @ button
-  (`assets.atButton`, 2.2.38) shows unstyled until a popup-sdk with the 2.2.39 CSS is published
-  and pinned here.
+  1.19.0 (`POPUP_SDK_CSS_VERSION`, from 1.10.0), the copy of the 2.2.39 CSS, so the email @ button
+  (`assets.atButton`) is styled too.
 
 ### Fixed
 
@@ -80,10 +78,9 @@ Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. 
   error containing "No response" read as "required question" (also a send the API did not
   save) and every other error showed the generic message. The popup now reads the code, like the
   Web SDK: `REQUIRED` shows the required message, the new `INVALID_EMAIL` (2.2.39) shows "Please
-  enter a valid email address." (translated in the 12 languages), and the rest show the submit
-  error. Without a code it keeps matching the text. It applies once the pinned surveys SDK
-  (`MAGICFEEDBACK_VERSION`, 2.2.31 today) is raised to a version that sends codes. Asked by
-  Lemvigh-Müller: an email with a typo showed "Please answer the question".
+  enter a valid email address." (translated in all 28 locales), and the rest show the submit
+  error. Without a code it keeps matching the text. Asked by Lemvigh-Müller: an email with a typo
+  showed "Please answer the question".
 - **A failed popups download is retried instead of losing the popup for the session.** At
   start-up the SDK downloads the popups of the public key; taps and events that arrive before
   are kept and replayed. If that request failed once (for example a brief loss of signal at
