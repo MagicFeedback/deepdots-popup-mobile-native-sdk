@@ -73,7 +73,9 @@
       "flows": [
         "rate-product",
         "help-click",
-        "duplicate-trigger"
+        "duplicate-trigger",
+        "rate-delay",
+        "rate-delay-cancel"
       ]
     },
     {

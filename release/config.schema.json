@@ -1035,10 +1035,15 @@
         "targetId": {
           "type": "string",
           "x-kotlin": "String"
+        },
+        "delaySeconds": {
+          "type": "number",
+          "x-kotlin": "Double"
         }
       },
       "required": [
-        "targetId"
+        "targetId",
+        "delaySeconds"
       ]
     },
     "models.Trigger.Event": {
@@ -1048,10 +1053,15 @@
         "name": {
           "type": "string",
           "x-kotlin": "String"
+        },
+        "delaySeconds": {
+          "type": "number",
+          "x-kotlin": "Double"
         }
       },
       "required": [
-        "name"
+        "name",
+        "delaySeconds"
       ]
     },
     "models.Trigger.Exit": {
@@ -1072,10 +1082,15 @@
         "percentage": {
           "type": "integer",
           "x-kotlin": "Int"
+        },
+        "delaySeconds": {
+          "type": "number",
+          "x-kotlin": "Double"
         }
       },
       "required": [
-        "percentage"
+        "percentage",
+        "delaySeconds"
       ]
     },
     "models.Trigger.TimeOnPage": {
@@ -1085,10 +1100,15 @@
         "seconds": {
           "type": "number",
           "x-kotlin": "Double"
+        },
+        "delaySeconds": {
+          "type": "number",
+          "x-kotlin": "Double"
         }
       },
       "required": [
-        "seconds"
+        "seconds",
+        "delaySeconds"
       ]
     },
     "models.TriggerConditionStatus": {
