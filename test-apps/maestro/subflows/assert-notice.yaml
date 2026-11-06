@@ -1,0 +1,15 @@
+# Asserts the popup's error notice (required answer, invalid email). env: NEW = the text from
+# 0.7.10 (and `local`), where the notice follows the survey's language like the rest of the chrome;
+# OLD = the text up to 0.7.9, where it stayed in the language the host gave at start-up (DD-67 fix).
+appId: com.deepdots.testapp
+---
+- runFlow:
+    when:
+      true: ${SDK_VERSION == 'local' || (function (v) { var p = v.split('.').map(Number); return p[0] > 0 || p[1] > 7 || (p[1] == 7 && p[2] >= 10); })(SDK_VERSION)}
+    commands:
+      - assertVisible: ${NEW}
+- runFlow:
+    when:
+      true: ${!(SDK_VERSION == 'local' || (function (v) { var p = v.split('.').map(Number); return p[0] > 0 || p[1] > 7 || (p[1] == 7 && p[2] >= 10); })(SDK_VERSION))}
+    commands:
+      - assertVisible: ${OLD}
