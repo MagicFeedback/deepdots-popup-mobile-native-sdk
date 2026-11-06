@@ -42,6 +42,11 @@ actual fun SurveyView(
     surveySdkVersion: String?,
 ) {
     var loading by remember { mutableStateOf(true) }
+    // El WebView y su puente se crean una sola vez (factory), pero PopupView pasa un `onEvent`
+    // nuevo en cada recomposición: el que ve el idioma del survey tras el `loaded`. Sin esto el
+    // puente se quedaba con el primero y los avisos (respuesta obligatoria, email inválido, error
+    // al enviar) salían en el idioma del host aunque el resto del chrome siguiera al survey.
+    val currentOnEvent by rememberUpdatedState(onEvent)
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -85,7 +90,7 @@ actual fun SurveyView(
                                 payload.put("message", message)
                                 json.put("payload", payload)
                             }
-                            onEvent(json.toString())
+                            currentOnEvent(json.toString())
                         }
                         // NOTE: do NOT match on "required" alone — magicfeedback's debug logs
                         // emit question metadata like "required: true" which triggers a false
@@ -145,7 +150,7 @@ actual fun SurveyView(
                         } else if (name == "before_submit") {
                             loading = true
                         }
-                        onEvent(event)
+                        currentOnEvent(event)
                     }
                 }, "DeepdotsBridge")
                 val html = buildMagicFeedbackHtml(

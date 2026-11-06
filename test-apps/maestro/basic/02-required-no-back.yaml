@@ -8,7 +8,11 @@ tags: [basic, known-issue]
 ---
 - runFlow: subflows/launch.yaml
 - runFlow: ../lemu/subflows/send.yaml
-- assertVisible: "Please answer the required question to continue."
+- runFlow:
+    file: ../subflows/assert-notice.yaml
+    env:
+      NEW: "Besvar venligst det obligatoriske spørgsmål for at fortsætte\\."
+      OLD: "Please answer the required question to continue\\."
 - assertVisible: "Hvordan vil du vurdere.*"
 - assertNotVisible: "Tilbage"
 - runFlow:

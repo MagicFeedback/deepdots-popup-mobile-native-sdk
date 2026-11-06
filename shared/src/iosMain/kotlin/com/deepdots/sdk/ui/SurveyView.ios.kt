@@ -2,6 +2,7 @@ package com.deepdots.sdk.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -51,6 +52,11 @@ actual fun SurveyView(
 ) {
     // Keep a reference to WKWebView for controller actions
     var webViewRef by remember { mutableStateOf<WKWebView?>(null) }
+    // El WKWebView y su handler se crean una sola vez (factory), pero PopupView pasa un `onEvent`
+    // nuevo en cada recomposición: el que ve el idioma del survey tras el `loaded`. Sin esto el
+    // handler se quedaba con el primero y los avisos (respuesta obligatoria, email inválido, error
+    // al enviar) salían en el idioma del host aunque el resto del chrome siguiera al survey.
+    val currentOnEvent by rememberUpdatedState(onEvent)
 
     // Expose controller bound to current WKWebView
     onController(object : SurveyController {
@@ -66,7 +72,7 @@ actual fun SurveyView(
                 // Build WKWebView and wire bridge
                 val config = WKWebViewConfiguration()
                 val controller = WKUserContentController()
-                val handler = DeepdotsMessageHandler(onEvent)
+                val handler = DeepdotsMessageHandler { currentOnEvent(it) }
                 controller.addScriptMessageHandler(handler, name = "DeepdotsBridge")
                 // Inject a script to forward console messages to our bridge
                 val consoleForwardScript = """

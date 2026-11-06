@@ -19,7 +19,11 @@ tags: [lemu]
       NEXT: "Er der andet, vi kan gøre for at forbedre din oplevelse?"
 # Required yes/no without an answer: refused, and Back IS there (there is a previous page).
 - runFlow: subflows/send.yaml
-- assertVisible: "Please answer the required question to continue."
+- runFlow:
+    file: ../subflows/assert-notice.yaml
+    env:
+      NEW: "Besvar venligst det obligatoriske spørgsmål for at fortsætte\\."
+      OLD: "Please answer the required question to continue\\."
 - assertVisible: "Tilbage"
 - runFlow:
     file: subflows/tap.yaml
@@ -46,9 +50,14 @@ tags: [lemu]
 - inputText: "not-an-email"
 - runFlow: subflows/send.yaml
 - assertVisible: "Indtast venligst din e-mailadresse."
-# An email with a typo: "Please enter a valid email address." from surveys SDK 2.2.39 on
-# (INVALID_EMAIL); the published 0.7.x on 2.2.31 still say "required question".
-- assertVisible: "Please (enter a valid email address|answer the required question to continue)\\."
+# An email with a typo: the invalid-email notice in Danish from 0.7.10 (it follows the survey's
+# language); up to 0.7.9 it was English, and the published 0.7.x on surveys SDK 2.2.31 still say
+# "required question" (INVALID_EMAIL comes with 2.2.39).
+- runFlow:
+    file: ../subflows/assert-notice.yaml
+    env:
+      NEW: "Indtast venligst en gyldig e-mailadresse\\."
+      OLD: "Please (enter a valid email address|answer the required question to continue)\\."
 - tapOn: "not-an-email"
 - eraseText: 20
 - inputText: "qa+lemu-test@deepdots.com"

@@ -68,6 +68,13 @@ Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. 
 
 ### Fixed
 
+- **Error notices in the survey's language (DD-67).** The required-answer, invalid-email and
+  submit-error notices stayed in the language the host gave at start-up (`provideLang`, English
+  without it), while the buttons and the close label already followed the survey: a Danish survey
+  showed "Luk pop op" next to "Please answer the required question to continue.". The WebView
+  bridge kept the first event handler, from before the survey's language arrived; it now always
+  calls the current one (`rememberUpdatedState`, Android and iOS).
+
 - **The popup understands the survey's error codes.** The surveys SDK (`@magicfeedback/native`
   2.2.37+) sends a `code` with each submit error; the popup only looked at the text, so any
   error containing "No response" read as "required question" (also a send the API did not
