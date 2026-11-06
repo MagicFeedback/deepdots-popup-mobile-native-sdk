@@ -27,6 +27,13 @@
       "title": "Tell us what you think of this product",
       "events": ["rate_product"]
     },
+    "rate-delay": {
+      "publicKey": "bsNoFwaMnL6Vf4gV33zG4VAJzZMHgg9o",
+      "popupOptionId": "4d4d7670-d9bb-11f1-97c9-9dba6957ad78",
+      "describe": "event rate_product + Delay (seconds) 8 in the Admin (trigger.delaySeconds): shows 8 s after the event, cancelled by navigating away; simple survey",
+      "title": "Thanks for rating the product",
+      "events": ["rate_product"]
+    },
     "help-click": {
       "publicKey": "ll3lGXsyQYiPgeZfaN7HDgIkQBoLj0x2",
       "popupOptionId": "55443dd0-d2e7-11f1-ab43-833369eb683b",

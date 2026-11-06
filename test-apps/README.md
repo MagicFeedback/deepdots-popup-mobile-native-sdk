@@ -87,6 +87,7 @@ Surveys are the MF-3243 ones: «SDK Test App · Simple» `5581b5a0-…` and «Co
 | `checkout-time` | `time_on_page` 3 s | `path: /checkout` | simple |
 | `exit-checkout` | `exit` 2 s | leaving `/checkout` | simple |
 | `rate-product` | `event` `rate_product` (bottom sheet) | — | complex |
+| `rate-delay` | `event` `rate_product` + Delay 8 s (`delaySeconds`) | — (navigating away cancels it) | simple |
 | `help-click` | `click` `help-button` | — | simple |
 | `redisplay` | `time_on_page` 2 s | `path: /account`, cooldown `SHOWED` 1 day | simple |
 | `not-on-cart` | `time_on_page` 2 s | `excludedPaths: /cart, /checkout` | simple |
