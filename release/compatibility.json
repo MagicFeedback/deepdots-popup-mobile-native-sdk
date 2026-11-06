@@ -25,7 +25,7 @@
   },
   "popupSdkCss": {
     "package": "@magicfeedback/popup-sdk",
-    "version": "1.18.0",
+    "version": "1.19.0",
     "notes": "CSS del survey que el WebView carga del CDN (dist/assets/assets/style.css). Se fija a una version publicada; no sigue a MAGICFEEDBACK_VERSION."
   },
   "hosts": {
