@@ -97,7 +97,7 @@ Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. 
   skipped without effects, as before. 0 or no delay = at once, as before. Pending delays live in
   memory only. Parity with web 1.19.0. `Trigger.TimeOnPage`, `Scroll`, `Event` and `Click` gain a
   `delaySeconds` property; their old constructors stay (also from Swift). Tests:
-  `TriggerDelayTest`; Maestro `rate-delay` and `rate-delay-cancel` (DEV scenario `rate-delay`,
+  `TriggerDelayTest`, `TriggerDelayApiPayloadTest`; Maestro `rate-delay` and `rate-delay-cancel` (DEV scenario `rate-delay`,
   event + 8 s).
 
 ## 0.7.9 - 2026-11-04
