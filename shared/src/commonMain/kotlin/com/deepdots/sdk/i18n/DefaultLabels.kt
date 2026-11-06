@@ -526,6 +526,24 @@ object DefaultLabels {
         errorLoad = "Tento prieskum sa nepodarilo načítať.",
     )
 
+    // Catalán: no es oficial de la UE, se pidió en la review v2.2.29. Espejo de `CA` en web.
+    private val CA = Labels(
+        accept = "Envia",
+        decline = "Cancel·la",
+        start = "Comença l'enquesta",
+        complete = "Completa l'enquesta",
+        back = "Enrere",
+        question = "Pregunta",
+        of = "de",
+        followUp = "Seguiment",
+        closeAria = "Tanca la finestra emergent",
+        loadingAria = "S'està carregant l'enquesta",
+        errorRequired = "Respon la pregunta obligatòria per continuar.",
+        errorInvalidEmail = "Introdueix una adreça de correu electrònic vàlida.",
+        errorSubmit = "S'ha produït un error en enviar. Torna-ho a provar o tanca la finestra.",
+        errorLoad = "No s'ha pogut carregar l'enquesta.",
+    )
+
     private val SL = Labels(
         accept = "Pošlji",
         decline = "Prekliči",
@@ -548,6 +566,7 @@ object DefaultLabels {
         "de" to DE, "fr" to FR, "pt" to PT, "ar" to AR, "bn" to BN, "zh-CN" to ZH_CN,
         // El resto de idiomas oficiales de la UE (DD-67).
         "bg" to BG, "cs" to CS, "el" to EL, "et" to ET, "ga" to GA, "hr" to HR, "hu" to HU, "it" to IT, "lt" to LT, "lv" to LV, "mt" to MT, "nl" to NL, "pl" to PL, "ro" to RO, "sk" to SK, "sl" to SL,
+        "ca" to CA,
     )
 
     /**
@@ -561,6 +580,8 @@ object DefaultLabels {
             // El resto de idiomas oficiales de la UE (DD-67), traducidos a máquina: pendientes
             // de revisión nativa.
             "bg", "cs", "el", "et", "ga", "hr", "hu", "it", "lt", "lv", "mt", "nl", "pl", "ro", "sk", "sl",
+            // Catalán (no oficial de la UE).
+            "ca",
         )
 
     /**
@@ -607,6 +628,7 @@ object DefaultLabels {
             "ro" -> "ro"
             "sk" -> "sk"
             "sl" -> "sl"
+            "ca" -> "ca"
             else -> "en"
         }
     }
