@@ -43,12 +43,19 @@ export function releasePullFrom(pulls = [], sha) {
 }
 
 /** El "Release dry run" mas reciente de los check-runs de un commit. */
+/**
+ * El check-run más reciente de una lista, sin contar los `skipped` mientras haya otro: editar la
+ * PR de release (p. ej. la sección de override) relanza release-check.yml, que en una PR ya
+ * fusionada se salta sus jobs, y ese `skipped` no puede tapar el resultado que sí probó el commit
+ * (0.7.10 se quedó sin publicar por eso).
+ */
+export function latestRun(runs = []) {
+  const sorted = [...runs].sort((a, b) => String(b.started_at ?? '').localeCompare(String(a.started_at ?? '')));
+  return sorted.find((c) => c.conclusion !== 'skipped') ?? sorted[0] ?? null;
+}
+
 export function dryRunFrom(checkRuns = []) {
-  return (
-    checkRuns
-      .filter((c) => c.name === DRY_RUN_CHECK)
-      .sort((a, b) => String(b.started_at ?? '').localeCompare(String(a.started_at ?? '')))[0] ?? null
-  );
+  return latestRun(checkRuns.filter((c) => c.name === DRY_RUN_CHECK));
 }
 
 export const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');

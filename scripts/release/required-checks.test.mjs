@@ -154,3 +154,15 @@ test('required checks: an unapproved visual change on one platform blocks the re
   ]);
   assert.deepEqual(failingChecks(r), ['"Visual regression · Android" failure v']);
 });
+
+test('required checks: a later skipped run does not hide the real result', () => {
+  const name = 'Test apps (release build) / Visual regression · Android · SDK local';
+  const r = requiredChecksFrom([
+    { name: 'Release dry run', conclusion: 'success', started_at: '1' },
+    { name: 'Release dry run', conclusion: 'skipped', started_at: '2' },
+    { name, conclusion: 'failure', started_at: '1' },
+    { name, conclusion: 'skipped', started_at: '2' },
+  ]);
+  assert.equal(r[0].conclusion, 'success');
+  assert.equal(r[3].conclusion, 'failure');
+});

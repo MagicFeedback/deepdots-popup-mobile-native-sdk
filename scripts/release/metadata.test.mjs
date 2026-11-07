@@ -53,3 +53,13 @@ test('smoke: lectura de plist, manifest del AAR y bundle', () => {
   assert.ok(osAtMost('13.0', '13'));
   assert.ok(!osAtMost('14.0', '13.0'));
 });
+
+test('dry run: un skipped posterior (PR editada ya fusionada) no tapa el resultado real', () => {
+  const runs = [
+    { name: 'Release dry run', conclusion: 'success', started_at: '2026-11-06T15:00:00Z' },
+    { name: 'Release dry run', conclusion: 'skipped', started_at: '2026-11-07T16:23:59Z' },
+  ];
+  assert.equal(dryRunFrom(runs).conclusion, 'success');
+  // Solo skipped: se informa tal cual (no esta en verde).
+  assert.equal(dryRunFrom([{ name: 'Release dry run', conclusion: 'skipped', started_at: '1' }]).conclusion, 'skipped');
+});

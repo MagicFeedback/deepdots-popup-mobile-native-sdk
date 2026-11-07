@@ -4,9 +4,11 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
-## 0.7.10 - 2026-11-06
-
 Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. Compatibility table: docs.deepdots.com/popup-native/reference/survey-compatibility/.
+
+0.7.10 was tagged but never published (the release workflow stopped before publishing because
+of a release-gate bug, fixed below), so this version is the first with these changes on Maven
+Central and SPM. Upgrade from 0.7.9 straight to it.
 
 ### Added
 
@@ -103,6 +105,11 @@ Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. 
   `delaySeconds` property; their old constructors stay (also from Swift). Tests:
   `TriggerDelayTest`, `TriggerDelayApiPayloadTest`; Maestro `rate-delay` and `rate-delay-cancel` (DEV scenario `rate-delay`,
   event + 8 s).
+
+- **Release gate: a skipped check no longer hides the result that was tested.** Editing a release
+  pull request after it was merged starts the release check again with its jobs skipped, and the
+  publish workflow took that skipped "Release dry run" as the result. The gate now takes the
+  latest run that was not skipped (`latestRun` in `scripts/release/metadata.mjs`).
 
 ## 0.7.9 - 2026-11-04
 
