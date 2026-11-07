@@ -12,6 +12,9 @@ Central and SPM. Upgrade from 0.7.9 straight to it.
 
 ### Added
 
+- **Catalan (`ca`) popup texts.** Buttons, progress, aria-labels and error notices in Catalan;
+  `ca`/`ca-ES` resolve to it. Same strings as the web SDK. Catalan is not an official EU language;
+  asked for in the v2.2.29 review.
 - **Popups follow the survey version assigned in the Admin (DD-70).** `GET /sdk/{publicKey}/popups`
   sends `surveyFrontend.sdkVersion` per popup (latest or pinned). When it is one of
   `SUPPORTED_SURVEY_SDK_VERSIONS` (2.2.38, 2.2.39; also `release/compatibility.json` →
