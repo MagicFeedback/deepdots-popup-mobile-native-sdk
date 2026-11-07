@@ -22,7 +22,7 @@
 import { appendFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { releasePullFrom } from './metadata.mjs';
+import { latestRun, releasePullFrom } from './metadata.mjs';
 import { evaluateOverride, labelledBy, overrideNotes } from './override.mjs';
 
 export const REQUIRED_CHECKS = [
@@ -37,12 +37,10 @@ export const REQUIRED_CHECKS = [
   { name: 'Visual regression · iOS', match: (n) => /(^|\/ )Visual regression · iOS · SDK local$/.test(n) },
 ];
 
-/** El check-run más reciente de cada check requerido, o `missing`. */
+/** El check-run más reciente de cada check requerido (ver `latestRun`), o `missing`. */
 export function requiredChecksFrom(checkRuns = []) {
   return REQUIRED_CHECKS.map(({ name, match }) => {
-    const last = checkRuns
-      .filter((c) => match(c.name ?? ''))
-      .sort((a, b) => String(b.started_at ?? '').localeCompare(String(a.started_at ?? '')))[0];
+    const last = latestRun(checkRuns.filter((c) => match(c.name ?? '')));
     return { name, conclusion: last ? (last.conclusion ?? last.status) : 'missing', url: last?.html_url ?? null };
   });
 }
