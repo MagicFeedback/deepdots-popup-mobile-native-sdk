@@ -1,0 +1,1056 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deepdots native popup SDK 0.7.11 Release Validation Report</title>
+<style>@page { size: A4; margin: 18mm 16mm; }
+body { font: 10.5pt/1.5 -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1a1d24; background: #fff; max-width: 180mm; margin: auto; padding: 0 16px; }
+h1 { font-size: 20pt; margin: 0 0 4pt; } h2 { font-size: 14pt; margin-top: 20pt; border-bottom: 1px solid #ddd; padding-bottom: 3pt; }
+h3 { font-size: 11.5pt; margin-top: 14pt; } code { font-size: 9pt; background: #f2f3f5; padding: 0 3px; border-radius: 3px; }
+table { border-collapse: collapse; width: 100%; font-size: 8.5pt; margin: 8pt 0; page-break-inside: avoid; display: block; overflow-x: auto; }
+th, td { border: 1px solid #d6d8dc; padding: 3pt 4pt; text-align: left; vertical-align: top; } th { background: #f2f3f5; }
+details table { font-size: 7pt; } summary { cursor: pointer; color: #1f5fbf; }
+@media print { details { display: none; } table { display: table; } body { padding: 0; } }
+hr { border: 0; border-top: 1px solid #ddd; margin: 16pt 0; } h2:has(+ *) { page-break-after: avoid; }
+a { color: #1f5fbf; }</style></head><body>
+<h1>Deepdots | Popup SDK Release Validation Report</h1>
+<p><strong>SDK:</strong> Deepdots native popup SDK <strong>0.7.11</strong> (Android <code>com.deepdots.sdk:shared-android:0.7.11</code> · iOS <code>DeepdotsSDK-SPM</code> 0.7.11)<br><strong>Validation date:</strong> 2026-11-07<br><strong>Platforms:</strong> iOS / Android<br><strong>Overall status:</strong> <strong>FAILED</strong><br><strong>Report type:</strong> Automated release validation, generated from the CI test results (no manual edits)</p>
+<hr>
+<h2>1. Executive Summary</h2>
+<p>SDK 0.7.11 was validated as published (Maven Central and Swift Package Manager) inside dedicated native test applications that integrate the SDK the same way a customer app does.</p>
+<p>Results (<a href="https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/42409572820/attempts/1">CI run</a>):</p>
+<ul>
+<li><strong>400</strong> automated test executions on <strong>16</strong> configurations (7 iOS, 9 Android)</li>
+<li><strong>373</strong> passed (3 on the automatic retry)</li>
+<li><strong>4</strong> failed</li>
+<li><strong>23</strong> not applicable on that platform</li>
+<li>Manual pass on real devices: <strong>pending</strong> (section 7)</li>
+</ul>
+<p><strong>iOS:</strong> FAILED · <strong>Android:</strong> FAILED</p>
+<p><strong>Validation status:</strong> <strong>FAILED</strong></p>
+<h3>Failures</h3>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Configuration</th>
+<th>Test</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>iOS</td>
+<td>iOS 16.4 iPhone SE (3rd generation) Debug</td>
+<td>survey-missing</td>
+<td>xcuitest.installer.LocalXCTestInstaller$IOSDriverTimeoutException: iOS driver not ready in time, consider increasing timeout by configuring MAESTRO_DRIVER_STARTUP_TIMEOUT env variable</td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A26 phone debug</td>
+<td>survey-sdk-2.2.38</td>
+<td>Assertion is false: &quot;Czy zrobi.<em>NORDLY.</em>&quot; is visible</td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A26 phone release</td>
+<td>survey-sdk-2.2.38</td>
+<td>Assertion is false: &quot;Czy zrobi.<em>NORDLY.</em>&quot; is visible</td>
+</tr>
+<tr>
+<td>Android</td>
+<td>A34 tablet debug</td>
+<td>rating-labels</td>
+<td>Assertion is false: &quot;Accept all&quot; is visible</td>
+</tr>
+</tbody></table>
+<h2>2. Test Results</h2>
+<table>
+<thead>
+<tr>
+<th>Test category</th>
+<th>iOS</th>
+<th>Android</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SDK initialization and version check</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Path-based triggers and excluded screens</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Time-based triggers</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Event and click triggers</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Exit triggers</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Re-display rules (cooldown)</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Audience segmentation by language</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Popup opening and closing</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Survey rendering, interactions and submission</td>
+<td>PASS</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Navigation and app lifecycle (background / foreground, rotation)</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Network failures and recovery</td>
+<td><strong>FAIL</strong></td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Detection check: a missing navigation event is caught</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Survey SDK versions assigned in the Admin (DD-70)</td>
+<td>PASS</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Visual regression</td>
+<td>AUTOMATED: screenshots of the popup states (iOS + Android, standard and small screen) compared with approved baselines by the job &quot;Visual regression · <platform> · SDK local&quot; (test-apps/visual/README.md).</td>
+<td>AUTOMATED: screenshots of the popup states (iOS + Android, standard and small screen) compared with approved baselines by the job &quot;Visual regression · <platform> · SDK local&quot; (test-apps/visual/README.md).</td>
+</tr>
+</tbody></table>
+<p><code>—</code> = not part of that platform&#39;s suite.</p>
+<details><summary>Every test on every configuration</summary><table>
+<thead>
+<tr>
+<th>Test</th>
+<th>A26 phone debug</th>
+<th>A26 phone release</th>
+<th>A30 phone debug</th>
+<th>A30 phone release</th>
+<th>A34 phone debug</th>
+<th>A34 phone release</th>
+<th>A34 tablet debug</th>
+<th>A36 phone debug</th>
+<th>A36 phone release</th>
+<th>iOS 16.4 iPhone SE (3rd generation) Debug</th>
+<th>iOS 17.5 iPhone 15 Debug</th>
+<th>iOS 18 iPad (A16) Debug</th>
+<th>iOS 18 iPhone 16 Pro Debug no-frame-key</th>
+<th>iOS 18 iPhone 16 Pro Max Debug</th>
+<th>iOS 18 iPhone 16 Release</th>
+<th>iOS 26 iPhone 17 Debug</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>00-version</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>audience-lang</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>checkout-time</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>close-with-keyboard</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>exit-checkout</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>help-click</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>lang-da-shows</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>retry</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>retry</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>lang-en-hidden</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>lifecycle</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>missing-navigation</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+<td>expected</td>
+</tr>
+<tr>
+<td>not-on-cart</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>offline</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+</tr>
+<tr>
+<td>offline-open-popup</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+</tr>
+<tr>
+<td>path-targeting</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>popups-error</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>rate-delay</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>rate-delay-cancel</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>rate-product</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>rate-product-close</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>rating-labels</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>fail</td>
+<td>pass</td>
+<td>pass</td>
+<td>retry</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>redisplay</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>release-fixtures</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>slow-survey</td>
+<td>skip</td>
+<td>skip</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+<td>skip</td>
+</tr>
+<tr>
+<td>survey-missing</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>error</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr>
+<td>survey-sdk-2.2.38</td>
+<td>fail</td>
+<td>fail</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+</tbody></table>
+</details><h2>3. Tested Environments</h2>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>OS version</th>
+<th>Device</th>
+<th>Build</th>
+<th>SDK resolved</th>
+<th>Engine</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Android</td>
+<td>API 26</td>
+<td>pixel_6 (emulator)</td>
+<td>debug</td>
+<td>0.7.11</td>
+<td>WebView 69.0.3497.100</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 26</td>
+<td>pixel_6 (emulator)</td>
+<td>release (R8)</td>
+<td>0.7.11</td>
+<td>WebView 69.0.3497.100</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 30</td>
+<td>pixel_6 (emulator)</td>
+<td>debug</td>
+<td>0.7.11</td>
+<td>WebView 83.0.4103.106</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 30</td>
+<td>pixel_6 (emulator)</td>
+<td>release (R8)</td>
+<td>0.7.11</td>
+<td>WebView 83.0.4103.106</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 34</td>
+<td>pixel_6 (emulator)</td>
+<td>debug</td>
+<td>0.7.11</td>
+<td>WebView 113.0.5672.136</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 34</td>
+<td>pixel_6 (emulator)</td>
+<td>release (R8)</td>
+<td>0.7.11</td>
+<td>WebView 113.0.5672.136</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 34</td>
+<td>pixel_tablet (emulator)</td>
+<td>debug</td>
+<td>0.7.11</td>
+<td>WebView 113.0.5672.136</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 36</td>
+<td>pixel_6 (emulator)</td>
+<td>debug</td>
+<td>0.7.11</td>
+<td>WebView 133.0.6943.137</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Android</td>
+<td>API 36</td>
+<td>pixel_6 (emulator)</td>
+<td>release (R8)</td>
+<td>0.7.11</td>
+<td>WebView 133.0.6943.137</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-16-4</td>
+<td>iPhone SE (3rd generation) (simulator)</td>
+<td>Debug · Xcode_16.4</td>
+<td>0.7.11</td>
+<td>—</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-17-5</td>
+<td>iPhone 15 (simulator)</td>
+<td>Debug · Xcode_16.4</td>
+<td>0.7.11</td>
+<td>—</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-18-6</td>
+<td>iPad (A16) (simulator)</td>
+<td>Debug · Xcode_16.4</td>
+<td>0.7.11</td>
+<td>—</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-18-6</td>
+<td>iPhone 16 Pro (simulator)</td>
+<td>Debug · Xcode_16.4</td>
+<td>0.7.11</td>
+<td>—</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-18-6</td>
+<td>iPhone 16 Pro Max (simulator)</td>
+<td>Debug · Xcode_16.4</td>
+<td>0.7.11</td>
+<td>—</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-18-6</td>
+<td>iPhone 16 (simulator)</td>
+<td>Release · Xcode_16.4</td>
+<td>0.7.11</td>
+<td>—</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>iOS</td>
+<td>iOS-26-2</td>
+<td>iPhone 17 (simulator)</td>
+<td>Debug · Xcode_26.2</td>
+<td>0.7.11</td>
+<td>—</td>
+<td>PASS</td>
+</tr>
+</tbody></table>
+<p>All automated tests ran against the Deepdots development environment with test companies only. No customer data was used, and each configuration fails if any request reaches the production API.</p>
+<h2>4. Critical Safety Validation</h2>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>iOS</th>
+<th>Android</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Survey that cannot load: the popup can be closed and the app stays usable</td>
+<td><strong>FAIL</strong></td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Popup configuration that cannot load: no popup, the app stays usable</td>
+<td>PASS</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>No network: no popup, the app stays usable</td>
+<td>n/a</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Network lost right after a popup is triggered</td>
+<td>n/a</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Slow network while the survey loads</td>
+<td>n/a</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Crash, freeze (ANR) or threading errors in the device log, and no request to production (every configuration)</td>
+<td>None detected</td>
+<td>None detected</td>
+</tr>
+</tbody></table>
+<h2>5. Detection Controls and Backward Compatibility</h2>
+<p>The test system has to prove it catches real problems. These controls run in every validation:</p>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Negative control: the bug customers saw on the control version is detected (control 0.7.0)</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>R8 control: the control version fails a minified release build, the tested one builds (control 0.7.0)</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Expected failure detected: missing-navigation</td>
+<td>iOS PASS · Android PASS</td>
+</tr>
+</tbody></table>
+<h2>6. Known Issues &amp; Limitations</h2>
+<p><strong>Known blocking issues:</strong> see Failures in section 1.</p>
+<p><strong>Known non-blocking issues:</strong></p>
+<ul>
+<li>None.</li>
+</ul>
+<p><strong>Test limitations:</strong></p>
+<ul>
+<li>Emulators and simulators cover the OS versions, not every manufacturer; real devices are checked by hand (section 7).</li>
+<li>Visual regression compares screenshots on one standard and one small device per platform (CI emulator / simulator); other devices and OS versions are covered by the functional tests, not by screenshots.</li>
+<li>Tests marked as known issues are expected to fail until their fix ships; if one passes, the run fails so the mark is removed.</li>
+</ul>
+<h2>7. Real Devices (manual)</h2>
+<p><strong>Status: PENDING.</strong> Filled in by hand after this report is generated: release build of the test app with this exact version on one Android phone, one iPhone and one iPad.</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Android phone</th>
+<th>iPhone</th>
+<th>iPad</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Popup appears complete, once</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>Survey answered and sent to the end</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>Not shown again within its cooldown</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>Taps outside the popup do not reach the app; X closes it</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>Background / foreground with the popup open</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>Rotation with the popup open</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>Keyboard does not cover Send</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+<tr>
+<td>No network: notice, can be closed, app usable</td>
+<td>pending</td>
+<td>pending</td>
+<td>pending</td>
+</tr>
+</tbody></table>
+<h2>8. Release Information</h2>
+<ul>
+<li><strong>SDK version:</strong> 0.7.11</li>
+<li><strong>Release:</strong> <a href="https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/releases/tag/v0.7.11">GitHub release v0.7.11</a></li>
+<li><strong>Changelog:</strong> <a href="https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/blob/main/CHANGELOG.md">CHANGELOG</a></li>
+<li><strong>Test execution:</strong> <a href="https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/42409572820/attempts/1">CI run</a> (logs, screenshots and per-configuration artifacts)</li>
+<li><strong>Validation date:</strong> 2026-11-07</li>
+<li><strong>Results file SHA-256:</strong> <code>aafde0305ebfaed6ecefff386867c4049987b49ab65fbc940fe6973378fd9a77</code></li>
+</ul>
+<h3>Release notes 0.7.11</h3>
+<p>Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. Compatibility table: docs.deepdots.com/popup-native/reference/survey-compatibility/.</p>
+<p>0.7.10 was tagged but never published (the release workflow stopped before publishing because
+of a release-gate bug, fixed below), so this version is the first with these changes on Maven
+Central and SPM. Upgrade from 0.7.9 straight to it.</p>
+<h4>Added</h4>
+<ul>
+<li><p><strong>Popups follow the survey version assigned in the Admin (DD-70).</strong> <code>GET /sdk/{publicKey}/popups</code>
+sends <code>surveyFrontend.sdkVersion</code> per popup (latest or pinned). When it is one of
+<code>SUPPORTED_SURVEY_SDK_VERSIONS</code> (2.2.38, 2.2.39; also <code>release/compatibility.json</code> →
+<code>surveyRenderer.assignedVersions</code>) and differs from <code>MAGICFEEDBACK_VERSION</code>, the WebView first
+loads that version&#39;s survey CSS (the popup-sdk&#39;s vendored <code>survey-css/&lt;v&gt;.css</code> at
+<code>POPUP_SDK_CSS_VERSION</code>, in place of the usual stylesheet) and then that exact
+<code>@magicfeedback/native</code> from jsDelivr, then unpkg. If the CSS or the JS fails, the usual CSS and
+the vendored JS come back together (the per-version sheets exist from popup-sdk 1.19.0). An
+invalid version is always logged, the choice only with <code>debug</code>.
+New <code>PopupDefinition.surveySdkVersion</code> (last parameter, default null).</p>
+</li>
+<li><p><strong>Release gate for the assignable survey SDK versions (DD-70).</strong> Every version of
+<code>SUPPORTED_SURVEY_SDK_VERSIONS</code> other than <code>MAGICFEEDBACK_VERSION</code> has a Maestro flow
+<code>test-apps/maestro/flows/survey-sdk-&lt;v&gt;.yaml</code> and a DEV scenario <code>survey-sdk-&lt;v&gt;</code> (survey pinned
+in the Admin to a MagicSurvey release built with that version); <code>scripts/release/rules.mjs</code>
+requires both. The flow answers the survey with that version, and <code>run-maestro.sh</code> fails it
+unless the device log has <code>[MagicFeedback] survey-sdk &lt;v&gt; assigned</code> (the SDK logs it, println /
+NSLog, once
+that version&#39;s CSS and JS are in). It runs in the full suite of the release PR (<code>local</code>).</p>
+</li>
+<li><p><strong>The popup&#39;s own texts in the 24 official EU languages (DD-67).</strong> <code>DefaultLabels</code> (buttons,
+progress counter, follow-up badge, accessibility descriptions and notices) now translates
+bg, cs, el, et, ga, hr, hu, it, lt, lv, mt, nl, pl, ro, sk and sl too, 28 locales in all. A
+Polish survey used to show the native Back/Send buttons in English. Machine-translated, pending
+native review (<code>DD-67-native-review.md</code>). Mirror of the Web SDK&#39;s <code>src/i18n/labels.ts</code>.</p>
+</li>
+<li><p><strong>The closing batch survives the app dying (DD-55, parity with Web 1.17).</strong> With storage (the
+default), the batch that closes a session (<code>completed:true</code>, <code>deepdots_session_end</code>) is stored
+before it is sent. If iOS suspends or kills the app with that request in flight, or it fails
+with a network error or 5xx, the next <code>init()</code> resends it to its own record (its <code>sessionId</code>).
+A failed closing batch no longer goes back to the event buffer, where it left with the next
+session and in its record. Delivered or rejected (4xx) batches are removed; up to 50 are kept,
+for at most 24 h. The background task around the closing request (iOS) stays as before.</p>
+</li>
+<li><p><strong>The SDK identifies itself on the data it sends (DD-3, Collection dashboard).</strong> Every popup
+response now carries <code>deepdots_channel=popup</code> and <code>deepdots_sdk=android@&lt;version&gt;</code> /
+<code>ios@&lt;version&gt;</code> in its survey metadata, also with tracking off, so a response that came through
+a popup can be told apart from a MagicSurvey link and attributed to an SDK version (same keys as
+the Web SDK). Every analytics batch carries <code>deepdots_sdk</code> too. A wrapper declares itself with
+<code>SdkIdentity.setWrapper(name, version)</code> before <code>init</code> (the Flutter plugin does): <code>deepdots_sdk</code>
+becomes <code>flutter@&lt;version&gt;</code> and the native core goes in <code>deepdots_sdk_core</code>. The version is
+generated at build time from <code>PUBLISHING_VERSION</code> (<code>generateSdkBuildInfo</code> in
+<code>shared/build.gradle.kts</code>), never kept by hand; <code>SdkIdentity.version</code> exposes it to hosts.</p>
+</li>
+</ul>
+<h4>Changed</h4>
+<ul>
+<li><strong>Surveys SDK 2.2.39</strong> (<code>@magicfeedback/native</code>, from 2.2.31), vendored on Android and from the
+CDN on iOS (<code>MAGICFEEDBACK_VERSION</code>). With it the popup shows &quot;Please enter a valid email
+address.&quot; for an email with a typo (<code>INVALID_EMAIL</code>), the survey reports send failures apart
+from an empty required question (<code>SEND_FAILED</code>, 2.2.37), and it gets the survey changes since
+2.2.31: the 24 official EU languages, the email <code>Option/Alt + 2</code> shortcut, typed submit
+errors, rating and choice layout options. The survey stylesheet now comes from popup-sdk
+1.19.0 (<code>POPUP_SDK_CSS_VERSION</code>, from 1.10.0), the copy of the 2.2.39 CSS, so the email @ button
+(<code>assets.atButton</code>) is styled too.</li>
+</ul>
+<h4>Fixed</h4>
+<ul>
+<li><p><strong>Error notices in the survey&#39;s language (DD-67).</strong> The required-answer, invalid-email and
+submit-error notices stayed in the language the host gave at start-up (<code>provideLang</code>, English
+without it), while the buttons and the close label already followed the survey: a Danish survey
+showed &quot;Luk pop op&quot; next to &quot;Please answer the required question to continue.&quot;. The WebView
+bridge kept the first event handler, from before the survey&#39;s language arrived; it now always
+calls the current one (<code>rememberUpdatedState</code>, Android and iOS).</p>
+</li>
+<li><p><strong>The popup understands the survey&#39;s error codes.</strong> The surveys SDK (<code>@magicfeedback/native</code>
+2.2.37+) sends a <code>code</code> with each submit error; the popup only looked at the text, so any
+error containing &quot;No response&quot; read as &quot;required question&quot; (also a send the API did not
+save) and every other error showed the generic message. The popup now reads the code, like the
+Web SDK: <code>REQUIRED</code> shows the required message, the new <code>INVALID_EMAIL</code> (2.2.39) shows &quot;Please
+enter a valid email address.&quot; (translated in all 28 locales), and the rest show the submit
+error. Without a code it keeps matching the text. Asked by Lemvigh-Müller: an email with a typo
+showed &quot;Please answer the question&quot;.</p>
+</li>
+<li><p><strong>A failed popups download is retried instead of losing the popup for the session.</strong> At
+start-up the SDK downloads the popups of the public key; taps and events that arrive before
+are kept and replayed. If that request failed once (for example a brief loss of signal at
+start-up), the SDK dropped them and never tried again, so no popup showed until the next app
+start. The request is now retried twice (after 2 s and 5 s) and the pending taps and events
+are kept until the last attempt. Found while investigating the release validation on Android 8.</p>
+</li>
+<li><p><strong>The &quot;Delay (seconds)&quot; set in the Admin is honoured for every trigger type</strong> (reported by
+MOM: an event trigger with a 60 s delay showed the popup at once). <code>event</code>, <code>click</code>, <code>scroll</code>
+and <code>time_on_page</code> ignored <code>trigger.delaySeconds</code>, and <code>exit</code> read its delay from <code>value</code>, which
+the Admin saves as 0 (the delay lives in <code>delaySeconds</code>), so exit popups made in the Admin never
+waited. Now the delay counts from the moment the trigger fires (for <code>time_on_page</code>, after the
+time on page; for <code>exit</code>, on the next screen as before). Exit popups made before <code>delaySeconds</code>
+existed, with the delay in <code>value</code>, keep working. While a popup waits: firing the same trigger
+again neither restarts nor duplicates it; <code>setPath()</code> to another screen or <code>onBackground()</code>
+cancels it; and when it is due everything is checked again (segments, language, cooldowns), it
+is dropped if the same popup was shown in the meantime, and if another popup is open it is
+skipped without effects, as before. 0 or no delay = at once, as before. Pending delays live in
+memory only. Parity with web 1.19.0. <code>Trigger.TimeOnPage</code>, <code>Scroll</code>, <code>Event</code> and <code>Click</code> gain a
+<code>delaySeconds</code> property; their old constructors stay (also from Swift). Tests:
+<code>TriggerDelayTest</code>, <code>TriggerDelayApiPayloadTest</code>; Maestro <code>rate-delay</code> and <code>rate-delay-cancel</code> (DEV scenario <code>rate-delay</code>,
+event + 8 s).</p>
+</li>
+<li><p><strong>Release gate: a skipped check no longer hides the result that was tested.</strong> Editing a release
+pull request after it was merged starts the release check again with its jobs skipped, and the
+publish workflow took that skipped &quot;Release dry run&quot; as the result. The gate now takes the
+latest run that was not skipped (<code>latestRun</code> in <code>scripts/release/metadata.mjs</code>).</p>
+</li>
+</ul>
+
+</body></html>

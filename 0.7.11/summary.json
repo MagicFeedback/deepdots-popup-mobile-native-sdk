@@ -1,0 +1,43 @@
+{
+  "version": "0.7.11",
+  "status": "FAILED",
+  "platforms": {
+    "iOS": "FAILED",
+    "Android": "FAILED"
+  },
+  "failures": [
+    {
+      "platform": "iOS",
+      "row": "iOS 16.4 iPhone SE (3rd generation) Debug",
+      "flow": "survey-missing",
+      "message": "xcuitest.installer.LocalXCTestInstaller$IOSDriverTimeoutException: iOS driver not ready in time, consider increasing timeout by configuring MAESTRO_DRIVER_STARTUP_TIMEOUT env variable"
+    },
+    {
+      "platform": "Android",
+      "row": "A26 phone debug",
+      "flow": "survey-sdk-2.2.38",
+      "message": "Assertion is false: \"Czy zrobi.*NORDLY.*\" is visible"
+    },
+    {
+      "platform": "Android",
+      "row": "A26 phone release",
+      "flow": "survey-sdk-2.2.38",
+      "message": "Assertion is false: \"Czy zrobi.*NORDLY.*\" is visible"
+    },
+    {
+      "platform": "Android",
+      "row": "A34 tablet debug",
+      "flow": "rating-labels",
+      "message": "Assertion is false: \"Accept all\" is visible"
+    }
+  ],
+  "knownIssues": {},
+  "counts": {
+    "executions": 400,
+    "passed": 373,
+    "retried": 3,
+    "failed": 4,
+    "skipped": 23,
+    "known": 0
+  }
+}
