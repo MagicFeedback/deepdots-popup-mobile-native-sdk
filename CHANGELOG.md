@@ -4,6 +4,115 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.11 - 2026-11-07
+
+Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. Compatibility table: docs.deepdots.com/popup-native/reference/survey-compatibility/.
+
+0.7.10 was tagged but never published (the release workflow stopped before publishing because
+of a release-gate bug, fixed below), so this version is the first with these changes on Maven
+Central and SPM. Upgrade from 0.7.9 straight to it.
+
+### Added
+
+- **Popups follow the survey version assigned in the Admin (DD-70).** `GET /sdk/{publicKey}/popups`
+  sends `surveyFrontend.sdkVersion` per popup (latest or pinned). When it is one of
+  `SUPPORTED_SURVEY_SDK_VERSIONS` (2.2.38, 2.2.39; also `release/compatibility.json` →
+  `surveyRenderer.assignedVersions`) and differs from `MAGICFEEDBACK_VERSION`, the WebView first
+  loads that version's survey CSS (the popup-sdk's vendored `survey-css/<v>.css` at
+  `POPUP_SDK_CSS_VERSION`, in place of the usual stylesheet) and then that exact
+  `@magicfeedback/native` from jsDelivr, then unpkg. If the CSS or the JS fails, the usual CSS and
+  the vendored JS come back together (the per-version sheets exist from popup-sdk 1.19.0). An
+  invalid version is always logged, the choice only with `debug`.
+  New `PopupDefinition.surveySdkVersion` (last parameter, default null).
+- **Release gate for the assignable survey SDK versions (DD-70).** Every version of
+  `SUPPORTED_SURVEY_SDK_VERSIONS` other than `MAGICFEEDBACK_VERSION` has a Maestro flow
+  `test-apps/maestro/flows/survey-sdk-<v>.yaml` and a DEV scenario `survey-sdk-<v>` (survey pinned
+  in the Admin to a MagicSurvey release built with that version); `scripts/release/rules.mjs`
+  requires both. The flow answers the survey with that version, and `run-maestro.sh` fails it
+  unless the device log has `[MagicFeedback] survey-sdk <v> assigned` (the SDK logs it, println /
+  NSLog, once
+  that version's CSS and JS are in). It runs in the full suite of the release PR (`local`).
+
+- **The popup's own texts in the 24 official EU languages (DD-67).** `DefaultLabels` (buttons,
+  progress counter, follow-up badge, accessibility descriptions and notices) now translates
+  bg, cs, el, et, ga, hr, hu, it, lt, lv, mt, nl, pl, ro, sk and sl too, 28 locales in all. A
+  Polish survey used to show the native Back/Send buttons in English. Machine-translated, pending
+  native review (`DD-67-native-review.md`). Mirror of the Web SDK's `src/i18n/labels.ts`.
+
+- **The closing batch survives the app dying (DD-55, parity with Web 1.17).** With storage (the
+  default), the batch that closes a session (`completed:true`, `deepdots_session_end`) is stored
+  before it is sent. If iOS suspends or kills the app with that request in flight, or it fails
+  with a network error or 5xx, the next `init()` resends it to its own record (its `sessionId`).
+  A failed closing batch no longer goes back to the event buffer, where it left with the next
+  session and in its record. Delivered or rejected (4xx) batches are removed; up to 50 are kept,
+  for at most 24 h. The background task around the closing request (iOS) stays as before.
+
+- **The SDK identifies itself on the data it sends (DD-3, Collection dashboard).** Every popup
+  response now carries `deepdots_channel=popup` and `deepdots_sdk=android@<version>` /
+  `ios@<version>` in its survey metadata, also with tracking off, so a response that came through
+  a popup can be told apart from a MagicSurvey link and attributed to an SDK version (same keys as
+  the Web SDK). Every analytics batch carries `deepdots_sdk` too. A wrapper declares itself with
+  `SdkIdentity.setWrapper(name, version)` before `init` (the Flutter plugin does): `deepdots_sdk`
+  becomes `flutter@<version>` and the native core goes in `deepdots_sdk_core`. The version is
+  generated at build time from `PUBLISHING_VERSION` (`generateSdkBuildInfo` in
+  `shared/build.gradle.kts`), never kept by hand; `SdkIdentity.version` exposes it to hosts.
+
+### Changed
+
+- **Surveys SDK 2.2.39** (`@magicfeedback/native`, from 2.2.31), vendored on Android and from the
+  CDN on iOS (`MAGICFEEDBACK_VERSION`). With it the popup shows "Please enter a valid email
+  address." for an email with a typo (`INVALID_EMAIL`), the survey reports send failures apart
+  from an empty required question (`SEND_FAILED`, 2.2.37), and it gets the survey changes since
+  2.2.31: the 24 official EU languages, the email `Option/Alt + 2` shortcut, typed submit
+  errors, rating and choice layout options. The survey stylesheet now comes from popup-sdk
+  1.19.0 (`POPUP_SDK_CSS_VERSION`, from 1.10.0), the copy of the 2.2.39 CSS, so the email @ button
+  (`assets.atButton`) is styled too.
+
+### Fixed
+
+- **Error notices in the survey's language (DD-67).** The required-answer, invalid-email and
+  submit-error notices stayed in the language the host gave at start-up (`provideLang`, English
+  without it), while the buttons and the close label already followed the survey: a Danish survey
+  showed "Luk pop op" next to "Please answer the required question to continue.". The WebView
+  bridge kept the first event handler, from before the survey's language arrived; it now always
+  calls the current one (`rememberUpdatedState`, Android and iOS).
+
+- **The popup understands the survey's error codes.** The surveys SDK (`@magicfeedback/native`
+  2.2.37+) sends a `code` with each submit error; the popup only looked at the text, so any
+  error containing "No response" read as "required question" (also a send the API did not
+  save) and every other error showed the generic message. The popup now reads the code, like the
+  Web SDK: `REQUIRED` shows the required message, the new `INVALID_EMAIL` (2.2.39) shows "Please
+  enter a valid email address." (translated in all 28 locales), and the rest show the submit
+  error. Without a code it keeps matching the text. Asked by Lemvigh-Müller: an email with a typo
+  showed "Please answer the question".
+- **A failed popups download is retried instead of losing the popup for the session.** At
+  start-up the SDK downloads the popups of the public key; taps and events that arrive before
+  are kept and replayed. If that request failed once (for example a brief loss of signal at
+  start-up), the SDK dropped them and never tried again, so no popup showed until the next app
+  start. The request is now retried twice (after 2 s and 5 s) and the pending taps and events
+  are kept until the last attempt. Found while investigating the release validation on Android 8.
+
+- **The "Delay (seconds)" set in the Admin is honoured for every trigger type** (reported by
+  MOM: an event trigger with a 60 s delay showed the popup at once). `event`, `click`, `scroll`
+  and `time_on_page` ignored `trigger.delaySeconds`, and `exit` read its delay from `value`, which
+  the Admin saves as 0 (the delay lives in `delaySeconds`), so exit popups made in the Admin never
+  waited. Now the delay counts from the moment the trigger fires (for `time_on_page`, after the
+  time on page; for `exit`, on the next screen as before). Exit popups made before `delaySeconds`
+  existed, with the delay in `value`, keep working. While a popup waits: firing the same trigger
+  again neither restarts nor duplicates it; `setPath()` to another screen or `onBackground()`
+  cancels it; and when it is due everything is checked again (segments, language, cooldowns), it
+  is dropped if the same popup was shown in the meantime, and if another popup is open it is
+  skipped without effects, as before. 0 or no delay = at once, as before. Pending delays live in
+  memory only. Parity with web 1.19.0. `Trigger.TimeOnPage`, `Scroll`, `Event` and `Click` gain a
+  `delaySeconds` property; their old constructors stay (also from Swift). Tests:
+  `TriggerDelayTest`, `TriggerDelayApiPayloadTest`; Maestro `rate-delay` and `rate-delay-cancel` (DEV scenario `rate-delay`,
+  event + 8 s).
+
+- **Release gate: a skipped check no longer hides the result that was tested.** Editing a release
+  pull request after it was merged starts the release check again with its jobs skipped, and the
+  publish workflow took that skipped "Release dry run" as the result. The gate now takes the
+  latest run that was not skipped (`latestRun` in `scripts/release/metadata.mjs`).
+
 ## 0.7.9 - 2026-11-04
 
 ### Fixed

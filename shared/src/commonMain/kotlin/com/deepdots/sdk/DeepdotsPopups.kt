@@ -53,6 +53,7 @@ import com.deepdots.sdk.renderer.PopupRenderer
 import com.deepdots.sdk.service.DefaultPopupsService
 import com.deepdots.sdk.service.PopupsService
 import com.deepdots.sdk.util.currentTimeMillis
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -79,11 +80,19 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 private const val ANALYTICS_MAX_BATCH_SIZE = 20
 private const val ANALYTICS_FLUSH_INTERVAL_MS = 30_000L
 /** Techo del buffer de disparos recibidos mientras se cargan las definiciones (descarta los más viejos). */
 internal const val MAX_PENDING_TRIGGERS = 20
+/**
+ * Esperas entre intentos del GET de popups (3 intentos en total). En una red muy lenta (Android 8
+ * en GSM con latencia GPRS) el primer intento caducaba conectando y el SDK tiraba los disparos ya
+ * guardados: ese popup no salía en toda la sesión. Ahora se reintenta y el buffer se conserva
+ * hasta el último intento.
+ */
+internal val POPUPS_FETCH_RETRY_DELAYS_MS = listOf(2_000L, 5_000L)
 /**
  * Latido: con la app en foreground, el flush periódico manda el engagement acumulado al menos
  * cada ANALYTICS_HEARTBEAT_MS. Sin él, una app abierta en una sola pantalla no enviaba nada
@@ -120,6 +129,14 @@ class DeepdotsPopups {
         val segments: ServerSegmentsDto? = null,
         val surveyId: String,
         val productId: String? = null,
+        val surveyFrontend: ServerSurveyFrontendDto? = null,
+    )
+
+    /** `surveyFrontend` de GET /sdk/{publicKey}/popups (DD-70). Solo se lee `sdkVersion`. */
+    @Serializable
+    private data class ServerSurveyFrontendDto(
+        val version: String? = null,
+        val sdkVersion: String? = null,
     )
 
     @Serializable
@@ -215,6 +232,8 @@ class DeepdotsPopups {
     private val queueLock = SdkLock()
     private val scrollTriggeredPopupIds = mutableSetOf<String>()
     private val deferredExitJobs = mutableMapOf<String, Job>()
+    /** Popups esperando su `delaySeconds` (uno por popup), bajo `queueLock`. Solo en memoria. */
+    private val delayedPopupJobs = mutableMapOf<String, Job>()
     private var popupsService: PopupsService = DefaultPopupsService()
     /**
      * `true` mientras el `GET /sdk/{publicKey}/popups` de `init()` está en vuelo. En esa ventana
@@ -289,6 +308,7 @@ class DeepdotsPopups {
         SdkRuntime.metadata = options.metadata
         SdkRuntime.provideLang = options.provideLang
         SdkRuntime.renderChrome = options.renderChrome ?: true
+        SdkRuntime.debug = options.debug == true
         SdkRuntime.showProgressBar = options.showProgressBar
         SdkRuntime.userId = when (val userIdMeta = options.metadata?.get("userId")) {
             is String -> userIdMeta
@@ -330,8 +350,12 @@ class DeepdotsPopups {
                 onSessionClosed = { id -> notifyFeedbackSession(id, FeedbackSessionStatus.Closed) },
                 // Espejo para el HTML del survey (correlación survey ↔ analytics).
                 onCachedSessionIdChanged = { id -> SdkRuntime.analyticsFeedbackSessionId = id },
+                // DD-55: el cierre se guarda antes de enviarse y se reenvía en el arranque siguiente.
+                storage = storage,
             )
         }
+        // Cierres de una ejecución anterior que no llegaron a salir (la app murió con el POST).
+        feedbackSink?.resendPendingCloses()
         val analyticsSink: com.deepdots.sdk.analytics.AnalyticsSink? = feedbackSink?.sink
         val device = com.deepdots.sdk.analytics.collectDeviceInfo()
         messageGuard.reset()
@@ -410,8 +434,11 @@ class DeepdotsPopups {
         }
         pendingTriggersLock.withLock { awaitingPopups = true }
         scope.launch {
+            val responseText = fetchPopupsWithRetry(publicKey) ?: run {
+                dropPendingTriggers()
+                return@launch
+            }
             try {
-                val responseText = popupsService.fetchPopups(publicKey, buildFilterParam())
                 log("API response (truncated)", responseText.take(512))
                 val remoteDefinitions = parseServerPopups(responseText)
                 loadPopupDefinitions(remoteDefinitions)
@@ -420,10 +447,26 @@ class DeepdotsPopups {
                     pendingAutoLaunch = false
                 }
             } catch (t: Throwable) {
-                log("Error fetching popups", t.message ?: "unknown")
+                log("Error loading popups", t.message ?: "unknown")
                 dropPendingTriggers()
             }
         }
+    }
+
+    /** GET de popups con reintentos ([POPUPS_FETCH_RETRY_DELAYS_MS]); null si fallan todos. */
+    private suspend fun fetchPopupsWithRetry(publicKey: String): String? {
+        val delays = debugPopupsFetchRetryDelaysMs ?: POPUPS_FETCH_RETRY_DELAYS_MS
+        for (attempt in 0..delays.size) {
+            try {
+                return popupsService.fetchPopups(publicKey, buildFilterParam())
+            } catch (c: CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                log("Error fetching popups (attempt ${attempt + 1}/${delays.size + 1})", t.message ?: "unknown")
+                if (attempt < delays.size) delay(delays[attempt])
+            }
+        }
+        return null
     }
 
     /** User id actual (generado por el SDK o provisto por el cliente). Null si tracking off. */
@@ -659,6 +702,7 @@ class DeepdotsPopups {
      * `inactive` es transitorio (llamada entrante, app switcher) y partiría la sesión en dos.
      */
     fun onBackground() {
+        cancelDelayedPopups("app to background")
         closeSession(SessionEndReason.BACKGROUND)
         engagement?.pause()
     }
@@ -914,7 +958,8 @@ class DeepdotsPopups {
             log("No eligible event popup", normalized)
             return
         }
-        enqueuePopup(matched.id)
+        val trigger = matched.triggers.firstOrNull { it is Trigger.Event && it.name.trim() == normalized }
+        enqueueAfterDelay(matched, trigger?.delaySeconds ?: 0.0)
     }
 
     fun triggerClick(targetId: String) {
@@ -939,7 +984,8 @@ class DeepdotsPopups {
             log("No eligible click popup", normalized)
             return
         }
-        enqueuePopup(matched.id)
+        val trigger = matched.triggers.firstOrNull { it is Trigger.Click && it.targetId.trim() == normalized }
+        enqueueAfterDelay(matched, trigger?.delaySeconds ?: 0.0)
     }
 
     /**
@@ -967,6 +1013,8 @@ class DeepdotsPopups {
         if (normalizedPath == currentPath) return
 
         val previousPath = currentPath
+        // Un popup esperando su retraso pertenece a la pantalla en la que saltó el trigger.
+        cancelDelayedPopups("route changed")
         if (!previousPath.isNullOrBlank()) {
             queueExitPopups(previousPath)
         }
@@ -1006,7 +1054,7 @@ class DeepdotsPopups {
                     if (scrollTriggeredPopupIds.contains(popup.id)) return@forEach
                     if (pct >= trigger.percentage && shouldShow(popup)) {
                         scrollTriggeredPopupIds += popup.id
-                        enqueuePopup(popup.id)
+                        enqueueAfterDelay(popup, trigger.delaySeconds)
                     }
                 }
             }
@@ -1045,6 +1093,9 @@ class DeepdotsPopups {
     internal var debugGeoLookupCount = 0
         private set
 
+    /** Solo test: esperas entre reintentos del GET de popups (por defecto [POPUPS_FETCH_RETRY_DELAYS_MS]). */
+    internal var debugPopupsFetchRetryDelaysMs: List<Long>? = null
+
     /** Solo test: observa cada lote de analytics (envelope + meta) antes de que salga por el sink. */
     internal var debugAnalyticsFlushListener: ((AnalyticsEnvelope, AnalyticsFlushMeta) -> Unit)? = null
 
@@ -1063,6 +1114,8 @@ class DeepdotsPopups {
     }
 
     internal fun debugQueuedPopupIds(): List<String> = queueLock.withLock { popupQueue.toList() }
+
+    internal fun debugDelayedPopupIds(): List<String> = queueLock.withLock { delayedPopupJobs.keys.toList() }
 
     /** Solo test: disparos guardados a la espera de que lleguen las definiciones. */
     internal fun debugPendingTriggerCount(): Int = pendingTriggersLock.withLock { pendingTriggers.size }
@@ -1115,7 +1168,7 @@ class DeepdotsPopups {
         val job = scope.launch {
             delay(delayMs)
             if (shouldShow(popup)) {
-                enqueuePopup(popup.id)
+                enqueueAfterDelay(popup, trigger.delaySeconds)
             }
         }
         triggerJobs += job
@@ -1232,13 +1285,70 @@ class DeepdotsPopups {
 
         return rawTriggers.mapNotNull { trigger ->
             when (trigger) {
-                is Trigger.TimeOnPage -> Trigger.TimeOnPage(seconds = trigger.seconds.coerceAtLeast(0.0))
-                is Trigger.Scroll -> Trigger.Scroll(percentage = trigger.percentage.coerceIn(0, 100))
-                is Trigger.Exit -> Trigger.Exit(delaySeconds = trigger.delaySeconds.coerceAtLeast(0.0))
-                is Trigger.Event -> trigger.name.trim().takeIf { it.isNotEmpty() }?.let(Trigger::Event)
-                is Trigger.Click -> trigger.targetId.trim().takeIf { it.isNotEmpty() }?.let(Trigger::Click)
+                is Trigger.TimeOnPage -> Trigger.TimeOnPage(trigger.seconds.coerceAtLeast(0.0), safeDelay(trigger.delaySeconds))
+                is Trigger.Scroll -> Trigger.Scroll(trigger.percentage.coerceIn(0, 100), safeDelay(trigger.delaySeconds))
+                is Trigger.Exit -> Trigger.Exit(delaySeconds = safeDelay(trigger.delaySeconds))
+                is Trigger.Event -> trigger.name.trim().takeIf { it.isNotEmpty() }?.let { Trigger.Event(it, safeDelay(trigger.delaySeconds)) }
+                is Trigger.Click -> trigger.targetId.trim().takeIf { it.isNotEmpty() }?.let { Trigger.Click(it, safeDelay(trigger.delaySeconds)) }
             }
         }
+    }
+
+    /**
+     * Encola `popup` ya, o tras el "Delay (seconds)" del Admin (paridad con Web `showAfterDelay`).
+     * Mientras espera: el mismo popup no se programa dos veces (manda el primer vencimiento), y
+     * cambiar de ruta (`setPath`) o pasar a background lo cancela. Al vencer se vuelve a evaluar
+     * todo (segmentos, idioma, cooldowns); si el popup se mostró entretanto, se descarta; y si hay
+     * otro abierto, `showDefinition` lo salta sin efectos, igual que hoy.
+     */
+    private fun enqueueAfterDelay(popup: PopupDefinition, delaySeconds: Double) {
+        val delayMs = (safeDelay(delaySeconds) * 1000.0).roundToLong()
+        if (delayMs <= 0L) {
+            enqueuePopup(popup.id)
+            return
+        }
+        val firedAt = currentTimeMillis()
+        val path = currentPath
+        val scheduled = queueLock.withLock {
+            if (delayedPopupJobs[popup.id]?.isActive == true) {
+                false
+            } else {
+                delayedPopupJobs[popup.id] = scope.launch {
+                    delay(delayMs)
+                    val stillPending = queueLock.withLock { delayedPopupJobs.remove(popup.id) != null }
+                    if (stillPending) showDelayedPopup(popup.id, firedAt, path)
+                }
+                true
+            }
+        }
+        log(if (scheduled) "Popup delayed ${delayMs}ms" else "Popup already waiting for its delay", popup.id)
+    }
+
+    private fun showDelayedPopup(popupId: String, firedAt: Long, path: String?) {
+        val popup = popupDefinitions[popupId] ?: return
+        if (currentPath != path) {
+            log("Delayed popup dropped: route changed", popupId)
+            return
+        }
+        if (!shouldShow(popup)) {
+            log("Delayed popup dropped by conditions at due time", popupId)
+            return
+        }
+        if ((getLastShown(popupId) ?: 0L) >= firedAt) {
+            log("Delayed popup dropped: already shown while waiting", popupId)
+            return
+        }
+        enqueuePopup(popupId)
+    }
+
+    private fun cancelDelayedPopups(reason: String) {
+        val cancelled = queueLock.withLock {
+            val ids = delayedPopupJobs.keys.toList()
+            delayedPopupJobs.values.forEach { it.cancel() }
+            delayedPopupJobs.clear()
+            ids
+        }
+        cancelled.forEach { log("Delayed popup cancelled ($reason)", it) }
     }
 
     private fun enqueuePopup(popupId: String) {
@@ -1826,6 +1936,7 @@ class DeepdotsPopups {
                 productId = dto.productId ?: "",
                 style = mapStyle(parseServerStyle(source["style"] ?: dto.style)),
                 segments = mapSegments(dto.segments),
+                surveySdkVersion = dto.surveyFrontend?.sdkVersion,
             ),
         )
     }
@@ -1841,15 +1952,22 @@ class DeepdotsPopups {
     private fun mapTrigger(element: JsonElement): Trigger? {
         val obj = element as? JsonObject ?: return null
         val type = obj["type"]?.jsonPrimitive?.content?.trim()?.lowercase() ?: return null
+        // "Delay (seconds)" del Admin. Opcional: ausente o inválido = 0, nunca invalida el popup.
+        val delay = safeDelay(parseDouble(obj["delaySeconds"]))
         return when (type) {
-            "time_on_page" -> parseDouble(obj["value"])?.let { Trigger.TimeOnPage(it.coerceAtLeast(0.0)) }
-            "scroll" -> parseDouble(obj["value"])?.let { Trigger.Scroll(it.roundToInt().coerceIn(0, 100)) }
-            "exit" -> Trigger.Exit(parseDouble(obj["value"])?.coerceAtLeast(0.0) ?: 0.0)
-            "event" -> parseString(obj["value"])?.trim()?.takeIf { it.isNotEmpty() }?.let(Trigger::Event)
-            "click" -> parseString(obj["value"])?.trim()?.takeIf { it.isNotEmpty() }?.let(Trigger::Click)
+            "time_on_page" -> parseDouble(obj["value"])?.let { Trigger.TimeOnPage(it.coerceAtLeast(0.0), delay) }
+            "scroll" -> parseDouble(obj["value"])?.let { Trigger.Scroll(it.roundToInt().coerceIn(0, 100), delay) }
+            // El Admin guarda el retraso del exit en `delaySeconds` (y `value` = 0); los popups de
+            // antes de ese campo lo llevaban en `value`.
+            "exit" -> Trigger.Exit(if (delay > 0.0) delay else safeDelay(parseDouble(obj["value"])))
+            "event" -> parseString(obj["value"])?.trim()?.takeIf { it.isNotEmpty() }?.let { Trigger.Event(it, delay) }
+            "click" -> parseString(obj["value"])?.trim()?.takeIf { it.isNotEmpty() }?.let { Trigger.Click(it, delay) }
             else -> null
         }
     }
+
+    private fun safeDelay(seconds: Double?): Double =
+        seconds?.takeIf { it.isFinite() && it > 0.0 } ?: 0.0
 
     private fun parseCooldown(element: JsonElement?): List<CooldownCondition> {
         val array = element as? JsonArray ?: return emptyList()

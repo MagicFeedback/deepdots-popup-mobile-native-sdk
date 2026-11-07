@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "package": "deepdots-popup-native-sdk",
   "platform": "native",
-  "version": "0.7.9",
+  "version": "0.7.11",
   "artifacts": {
     "android": {
       "maven": "com.deepdots.sdk:shared-android",
@@ -18,13 +18,14 @@
   },
   "surveyRenderer": {
     "package": "@magicfeedback/native",
-    "version": "2.2.31",
+    "version": "2.2.39",
     "delivery": { "android": "vendored", "ios": "cdn" },
-    "notes": "Android carga el bundle vendorizado de los assets del AAR. En iOS el XCFramework no lleva el bundle: el WebView lo carga del CDN (jsDelivr, luego unpkg) en la version exacta, salvo que la app lo incluya en su bundle."
+    "assignedVersions": ["2.2.38", "2.2.39"],
+    "notes": "Android carga el bundle vendorizado de los assets del AAR. En iOS el XCFramework no lleva el bundle: el WebView lo carga del CDN (jsDelivr, luego unpkg) en la version exacta, salvo que la app lo incluya en su bundle. DD-70: si la API asigna al survey otra version de assignedVersions, el WebView carga su hoja (survey-css del popup-sdk de popupSdkCss.version) y su JS del CDN; si algo falla, esta y su CSS."
   },
   "popupSdkCss": {
     "package": "@magicfeedback/popup-sdk",
-    "version": "1.10.0",
+    "version": "1.19.0",
     "notes": "CSS del survey que el WebView carga del CDN (dist/assets/assets/style.css). Se fija a una version publicada; no sigue a MAGICFEEDBACK_VERSION."
   },
   "hosts": {

@@ -1,0 +1,27 @@
+# Visual regression (DD-28): the simple survey (help-click), first page: the NPS scale.
+appId: com.deepdots.testapp
+tags: [visual]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      VISUAL: "1"
+      SCENARIO: help-click
+- tapOn:
+    id: tab-account
+- tapOn:
+    id: help-button
+- extendedWaitUntil:
+    visible: "Can we help?"
+    timeout: 20000
+# The survey must be there before the screenshot: mandatory wait (wait-survey's is optional,
+# and on a slow CI runner the popup can be revealed before the survey loads).
+- extendedWaitUntil:
+    visible: "How likely are you to recommend NORDLY to a friend?"
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    file: ../subflows/visual-shot.yaml
+    env:
+      NAME: simple-1-open

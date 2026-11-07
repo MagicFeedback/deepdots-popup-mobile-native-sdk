@@ -38,9 +38,15 @@ actual fun SurveyView(
     backgroundColor: Color,
     onEvent: (String) -> Unit,
     onController: (SurveyController) -> Unit,
-    font: PopupFont?
+    font: PopupFont?,
+    surveySdkVersion: String?,
 ) {
     var loading by remember { mutableStateOf(true) }
+    // El WebView y su puente se crean una sola vez (factory), pero PopupView pasa un `onEvent`
+    // nuevo en cada recomposición: el que ve el idioma del survey tras el `loaded`. Sin esto el
+    // puente se quedaba con el primero y los avisos (respuesta obligatoria, email inválido, error
+    // al enviar) salían en el idioma del host aunque el resto del chrome siguiera al survey.
+    val currentOnEvent by rememberUpdatedState(onEvent)
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -84,7 +90,7 @@ actual fun SurveyView(
                                 payload.put("message", message)
                                 json.put("payload", payload)
                             }
-                            onEvent(json.toString())
+                            currentOnEvent(json.toString())
                         }
                         // NOTE: do NOT match on "required" alone — magicfeedback's debug logs
                         // emit question metadata like "required: true" which triggers a false
@@ -144,7 +150,7 @@ actual fun SurveyView(
                         } else if (name == "before_submit") {
                             loading = true
                         }
-                        onEvent(event)
+                        currentOnEvent(event)
                     }
                 }, "DeepdotsBridge")
                 val html = buildMagicFeedbackHtml(
@@ -154,7 +160,8 @@ actual fun SurveyView(
                     assetSize = assetSize,
                     bridgeEmitCall = "DeepdotsBridge.emit",
                     isIOS = false,
-                    font = font
+                    font = font,
+                    surveySdkVersion = surveySdkVersion,
                 )
                 loadDataWithBaseURL("https://magicfeedback.app/", html, "text/html", "utf-8", null)
             }
@@ -172,12 +179,13 @@ actual fun SurveyView(
 }
 
 // Provide actual implementation for platformSurveyHtml so native Android code could also fetch it if needed.
-actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?): String = buildMagicFeedbackHtml(
+actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?, surveySdkVersion: String?): String = buildMagicFeedbackHtml(
     surveyId = surveyId,
     productId = productId,
     localAssetUrl = "file:///android_asset/magicfeedback/magicfeedback-sdk.browser.js",
     assetSize = null,
     bridgeEmitCall = "DeepdotsBridge.emit",
     isIOS = false,
-    font = font
+    font = font,
+    surveySdkVersion = surveySdkVersion,
 )

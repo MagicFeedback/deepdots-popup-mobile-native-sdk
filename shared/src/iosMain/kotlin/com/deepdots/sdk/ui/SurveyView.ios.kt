@@ -2,6 +2,7 @@ package com.deepdots.sdk.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -46,10 +47,16 @@ actual fun SurveyView(
     backgroundColor: Color,
     onEvent: (String) -> Unit,
     onController: (SurveyController) -> Unit,
-    font: PopupFont?
+    font: PopupFont?,
+    surveySdkVersion: String?,
 ) {
     // Keep a reference to WKWebView for controller actions
     var webViewRef by remember { mutableStateOf<WKWebView?>(null) }
+    // El WKWebView y su handler se crean una sola vez (factory), pero PopupView pasa un `onEvent`
+    // nuevo en cada recomposición: el que ve el idioma del survey tras el `loaded`. Sin esto el
+    // handler se quedaba con el primero y los avisos (respuesta obligatoria, email inválido, error
+    // al enviar) salían en el idioma del host aunque el resto del chrome siguiera al survey.
+    val currentOnEvent by rememberUpdatedState(onEvent)
 
     // Expose controller bound to current WKWebView
     onController(object : SurveyController {
@@ -65,7 +72,7 @@ actual fun SurveyView(
                 // Build WKWebView and wire bridge
                 val config = WKWebViewConfiguration()
                 val controller = WKUserContentController()
-                val handler = DeepdotsMessageHandler(onEvent)
+                val handler = DeepdotsMessageHandler { currentOnEvent(it) }
                 controller.addScriptMessageHandler(handler, name = "DeepdotsBridge")
                 // Inject a script to forward console messages to our bridge
                 val consoleForwardScript = """
@@ -120,7 +127,7 @@ actual fun SurveyView(
                 )
                 // Also force light UI controls so native form widgets don't adopt dark styling.
                 wv.overrideUserInterfaceStyle = UIUserInterfaceStyle.UIUserInterfaceStyleLight
-                val html = platformSurveyHtml(surveyId, productId, font)
+                val html = platformSurveyHtml(surveyId, productId, font, surveySdkVersion)
                 wv.loadHTMLString(html, baseURL = NSURL(string = "https://magicfeedback.app/"))
                 webViewRef = wv
                 wv as UIView
@@ -142,7 +149,7 @@ actual fun SurveyView(
     }
 }
 
-actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?): String {
+actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?, surveySdkVersion: String?): String {
     val bundle = NSBundle.mainBundle
     val resPath = bundle.pathForResource("magicfeedback/magicfeedback-sdk.browser", ofType = "js")
     val localScript = resPath?.let { "file://${it}" }
@@ -153,6 +160,7 @@ actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFo
         assetSize = null,
         bridgeEmitCall = "window.webkit.messageHandlers.DeepdotsBridge.postMessage",
         isIOS = true,
-        font = font
+        font = font,
+        surveySdkVersion = surveySdkVersion,
     )
 }

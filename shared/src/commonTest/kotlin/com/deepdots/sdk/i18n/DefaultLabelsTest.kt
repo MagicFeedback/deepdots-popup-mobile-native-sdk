@@ -76,7 +76,10 @@ class DefaultLabelsTest {
 
     @Test
     fun supportedLanguagesListsExpectedTags() {
-        val expected = listOf("en", "es", "da", "no", "sv", "fi", "de", "fr", "pt", "ar", "bn", "zh-CN")
+        val expected = listOf(
+            "en", "es", "da", "no", "sv", "fi", "de", "fr", "pt", "ar", "bn", "zh-CN",
+            "bg", "cs", "el", "et", "ga", "hr", "hu", "it", "lt", "lv", "mt", "nl", "pl", "ro", "sk", "sl",
+        )
         assertEquals(expected, DefaultLabels.supportedLanguages)
         // Every advertised locale must resolve to a non-English label for at least one slot
         // (besides English itself), to guarantee the table isn't aliasing back to EN by accident.
@@ -106,6 +109,25 @@ class DefaultLabelsTest {
             assertEquals(code, DefaultLabels.resolveLocale(code), name)
             assertTrue(DefaultLabels.supportedLanguages.contains(code), name)
         }
+    }
+
+    @Test
+    fun coversTheTwentyFourOfficialEuLanguages() {
+        // DD-67: el chrome tiene que hablar los 24 idiomas oficiales de la UE.
+        val eu = listOf("bg", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr", "ga", "hr", "hu", "it", "lt", "lv", "mt", "nl", "pl", "pt", "ro", "sk", "sl", "sv")
+        eu.forEach { code ->
+            assertEquals(code, DefaultLabels.resolveLocale(code), code)
+            assertTrue(DefaultLabels.supportedLanguages.contains(code), code)
+            val labels = DefaultLabels.labels(code)
+            listOf(
+                labels.accept, labels.decline, labels.start, labels.complete, labels.back,
+                labels.question, labels.of, labels.followUp, labels.closeAria, labels.loadingAria,
+                labels.errorRequired, labels.errorInvalidEmail, labels.errorSubmit, labels.errorLoad,
+            ).forEach { assertTrue(it.isNotBlank(), "$code has an empty label") }
+        }
+        assertEquals("pl", DefaultLabels.resolveLocale("pl-PL"))
+        assertEquals("el", DefaultLabels.resolveLocale("el_GR"))
+        assertEquals("ga", DefaultLabels.resolveLocale("ga-IE"))
     }
 
     @Test
@@ -176,5 +198,17 @@ class DefaultLabelsTest {
         }
         assertTrue(!DefaultLabels.isRtlLanguage(null))
         assertTrue(!DefaultLabels.isRtlLanguage("is-IS"))
+    }
+    @Test
+    fun invalidEmailHasItsOwnTextInEveryLanguage() {
+        // INVALID_EMAIL (@magicfeedback/native 2.2.39): un email con una errata no es "pregunta
+        // obligatoria sin responder"; cada idioma lo dice con su propio texto.
+        assertEquals("Please enter a valid email address.", DefaultLabels.labels("en").errorInvalidEmail)
+        assertEquals("Indtast venligst en gyldig e-mailadresse.", DefaultLabels.labels("da").errorInvalidEmail)
+        DefaultLabels.supportedLanguages.forEach { tag ->
+            val l = DefaultLabels.labels(tag)
+            assertTrue(l.errorInvalidEmail.isNotBlank(), "'$tag' sin errorInvalidEmail")
+            assertTrue(l.errorInvalidEmail != l.errorRequired, "'$tag': errorInvalidEmail igual que errorRequired")
+        }
     }
 }

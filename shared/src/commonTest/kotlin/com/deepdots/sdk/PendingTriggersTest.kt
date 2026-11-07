@@ -41,6 +41,58 @@ class PendingTriggersTest {
         override suspend fun postContact(body: ContactBody) = Unit
     }
 
+    /** Doble del servicio: el GET de popups falla las primeras [failures] veces y luego responde. */
+    private class FlakyPopupsService(private val failures: Int, private val body: String) : PopupsService {
+        var calls = 0
+
+        override suspend fun fetchPopups(publicKey: String, filter: String?): String {
+            calls++
+            if (calls <= failures) throw IllegalStateException("Connect timeout has expired (simulado)")
+            return body
+        }
+
+        override suspend fun postPopupEvent(publicKey: String, status: String, popupId: String, userId: String?): String? = null
+
+        override suspend fun postFeedback(body: AnalyticsFeedbackBody): String? = null
+
+        override suspend fun postContact(body: ContactBody) = Unit
+    }
+
+    private val openPopupJson = """
+        [{"id":"popup-open","title":"","message":"","triggers":[{"type":"event","value":"app_opened"}],
+          "actions":{},"style":{"theme":"light","position":"center"},"surveyId":"survey-open","productId":"product-1"}]
+    """.trimIndent()
+
+    @Test
+    fun a_failed_fetch_is_retried_and_keeps_the_pending_triggers() = runBlocking {
+        val service = FlakyPopupsService(failures = 2, body = openPopupJson)
+        val sdk = createLoadingSdk(service, retryDelaysMs = listOf(200, 200))
+
+        sdk.triggerEvent("app_opened")
+
+        // Tras el primer fallo el disparo sigue guardado, a la espera del reintento.
+        awaitUntil { service.calls >= 1 }
+        assertEquals(1, sdk.debugPendingTriggerCount())
+
+        // El tercer intento responde: el disparo se reproduce y el popup entra en la cola.
+        awaitUntil { sdk.debugQueuedPopupIds().isNotEmpty() }
+        assertEquals(3, service.calls)
+        assertEquals(listOf("popup-open"), sdk.debugQueuedPopupIds())
+        assertEquals(0, sdk.debugPendingTriggerCount())
+    }
+
+    @Test
+    fun the_buffer_is_dropped_only_after_the_last_attempt_fails() = runBlocking {
+        val service = FlakyPopupsService(failures = 3, body = openPopupJson)
+        val sdk = createLoadingSdk(service)
+
+        sdk.triggerEvent("app_opened")
+
+        awaitUntil { sdk.debugPendingTriggerCount() == 0 }
+        assertEquals(3, service.calls, "3 intentos en total")
+        assertTrue(sdk.debugQueuedPopupIds().isEmpty())
+    }
+
     @Test
     fun event_fired_before_the_api_responds_is_shown_once_popups_arrive() = runBlocking {
         val service = GatedPopupsService()
@@ -202,9 +254,10 @@ class PendingTriggersTest {
         assertEquals(0, sdk.debugPendingTriggerCount())
     }
 
-    private fun createLoadingSdk(service: PopupsService): DeepdotsPopups = DeepdotsPopups().apply {
+    private fun createLoadingSdk(service: PopupsService, retryDelaysMs: List<Long> = listOf(0, 0)): DeepdotsPopups = DeepdotsPopups().apply {
         // El servicio se fija ANTES de init() para que el GET de popups lo use (y quede en vuelo).
         debugSetPopupsService(service)
+        debugPopupsFetchRetryDelaysMs = retryDelaysMs
         init(
             InitOptions(
                 debug = true,

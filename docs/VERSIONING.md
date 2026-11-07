@@ -60,6 +60,48 @@ Every published version has, and the publish workflow refuses to publish without
    passed on the release pull request, that pull request with its approvals and who merged
    it, and who pushed the tag.
 
+## Release gates
+
+A version reaches Maven Central and SPM only through `release.yml`, and only if every gate below
+is green. `node scripts/release.mjs tag` checks the same before it pushes the tag.
+
+| Gate | Where | What blocks |
+|---|---|---|
+| Unit tests (JVM) | every pull request (`ci.yml`) | a failing unit test, when the pull request touches the SDK or the build |
+| Version & changelog | every pull request (`release-check.yml`) | missing release notes or bump, an invalid manifest, schema or fixtures |
+| Release dry run | release pull request (macOS) | the publish gate, unit tests on the JVM **and the iOS simulator**, build and smoke test of the AAR and the XCFramework |
+| Test apps (release build) · Android | release pull request | any Maestro flow failing with the SDK built from that commit (emulator, API 34) |
+| Test apps (release build) · iOS | release pull request | the same on the iOS simulator |
+| Visual regression · Android / · iOS | release pull request (same workflow, DD-28) | a screenshot that differs from its approved baseline, or a baseline that is missing or not approved, on that platform |
+| Required checks | `release.yml`, before anything is published | any of the five release pull request checks not green or missing; **no merged release pull request** (no test evidence); a tagged commit whose tree is **not the one the release pull request tested** |
+
+Android and iOS share one version, so a failure on either platform blocks the release of both;
+the check name and the release validation report say which platform failed.
+
+After publishing, the release validation report (device matrix, Android API 26–36 and
+iOS 16.4–26.x) is generated and linked from the GitHub Release notes, with the test status per
+platform and the known issues. It does not gate the release: it runs after it.
+
+`scripts/deploy_sdk_release.sh` (publishing from a laptop) is retired and only prints this.
+
+### Emergency exception
+
+Use it only when a published version is causing harm in production and a required check cannot
+go green in time for reasons unrelated to the change (for example, the macOS runners are down).
+It never covers a missing release pull request or a tagged commit that is not the tested one.
+
+1. Open the release pull request as usual (`release.mjs prepare`) and let the checks run.
+2. Add a `## Release gate override` section to its description: what is failing, why it is not
+   the change, what was checked by hand instead, and the follow-up.
+3. A repository **admin** adds the `release-gate-override` label. A label added by anyone else
+   is refused.
+4. Merge and tag as usual. The required checks step lets the red checks through with a warning,
+   and the GitHub Release notes start with **"Published with a release gate override"**: who
+   approved it, the reason and the checks that were not green.
+5. Remove the label, fix the failing check, and release a clean version afterwards.
+
+Without both the section and an admin's label, a red check blocks the release.
+
 ## How a release happens
 
 ```text
@@ -106,3 +148,18 @@ version (`0.7.4` after `0.8.0`), is not marked as the latest GitHub Release and 
 into `main`. Host apps pin an exact version (Gradle, `exact:` in SPM), so nobody gets it
 without asking for it. The survey renderer and stylesheet are supported as shipped: to get a
 newer renderer, upgrade the SDK.
+
+## Survey SDK compatibility line (DD-70)
+
+The release notes of every version start with
+`Survey SDK supported: <supported> (survey frontend <versions>); bundled: <MAGICFEEDBACK_VERSION>.`
+`check.mjs release` (Release dry run and `release.yml`) computes it from
+`SUPPORTED_SURVEY_SDK_VERSIONS` (`SurveySdkVersion.kt`), `MAGICFEEDBACK_VERSION` and the public
+registry view `GET https://api.deepdots.com/sdk/survey-versions` (survey frontend versions in
+`stable` or `candidate` built with a supported survey SDK), and blocks the release if the line in
+the CHANGELOG section is missing or different, printing the expected one. To get it before the
+release PR: `node scripts/release/survey-compat.mjs`. `SURVEY_VERSIONS_URL` points it elsewhere
+(DEV); `SURVEY_COMPAT_OFFLINE=1` turns an unreachable registry into a warning (emergencies only).
+Same script as the web SDK (`scripts/release/survey-compat.mjs`), with the Kotlin sources. Keep the
+docs table (`popup-native/reference/survey-compatibility`) in line with it.
+

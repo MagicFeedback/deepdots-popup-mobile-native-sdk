@@ -53,6 +53,29 @@ val skipGradleSigning = providers.gradleProperty("skipGradleSigning")
     .map { it.equals("true", ignoreCase = true) }
     .orElse(false)
 
+// Versión del SDK para `deepdots_sdk` (SdkIdentity): se genera desde PUBLISHING_VERSION en cada
+// build, así nunca se desalinea de lo publicado en Maven / SPM.
+val generateSdkBuildInfo by tasks.registering {
+    val sdkVersion = project.version.toString()
+    val outDir = layout.buildDirectory.dir("generated/sdkBuildInfo/commonMain/kotlin")
+    inputs.property("version", sdkVersion)
+    outputs.dir(outDir)
+    doLast {
+        val file = outDir.get().file("com/deepdots/sdk/SdkBuildInfo.kt").asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            """
+            |package com.deepdots.sdk
+            |
+            |// Generado por la tarea `generateSdkBuildInfo` (shared/build.gradle.kts). No editar.
+            |internal object SdkBuildInfo {
+            |    const val VERSION: String = "$sdkVersion"
+            |}
+            |""".trimMargin()
+        )
+    }
+}
+
 kotlin {
     val xcf = XCFramework()
     androidTarget { // proper android target registration
@@ -96,6 +119,7 @@ kotlin {
             }
         }
         val commonMain by getting {
+            kotlin.srcDir(generateSdkBuildInfo)
             dependencies {
                 implementation(compose.runtime)
                 implementation(compose.foundation)

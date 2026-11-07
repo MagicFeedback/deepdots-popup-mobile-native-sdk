@@ -1,0 +1,215 @@
+# Synthetic monitor of the native popup SDK (DD-26). The NORDLY test apps (test-apps/) built
+# against the PUBLISHED SDK (latest Maven Central release on Android, latest DeepdotsSDK-SPM
+# release on iOS) run four Maestro scenarios (test-apps/maestro/monitor) against DEV: init,
+# trigger → render, answer → submit, popups-error. run-maestro.sh retries a failing flow once.
+#
+# Alerts go straight to Slack #notifications (secret MONITORING_SLACK_WEBHOOK_URL), through
+# .github/actions/sdk-monitor-report: confirmed failures, reminders, recoveries. Grafana only
+# reads the BigQuery rows written afterwards. The daily heartbeat and the "silent" watchdog of
+# the three platforms come from the web SDK repo's monitor (job Watch). Runbook: docs/MONITORING.md.
+#
+# Frequency: the cron runs hourly (a few seconds on Linux when nothing is due);
+# SDK_MONITOR_EVERY_H_ANDROID (default 6) and SDK_MONITOR_EVERY_H_IOS (default 24) decide which
+# hours run. Android runs at the hours where hour % every == 1, iOS where hour % every == 3, so
+# they do not overlap the nightly matrix. macOS runners are shared with the other workflows of
+# the org: iOS stays once a day. Scheduled runs only happen from the default branch (main).
+# A manual run is a TEST (messages start with "TEST —", incidents kept apart).
+name: "Monitoring: popup SDK"
+
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+    inputs:
+      platform:
+        type: choice
+        options: [both, android, ios]
+        default: both
+      version:
+        description: 'SDK version (empty = latest release)'
+        default: ''
+      inject_failure:
+        description: 'Failure test: the trigger scenario uses a popup config whose API answers 406'
+        type: boolean
+        default: false
+      simulate_grafana_down:
+        description: 'Failure test: Grafana unreachable and no BigQuery write in this run'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # failure reports on the validation-reports branch (GitHub Pages)
+  actions: write # redeploy GitHub Pages (docs-pages.yml)
+  id-token: write # BigQuery through Workload Identity Federation
+
+concurrency:
+  group: sdk-monitor-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  MONITORING_SLACK_WEBHOOK_URL: ${{ secrets.MONITORING_SLACK_WEBHOOK_URL }}
+  SDK_MONITOR_OWNER: ${{ vars.SDK_MONITOR_OWNER }}
+  SDK_MONITOR_REMINDER_H: ${{ vars.SDK_MONITOR_REMINDER_H }}
+  SDK_MONITOR_WIF_PROVIDER: ${{ vars.SDK_MONITOR_WIF_PROVIDER }}
+  SDK_MONITOR_SERVICE_ACCOUNT: ${{ vars.SDK_MONITOR_SERVICE_ACCOUNT }}
+  SDK_MONITOR_GCP_PROJECT: ${{ vars.SDK_MONITOR_GCP_PROJECT }}
+  SDK_MONITOR_BQ_TABLE: ${{ vars.SDK_MONITOR_BQ_TABLE }}
+  GH_TOKEN: ${{ github.token }}
+  FLOWS: monitor/monitor-init.yaml monitor/monitor-trigger-render.yaml monitor/monitor-submit.yaml monitor/monitor-popups-error.yaml
+  MONITOR_SCENARIO: ${{ inputs.inject_failure && 'fault-popups-error' || '' }}
+  FAULT: ${{ inputs.inject_failure && 'popups406 (fault-popups-error)' || '' }}
+
+jobs:
+  due:
+    name: Due
+    runs-on: ubuntu-latest
+    outputs:
+      android: ${{ steps.pick.outputs.android }}
+      ios: ${{ steps.pick.outputs.ios }}
+      android_sdk: ${{ steps.pick.outputs.android_sdk }}
+      ios_sdk: ${{ steps.pick.outputs.ios_sdk }}
+    steps:
+      - id: pick
+        env:
+          EVERY_ANDROID: ${{ vars.SDK_MONITOR_EVERY_H_ANDROID || '6' }}
+          EVERY_IOS: ${{ vars.SDK_MONITOR_EVERY_H_IOS || '24' }}
+          PLATFORM: ${{ inputs.platform || 'both' }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          hour=$(date -u +%-H)
+          if [ "$GITHUB_EVENT_NAME" = schedule ]; then
+            android=$([ $(( (hour - 1 + 24) % EVERY_ANDROID )) -eq 0 ] && echo true || echo false)
+            ios=$([ $(( (hour - 3 + 24) % EVERY_IOS )) -eq 0 ] && echo true || echo false)
+          else
+            android=$([ "$PLATFORM" != ios ] && echo true || echo false)
+            ios=$([ "$PLATFORM" != android ] && echo true || echo false)
+          fi
+          maven=$(curl -fsS https://repo1.maven.org/maven2/com/deepdots/sdk/shared-android/maven-metadata.xml | sed -n 's:.*<release>\(.*\)</release>.*:\1:p')
+          spm=$(gh api repos/MagicFeedback/DeepdotsSDK-SPM/releases/latest -q .tag_name)
+          echo "android=$android" >> "$GITHUB_OUTPUT"
+          echo "ios=$ios" >> "$GITHUB_OUTPUT"
+          echo "android_sdk=${VERSION:-$maven}" >> "$GITHUB_OUTPUT"
+          echo "ios_sdk=${VERSION:-$spm}" >> "$GITHUB_OUTPUT"
+          echo "Due: android=$android (SDK ${VERSION:-$maven}) ios=$ios (SDK ${VERSION:-$spm})" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  android:
+    name: Android
+    needs: due
+    if: needs.due.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SDK: ${{ needs.due.outputs.android_sdk }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Build the test app (SDK ${{ env.SDK }})
+        working-directory: test-apps/android
+        run: ./gradlew :app:assembleDebug :app:labSdkInfo -PsdkVersion="$SDK"
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Run the scenarios on the emulator
+        id: run
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          cores: 4
+          ram-size: 4096M
+          heap-size: 512M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: |
+            adb install -r test-apps/android/app/build/outputs/apk/debug/app-debug.apk
+            test-apps/scripts/run-maestro.sh android "$SDK" out/android
+      - uses: actions/setup-node@v4
+        if: always()
+        with:
+          node-version: 24
+      - name: Simulate Grafana down
+        if: always() && inputs.simulate_grafana_down
+        run: &grafana-down |
+          echo "127.0.0.1 dash.deepdots.com" | sudo tee -a /etc/hosts
+          if curl -sS -m 10 -o /dev/null https://dash.deepdots.com/api/health; then echo "::error::Grafana still reachable"; exit 1; fi
+          echo "Grafana unreachable from this runner, and no BigQuery write in this run." | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Report
+        if: always()
+        uses: ./.github/actions/sdk-monitor-report
+        with:
+          platform: android
+          sdk: ${{ env.SDK }}
+          source: maven
+          out: out/android
+          job-status: ${{ steps.run.outcome }}
+          fault: ${{ env.FAULT }}
+          write-bigquery: ${{ !inputs.simulate_grafana_down }}
+
+  ios:
+    name: iOS
+    needs: due
+    if: needs.due.outputs.ios == 'true'
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      SDK: ${{ needs.due.outputs.ios_sdk }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+      - name: Install tools
+        run: |
+          brew install xcodegen
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Build the test app (SDK ${{ env.SDK }})
+        working-directory: test-apps/ios
+        run: |
+          SDK_VERSION=$SDK xcodegen generate
+          xcodebuild -project NordlyTestApp.xcodeproj -scheme NordlyTestApp -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build -quiet build
+          RESOLVED=$(python3 -c "import json;print(next(p['state']['version'] for p in json.load(open('NordlyTestApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved'))['pins'] if p['identity']=='deepdotssdk-spm'))")
+          echo "[lab] sdk requested=$SDK resolved=$RESOLVED source=SPM (DeepdotsSDK-SPM)"
+          test "$RESOLVED" = "$SDK"
+      - name: Boot simulator and install
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for r,v in d.items() if 'iOS' in r for x in v if x['name']=='iPhone 16'))")
+          echo "DEVICE=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID" && xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" test-apps/ios/build/Build/Products/Debug-iphonesimulator/NordlyTestApp.app
+      - name: Run the scenarios on the simulator
+        id: run
+        continue-on-error: true
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "180000"
+        run: test-apps/scripts/run-maestro.sh ios "$SDK" out/ios
+      - uses: actions/setup-node@v4
+        if: always()
+        with:
+          node-version: 24
+      - name: Simulate Grafana down
+        if: always() && inputs.simulate_grafana_down
+        run: *grafana-down
+      - name: Report
+        if: always()
+        uses: ./.github/actions/sdk-monitor-report
+        with:
+          platform: ios
+          sdk: ${{ env.SDK }}
+          source: spm
+          out: out/ios
+          job-status: ${{ steps.run.outcome }}
+          fault: ${{ env.FAULT }}
+          write-bigquery: ${{ !inputs.simulate_grafana_down }}

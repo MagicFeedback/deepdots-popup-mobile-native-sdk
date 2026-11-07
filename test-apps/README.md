@@ -56,6 +56,7 @@ iOS quits, and the new run starts on the next launch).
 | `load` | `immediate` · `consent` | Init the SDK at launch, or after "Accept all" in the cookie dialog. |
 | `user` | text | `setUserId()` after init. Without it the SDK uses its anonymous id. |
 | `start` | `home` · `shop` · `cart` · `checkout` · `account` | First screen (not saved). |
+| `visual` | `1` | The Lab log shows its lines without the time (one-shot): the visual regression flows (DD-28) use it so screenshots do not change between runs. |
 | `consent` | `all` · `necessary` | The cookie choice is already made: no cookie dialog at launch, as in a host app without one (a popup at app start shows right away instead of waiting for the dialog). |
 
 **Reset** in the Lab panel clears the SDK's storage (cooldowns, user id) and the cookie choice.
@@ -86,6 +87,7 @@ Surveys are the MF-3243 ones: «SDK Test App · Simple» `5581b5a0-…` and «Co
 | `checkout-time` | `time_on_page` 3 s | `path: /checkout` | simple |
 | `exit-checkout` | `exit` 2 s | leaving `/checkout` | simple |
 | `rate-product` | `event` `rate_product` (bottom sheet) | — | complex |
+| `rate-delay` | `event` `rate_product` + Delay 8 s (`delaySeconds`) | — (navigating away cancels it) | simple |
 | `help-click` | `click` `help-button` | — | simple |
 | `redisplay` | `time_on_page` 2 s | `path: /account`, cooldown `SHOWED` 1 day | simple |
 | `not-on-cart` | `time_on_page` 2 s | `excludedPaths: /cart, /checkout` | simple |
@@ -150,6 +152,10 @@ named "Native Test Apps (MF-3244) · <scenario>").
     host works. iOS has no scriptable network throttling on CI.
   - **Network lost with the popup open** (`offline-open-popup.yaml`, Android): airplane mode right
     before the trigger; the popup closes and the host works.
+
+- `visual/`: the visual regression (DD-28): one `visual-<state>.png` screenshot per popup state,
+  compared with approved baselines by the "Visual regression · Android / iOS · SDK local" jobs.
+  The runner fixes the status bar (9:41, full battery) for every run. See `visual/README.md`.
 
 CI: `.github/workflows/test-apps.yml`, one job per platform and SDK version. The versions come
 from `sdk-versions.json` (the latest published version and the previous one; older ones are not

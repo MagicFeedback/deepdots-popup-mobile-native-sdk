@@ -4,7 +4,8 @@
 #   test-apps/scripts/run-maestro.sh <android|ios> <sdk-version> <out-dir>
 #
 # env: DEVICE (simulator UDID / adb serial, optional), RECORD=1 (one video per flow),
-#      FLOWS (space-separated flow files relative to test-apps/maestro; default: all).
+#      FLOWS (space-separated flow files relative to test-apps/maestro; default: all),
+#      MONITOR_SCENARIO (synthetic monitor failure test, maestro/monitor; passed to the flows).
 # Per flow it writes Maestro's output and a JUnit report; for the run, the device log with the
 # app's [lab] lines. Exit code != 0 when a flow fails, when the expected-failure test passes, or
 # when anything in the log points at the production API.
@@ -62,11 +63,43 @@ set_network() {
   adb_cmd emu network speed "$1" > /dev/null 2>&1; adb_cmd emu network delay "$2" > /dev/null 2>&1
 }
 
+# Fixed status bar (clock 9:41, full battery, full signal, no notification icons), so screenshots
+# only change when the app does (visual regression, DD-28). Android: SystemUI demo mode, which a
+# font scale change drops, so set_text_size applies it again.
+fix_status_bar() {
+  if [ "$PLATFORM" = android ]; then
+    adb_cmd shell settings put global sysui_demo_allowed 1 > /dev/null 2>&1
+    local c
+    for c in "enter" "clock -e hhmm 0941" "battery -e level 100 -e plugged false" \
+      "network -e wifi show -e level 4 -e mobile show -e datatype none -e level 4" "notifications -e visible false"; do
+      # shellcheck disable=SC2086
+      adb_cmd shell am broadcast -a com.android.systemui.demo -e command $c > /dev/null 2>&1
+    done
+  else
+    xcrun simctl status_bar "${DEVICE:-booted}" override --time 9:41 --batteryState charged --batteryLevel 100 \
+      --cellularMode active --cellularBars 4 --wifiMode active --wifiBars 3 --dataNetwork wifi > /dev/null 2>&1
+  fi
+}
+
+# Android: wait (up to 90 s) until the device has a default network again. After the airplane-mode
+# flows, the API 26 emulator took longer than 30 s to reconnect, so the next throttled flow
+# (slow-survey) timed out before the SDK could load its config: a test-order failure, not the SDK's.
+wait_online() {
+  [ "$PLATFORM" = android ] || return 0
+  local i
+  for i in $(seq 1 45); do
+    adb_cmd shell dumpsys connectivity 2>/dev/null | grep -qE 'Active default network: [0-9]+' && return 0
+    sleep 2
+  done
+  echo "::warning::[lab] device still offline after 90 s"
+}
+
 # `# text-size: large` in a flow: it runs with large system text (Android font_scale 1.3, iOS
 # Dynamic Type XXXL), so long titles wrap on any device; back to the default afterwards.
 set_text_size() {
   if [ "$PLATFORM" = android ]; then
     adb_cmd shell settings put system font_scale "$([ "$1" = large ] && echo 1.3 || echo 1.0)" > /dev/null 2>&1
+    sleep 2; fix_status_bar
   else
     xcrun simctl ui "${DEVICE:-booted}" content_size "$([ "$1" = large ] && echo extra-extra-extra-large || echo large)" > /dev/null 2>&1
   fi
@@ -95,12 +128,12 @@ reboot_if_driver_timeout() { # <maestro output>
 run_flow() { # <flow file> -> exit code of maestro
   local name; name=$(basename "$1" .yaml)
   local net; net=$(sed -n 's/^# network: *//p' "$1")
-  [ -n "$net" ] && { echo "[lab] $name: network $net"; set_network $net; }
+  [ -n "$net" ] && { echo "[lab] $name: network $net"; wait_online; set_network $net; }
   local text; text=$(sed -n 's/^# text-size: *//p' "$1")
   [ -n "$text" ] && { echo "[lab] $name: text size $text"; set_text_size "$text"; }
   start_recording "$name"
   rm -f "$OUT/junit/$name.xml"
-  maestro_cmd test $DRIVER_OPTS -e SDK_VERSION="$SDK" --format junit --output "$OUT/junit/$name.xml" \
+  maestro_cmd test $DRIVER_OPTS -e SDK_VERSION="$SDK" -e MONITOR_SCENARIO="${MONITOR_SCENARIO:-}" --format junit --output "$OUT/junit/$name.xml" \
     --test-output-dir "$OUT/maestro/$name" "$1" > "$OUT/maestro/$name.txt" 2>&1
   local code=$?
   # Maestro writes no JUnit when it cannot start (e.g. the iOS driver did not come up): write one
@@ -125,6 +158,25 @@ if [ "$PLATFORM" = android ]; then
   # Pixel Launcher), which hid the cookie dialog in every flow. Don't show them.
   adb_cmd shell settings put global hide_error_dialogs 1 > /dev/null 2>&1 || true
 fi
+# What device this run is, for the visual report: test-apps/visual/collect.mjs reads device.json.
+if [ "$PLATFORM" = android ]; then
+  printf '{"platform":"android","model":"%s","profile":"%s","os":"%s","density":"%s","size":"%s"}\n' \
+    "$(adb_cmd shell getprop ro.product.model | tr -d '\r')" "${AVD_PROFILE:-}" "$(adb_cmd shell getprop ro.build.version.sdk | tr -d '\r')" \
+    "$(adb_cmd shell wm density | tr -d '\r' | awk '{print $NF}' | tail -1)" "$(adb_cmd shell wm size | tr -d '\r' | awk '{print $NF}' | tail -1)" > "$OUT/device.json"
+else
+  xcrun simctl list devices -j | python3 -c "
+import json, sys
+want = sys.argv[1]
+for runtime, devs in json.load(sys.stdin)['devices'].items():
+    for d in devs:
+        if d['state'] == 'Booted' and want in ('booted', d['udid']):
+            os = runtime.rsplit('iOS-', 1)[-1].replace('-', '.')
+            model = d.get('deviceTypeIdentifier', d['name']).rsplit('.', 1)[-1].replace('-', ' ')
+            print(json.dumps({'platform': 'ios', 'model': model, 'os': os, 'name': d['name']}))
+            raise SystemExit
+" "${DEVICE:-booted}" > "$OUT/device.json"
+fi
+fix_status_bar
 # Warm-up: the first cold start on a CI emulator/simulator is the slow one.
 maestro_cmd test -e SCENARIO=checkout-time subflows/launch.yaml > "$OUT/maestro/warm-up.txt" 2>&1 || true
 # Android: by default every `maestro test` reinstalls its driver apps, and the emulator only
@@ -135,12 +187,19 @@ DRIVER_OPTS=""
 
 # lemu/: a client popup and survey, exact copies in DEV. e2e/: the E2E scenarios in DEV. basic/: the minimal host app (com.deepdots.basicapp,
 # installed next to NORDLY): skipped when it is not installed.
-FLOWS=${FLOWS:-$(ls flows/*.yaml regression/*.yaml failures/*.yaml lemu/*.yaml basic/*.yaml e2e/*.yaml)}
+FLOWS=${FLOWS:-$(ls flows/*.yaml regression/*.yaml failures/*.yaml lemu/*.yaml basic/*.yaml e2e/*.yaml visual/*.yaml)}
 failed=()
+ANDROID_API=
+[ "$PLATFORM" = android ] && ANDROID_API=$(adb_cmd shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')
 for f in $FLOWS; do
   name=$(basename "$f" .yaml)
   if grep -q 'android-only' "$f" && [ "$PLATFORM" != android ]; then
     echo "[lab] skip $name (android-only)"; junit_case "$name" skipped "Android only"; continue
+  fi
+  # `# min-android-api: N`: the flow cannot run on older Android versions (the reason is in the flow).
+  min_api=$(sed -n 's/^# min-android-api: *//p' "$f")
+  if [ -n "$min_api" ] && [ -n "$ANDROID_API" ] && [ "$ANDROID_API" -lt "$min_api" ]; then
+    echo "[lab] skip $name (API $ANDROID_API < $min_api)"; junit_case "$name" skipped "Android API $ANDROID_API < $min_api"; continue
   fi
   # `# min-sdk: X.Y.Z`: the flow covers a setup that only exists from that version (always run on `local`).
   min_v=$(sed -n 's/^# min-sdk: *//p' "$f")
@@ -218,6 +277,26 @@ if grep -aE 'https?://api\.deepdots\.com' "$OUT/device.log" > "$OUT/prod-calls.t
   echo "::error::[lab] production API referenced in the device log:"; head "$OUT/prod-calls.txt"; failed+=("prod-isolation")
 else
   echo "[lab] isolation OK: no request to api.deepdots.com, only $(grep -ac 'api-dev.deepdots.com' "$OUT/device.log") log lines with api-dev.deepdots.com"
+fi
+
+# DD-70: a passing survey-sdk-<v> flow must really have drawn the survey with <v> (JS and CSS).
+# The WebView logs "[MagicFeedback] survey-sdk <v> assigned" only once that version's CSS and JS
+# are in; any fallback logs "<vendored> bundled". Maestro cannot read that from the screen.
+# SDKs before 0.7.10 skip those flows (they ignore surveyFrontend.sdkVersion).
+knows_survey_sdk() { [ "$SDK" = "local" ] && return 0; local IFS=.; set -- $SDK; [ "${1:-0}" -gt 0 ] || [ "${2:-0}" -gt 7 ] || { [ "${2:-0}" -eq 7 ] && [ "${3:-0}" -ge 10 ]; }; }
+if knows_survey_sdk; then
+  for f in $FLOWS; do
+    name=$(basename "$f" .yaml)
+    case "$name" in survey-sdk-*) ;; *) continue ;; esac
+    v=${name#survey-sdk-}
+    printf '%s\n' "${failed[@]}" | grep -qx "$name" && continue
+    if grep -aqF "[MagicFeedback] survey-sdk $v assigned" "$OUT/device.log"; then
+      echo "[lab] survey SDK $v assigned (JS + CSS) in $name"
+    else
+      echo "::error::[lab] FAIL $name: the survey was not drawn with $v ($(grep -aoE '\[MagicFeedback\] survey-sdk [0-9.]+ [a-z]+' "$OUT/device.log" | tail -1))"
+      failed+=("$name")
+    fi
+  done
 fi
 
 if [ ${#failed[@]} -gt 0 ]; then echo "[lab] failed: ${failed[*]}"; exit 1; fi

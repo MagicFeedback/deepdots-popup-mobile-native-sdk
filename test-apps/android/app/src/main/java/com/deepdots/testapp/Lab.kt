@@ -81,6 +81,9 @@ data class LabConfig(
             // `consent all|necessary`: the cookie choice is already made, so no dialog at launch
             // (a host app without a cookie dialog, where a popup at start shows right away).
             extras?.getString("consent")?.let { p.edit().putString("consent", it).commit() }
+            // `visual 1` (one-shot): the Lab log without the time, so screenshots of the visual
+            // regression (DD-28) do not change from one run to the next.
+            Lab.showTime = extras?.getString("visual") != "1"
             return config
         }
     }
@@ -91,6 +94,9 @@ object Lab {
     val lines = mutableStateListOf<String>()
     private val main = Handler(Looper.getMainLooper())
     private val clock = SimpleDateFormat("HH:mm:ss", Locale.US)
+
+    /** Time at the start of each on-screen line; off with the launch argument `visual 1`. */
+    @Volatile var showTime = true
 
     /** SDK events seen in this process (Lab bar `lab-counts`): the regression flows assert on them. */
     var shown by mutableIntStateOf(0)
@@ -107,7 +113,7 @@ object Lab {
 
     fun log(tag: String, message: String) {
         Log.i("lab", "[lab] $tag $message")
-        val line = "${clock.format(Date())} $tag $message"
+        val line = if (showTime) "${clock.format(Date())} $tag $message" else "$tag $message"
         onMain { append(line) }
     }
 

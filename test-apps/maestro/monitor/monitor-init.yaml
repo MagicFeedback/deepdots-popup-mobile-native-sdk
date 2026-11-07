@@ -1,0 +1,7 @@
+# Synthetic monitor (DD-26, .github/workflows/monitor.yml) · init: the published SDK starts,
+# shows its version and the DEV environment.
+# env: SDK_VERSION
+appId: com.deepdots.testapp
+tags: [monitor]
+---
+- runFlow: ../flows/00-version.yaml

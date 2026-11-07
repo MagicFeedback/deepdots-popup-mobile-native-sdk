@@ -376,6 +376,7 @@ fun PopupView(
                                     popup.productId,
                                     backgroundColor = bgColor,
                                     font = popup.style.font,
+                                    surveySdkVersion = popup.surveySdkVersion,
                                     onEvent = { eventJson ->
                                         val name: String
                                         val payload: String?
@@ -432,6 +433,8 @@ fun PopupView(
                                             if (pageDepth > 0) ViewState.InProgressNext else ViewState.InProgressFirst
                                         when (name) {
                                             PopupReveal.READY_EVENT -> reveal()
+                                            SURVEY_SDK_EVENT ->
+                                                payloadValue("version")?.let { logSurveySdk(surveySdkLogLine(it)) }
                                             PopupReveal.CONTENT_HEIGHT_EVENT ->
                                                 payloadNumber("height")?.let { h ->
                                                     surveyContentHeightDp = h.toInt()
@@ -495,6 +498,10 @@ fun PopupView(
                                                 errorHint = labels.errorRequired
                                                 viewState = navState()
                                             }
+                                            "validation_error_invalid_email" -> {
+                                                errorHint = labels.errorInvalidEmail
+                                                viewState = navState()
+                                            }
                                             else -> {
                                                 if (isSurveyLoadError(name)) {
                                                     // El survey no ha cargado: se enseña el aviso
@@ -511,8 +518,10 @@ fun PopupView(
                                                     errorHint = payloadValue("message") ?: labels.errorRequired
                                                     viewState = navState()
                                                 } else if (name == "submit_error") {
-                                                    // Treat submit error as inline banner so user can correct and retry
-                                                    errorHint = payloadValue("message") ?: labels.errorSubmit
+                                                    // Treat submit error as inline banner so user can correct and retry.
+                                                    // Siempre el aviso traducido, como Web: el texto del
+                                                    // survey es interno ("An error occurred while submitting…").
+                                                    errorHint = labels.errorSubmit
                                                     viewState = navState()
                                                 } else if (name == "survey_completed") {
                                                     // Move to completed state and show final message; don't auto-close

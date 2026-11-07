@@ -1,0 +1,16 @@
+{
+  "name": "deepdots-native-sdk-visual",
+  "private": true,
+  "description": "Regresión visual de las test apps nativas (DD-28): comparación con las referencias aprobadas. Solo herramientas de CI/local; no se publica.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test '*.test.mjs'"
+  },
+  "dependencies": {
+    "pixelmatch": "7.2.0",
+    "pngjs": "7.0.0"
+  }
+}

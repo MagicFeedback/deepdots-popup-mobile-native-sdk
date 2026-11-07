@@ -63,7 +63,7 @@ struct LabConfig: Equatable {
 
     /// Saved config, overridden by any launch argument (`-scenario x`, `scenario x` or `scenario=x`).
     static func resolve(arguments: [String] = ProcessInfo.processInfo.arguments) -> LabConfig {
-        let known = keys + ["start", "consent", "instances", "event"]
+        let known = keys + ["start", "consent", "instances", "event", "visual"]
         var args: [String: String] = [:]
         var i = 1
         while i < arguments.count {
@@ -96,6 +96,9 @@ struct LabConfig: Equatable {
         // `consent all|necessary`: the cookie choice is already made, so no dialog at launch
         // (a host app without a cookie dialog, where a popup at start shows right away).
         if let consent = args["consent"] { LabConfig.consent = consent }
+        // `visual 1` (one-shot): the Lab log without the time, so screenshots of the visual
+        // regression (DD-28) do not change from one run to the next.
+        Lab.shared.showTime = args["visual"] != "1"
         return config
     }
 }
@@ -107,6 +110,8 @@ final class Lab: ObservableObject {
     /// SDK events seen in this process (Lab bar `lab-counts`): the regression flows assert on them.
     @Published private(set) var shown = 0
     @Published private(set) var completed = 0
+    /// Time at the start of each on-screen line; off with the launch argument `visual 1`.
+    var showTime = true
     private let logger = Logger(subsystem: "com.deepdots.testapp", category: "lab")
     private let clock: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "HH:mm:ss"; f.locale = Locale(identifier: "en_US_POSIX"); return f
@@ -119,7 +124,7 @@ final class Lab: ObservableObject {
     private func append(_ tag: String, _ message: String) {
         logger.info("[lab] \(tag, privacy: .public) \(message, privacy: .public)")
         print("[lab] \(tag) \(message)")
-        let line = "\(clock.string(from: Date())) \(tag) \(message)"
+        let line = showTime ? "\(clock.string(from: Date())) \(tag) \(message)" : "\(tag) \(message)"
         DispatchQueue.main.async {
             self.lines.append(line)
             if self.lines.count > 200 { self.lines.removeFirst() }
