@@ -79,6 +79,7 @@ class DefaultLabelsTest {
         val expected = listOf(
             "en", "es", "da", "no", "sv", "fi", "de", "fr", "pt", "ar", "bn", "zh-CN",
             "bg", "cs", "el", "et", "ga", "hr", "hu", "it", "lt", "lv", "mt", "nl", "pl", "ro", "sk", "sl",
+            "ca",
         )
         assertEquals(expected, DefaultLabels.supportedLanguages)
         // Every advertised locale must resolve to a non-English label for at least one slot
@@ -109,6 +110,14 @@ class DefaultLabelsTest {
             assertEquals(code, DefaultLabels.resolveLocale(code), name)
             assertTrue(DefaultLabels.supportedLanguages.contains(code), name)
         }
+    }
+
+    @Test
+    fun coversCatalan() {
+        assertEquals("ca", DefaultLabels.resolveLocale("ca"))
+        assertEquals("ca", DefaultLabels.resolveLocale("ca-ES"))
+        assertEquals("Envia", DefaultLabels.resolve(Slot.ACCEPT, "ca"))
+        assertEquals("Cancel·la", DefaultLabels.resolve(Slot.DECLINE, "ca-ES"))
     }
 
     @Test
