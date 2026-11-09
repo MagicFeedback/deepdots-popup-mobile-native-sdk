@@ -40,18 +40,26 @@ tags: [smoke]
       - extendedWaitUntil:
           visible: "Oce.* szczeg.*produktu"
           timeout: 15000
-      - tapOn:
-          text: "★"
-          index: 3
-      - tapOn: "Send|Wyślij"
-      - extendedWaitUntil:
-          visible: "Czy zrobi.*NORDLY.*"
-          timeout: 15000
-      - tapOn: "Tak"
-      - tapOn: "Send|Wyślij"
-      - extendedWaitUntil:
-          visible: "Czy chcia.*powiedzie.*"
-          timeout: 15000
+      # Android 8 (API 26-27, WebView 69): the accessibility bounds of the stars are wrong (each
+      # one reaches the right edge of the card and sits ~100 px below where it is drawn), so
+      # Maestro taps next to the star and the page does not advance (0.7.11 validation). There the
+      # flow stops at page 2: the survey is loaded and the version check in run-maestro.sh still runs.
+      - runFlow:
+          when:
+            true: ${typeof ANDROID_API == 'undefined' || ANDROID_API == '' || Number(ANDROID_API) >= 28}
+          commands:
+            - tapOn:
+                text: "★"
+                index: 3
+            - tapOn: "Send|Wyślij"
+            - extendedWaitUntil:
+                visible: "Czy zrobi.*NORDLY.*"
+                timeout: 15000
+            - tapOn: "Tak"
+            - tapOn: "Send|Wyślij"
+            - extendedWaitUntil:
+                visible: "Czy chcia.*powiedzie.*"
+                timeout: 15000
       - runFlow:
           file: ../subflows/close-popup.yaml
           env:

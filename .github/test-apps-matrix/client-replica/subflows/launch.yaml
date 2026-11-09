@@ -17,5 +17,24 @@ appId: com.deepdots.testapp
       load: immediate
 - extendedWaitUntil:
     visible: "Accept all"
-    timeout: 120000
+    timeout: 90000
+    optional: true
+# On a busy CI emulator Android sometimes kills the new process right after clearState
+# ("Destroy timeout of remove-task ... failed to attach") and nothing restarts it: launch again
+# (same as test-apps/maestro/subflows/launch.yaml; seen on the Pixel Tablet API 34, 0.7.11).
+- runFlow:
+    when:
+      notVisible: "Accept all"
+    commands:
+      - launchApp:
+          clearState: true
+          arguments:
+            scenario: ${SCENARIO}
+            nav: history
+            lang: ${LANG || 'en'}
+            start: home
+            load: immediate
+      - extendedWaitUntil:
+          visible: "Accept all"
+          timeout: 120000
 - tapOn: "Accept all"

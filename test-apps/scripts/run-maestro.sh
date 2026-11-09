@@ -25,15 +25,37 @@ basic_installed() {
   else xcrun simctl get_app_container "${DEVICE:-booted}" com.deepdots.basicapp > /dev/null 2>&1; fi
 }
 
-# Device log: what CI keeps as "the run's log".
-if [ "$PLATFORM" = android ]; then
-  adb_cmd logcat -c
-  adb_cmd logcat -v time > "$OUT/device.log" 2>&1 &
-else
-  xcrun simctl spawn "${DEVICE:-booted}" log stream --level info --style compact \
-    --predicate 'subsystem == "com.deepdots.testapp" OR process == "NordlyTestApp"' > "$OUT/device.log" 2>&1 &
-fi
-LOG_PID=$!
+# Device log: what CI keeps as "the run's log". Appended, so a restart keeps what came before.
+start_device_log() {
+  if [ "$PLATFORM" = android ]; then
+    adb_cmd logcat -v time >> "$OUT/device.log" 2>&1 &
+  else
+    xcrun simctl spawn "${DEVICE:-booted}" log stream --level info --style compact \
+      --predicate 'subsystem == "com.deepdots.testapp" OR process == "NordlyTestApp"' >> "$OUT/device.log" 2>&1 &
+  fi
+  LOG_PID=$!
+}
+# The log stream can die mid-run (iOS 16.4 simulator, 0.7.11: "Child process terminated with
+# signal 9" after 10 min while the flows ran 30 more; Android: logcat "read: unexpected EOF!"),
+# and the DD-70 check below reads the log. After each flow: if it is gone, append what the device
+# still keeps since the flow started (logcat buffer / unified log) and start it again.
+log_mark() { if [ "$PLATFORM" = android ]; then adb_cmd shell date +%m-%d\ %H:%M:%S.000 | tr -d '\r'; else date '+%Y-%m-%d %H:%M:%S'; fi; }
+ensure_device_log() { # <time the flow started, from log_mark>
+  kill -0 "$LOG_PID" 2>/dev/null && return 0
+  echo "::warning::[lab] device log stream stopped: recovering the flow's lines and restarting it"
+  if [ -n "${1:-}" ]; then
+    if [ "$PLATFORM" = android ]; then
+      adb_cmd logcat -d -v time -T "$1" >> "$OUT/device.log" 2>&1
+    else
+      xcrun simctl spawn "${DEVICE:-booted}" log show --info --style compact --start "$1" \
+        --predicate 'subsystem == "com.deepdots.testapp" OR process == "NordlyTestApp"' >> "$OUT/device.log" 2>&1
+    fi
+  fi
+  start_device_log
+}
+[ "$PLATFORM" = android ] && adb_cmd logcat -c
+: > "$OUT/device.log"
+start_device_log
 
 start_recording() {
   [ "$RECORD" = 1 ] || return 0
@@ -127,13 +149,15 @@ reboot_if_driver_timeout() { # <maestro output>
 
 run_flow() { # <flow file> -> exit code of maestro
   local name; name=$(basename "$1" .yaml)
+  ensure_device_log
+  local mark; mark=$(log_mark)
   local net; net=$(sed -n 's/^# network: *//p' "$1")
   [ -n "$net" ] && { echo "[lab] $name: network $net"; wait_online; set_network $net; }
   local text; text=$(sed -n 's/^# text-size: *//p' "$1")
   [ -n "$text" ] && { echo "[lab] $name: text size $text"; set_text_size "$text"; }
   start_recording "$name"
   rm -f "$OUT/junit/$name.xml"
-  maestro_cmd test $DRIVER_OPTS -e SDK_VERSION="$SDK" -e MONITOR_SCENARIO="${MONITOR_SCENARIO:-}" --format junit --output "$OUT/junit/$name.xml" \
+  maestro_cmd test $DRIVER_OPTS -e SDK_VERSION="$SDK" -e ANDROID_API="${ANDROID_API:-}" -e MONITOR_SCENARIO="${MONITOR_SCENARIO:-}" --format junit --output "$OUT/junit/$name.xml" \
     --test-output-dir "$OUT/maestro/$name" "$1" > "$OUT/maestro/$name.txt" 2>&1
   local code=$?
   # Maestro writes no JUnit when it cannot start (e.g. the iOS driver did not come up): write one
@@ -145,6 +169,7 @@ run_flow() { # <flow file> -> exit code of maestro
     junit_case "$name" error "${msg:-Maestro exited with code $code and no output}"
   fi
   stop_recording "$name"
+  ensure_device_log "$mark"
   [ -n "$net" ] && set_network full none
   [ -n "$text" ] && set_text_size default
   return $code
