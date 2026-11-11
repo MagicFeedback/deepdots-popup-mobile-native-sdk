@@ -125,12 +125,29 @@ reboot_if_driver_timeout() { # <maestro output>
   xcrun simctl boot "$dev" && xcrun simctl bootstatus "$dev" -b > /dev/null
 }
 
+# Android: `launchApp: clearState` force-stops the app left open by the previous flow. The
+# system finishes removing that task about 1 s later ("Destroy timeout of remove-task") and
+# kills whatever process the app has then: if the new launch has already started, Android kills
+# it and the flow sees a blank screen (monitor 11-nov, monitor-submit on both tries). Stop the
+# app here and wait until its task is gone, so clearState has nothing left to remove.
+settle_android_app() {
+  [ "$PLATFORM" = android ] || return 0
+  adb_cmd shell am force-stop com.deepdots.testapp > /dev/null 2>&1 || true
+  local i
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    adb_cmd shell dumpsys activity activities 2>/dev/null | grep -q 'A=[0-9]*:com.deepdots.testapp' || break
+    sleep 0.5
+  done
+  sleep 1
+}
+
 run_flow() { # <flow file> -> exit code of maestro
   local name; name=$(basename "$1" .yaml)
   local net; net=$(sed -n 's/^# network: *//p' "$1")
   [ -n "$net" ] && { echo "[lab] $name: network $net"; wait_online; set_network $net; }
   local text; text=$(sed -n 's/^# text-size: *//p' "$1")
   [ -n "$text" ] && { echo "[lab] $name: text size $text"; set_text_size "$text"; }
+  settle_android_app
   start_recording "$name"
   rm -f "$OUT/junit/$name.xml"
   maestro_cmd test $DRIVER_OPTS -e SDK_VERSION="$SDK" -e MONITOR_SCENARIO="${MONITOR_SCENARIO:-}" --format junit --output "$OUT/junit/$name.xml" \
