@@ -1,0 +1,128 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Popup SDK monitor · android</title>
+<style>@page { size: A4; margin: 18mm 16mm; }
+body { font: 10.5pt/1.5 -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1a1d24; background: #fff; max-width: 180mm; margin: auto; padding: 0 16px; }
+h1 { font-size: 20pt; margin: 0 0 4pt; } h2 { font-size: 14pt; margin-top: 20pt; border-bottom: 1px solid #ddd; padding-bottom: 3pt; }
+h3 { font-size: 11.5pt; margin-top: 14pt; } code { font-size: 9pt; background: #f2f3f5; padding: 0 3px; border-radius: 3px; }
+table { border-collapse: collapse; width: 100%; font-size: 8.5pt; margin: 8pt 0; page-break-inside: avoid; display: block; overflow-x: auto; }
+th, td { border: 1px solid #d6d8dc; padding: 3pt 4pt; text-align: left; vertical-align: top; } th { background: #f2f3f5; }
+details table { font-size: 7pt; } summary { cursor: pointer; color: #1f5fbf; }
+@media print { details { display: none; } table { display: table; } body { padding: 0; } }
+hr { border: 0; border-top: 1px solid #ddd; margin: 16pt 0; } h2:has(+ *) { page-break-after: avoid; }
+a { color: #1f5fbf; }</style></head><body>
+<h1>Popup SDK monitor · Android · FAIL</h1>
+<p>Synthetic check of the published SDK in the internal test app against DEV. Generated 2026-11-13 19:36 UTC from the run&#39;s real results.</p>
+<h2>answer → submit · submission</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Platform</td>
+<td>Android</td>
+</tr>
+<tr>
+<td>SDK version</td>
+<td>0.7.11 (maven <code>latest</code>)</td>
+</tr>
+<tr>
+<td>Environment</td>
+<td>DEV · <a href="https://api-dev.deepdots.com">https://api-dev.deepdots.com</a></td>
+</tr>
+<tr>
+<td>Failed scenario</td>
+<td>answer → submit (<code>submit</code>)</td>
+</tr>
+<tr>
+<td>Timestamp</td>
+<td>2026-11-13T19:35:05.731Z · failed on the retry too</td>
+</tr>
+<tr>
+<td>Injected fault</td>
+<td>none</td>
+</tr>
+</tbody></table>
+<pre><code>[Failed] monitor-submit (1m 34s) (Assertion is false: &quot;e2e-cooldown-completed&quot;, id: lab-scenario is visible)
+</code></pre>
+<p><img src="files/submit-step-003-runFlow.png" alt="step-003-runFlow.png"></p>
+<p><img src="files/submit-step-007-runFlow.png" alt="step-007-runFlow.png"></p>
+<p><img src="files/submit-step-008-assertCondition-$%7BSCENARIO%7D.png" alt="step-008-assertCondition-${SCENARIO}.png"></p>
+<p><img src="files/submit-step-003-runFlow.png" alt="step-003-runFlow.png"></p>
+<p><img src="files/submit-step-007-runFlow.png" alt="step-007-runFlow.png"></p>
+<p><img src="files/submit-step-008-assertCondition-$%7BSCENARIO%7D.png" alt="step-008-assertCondition-${SCENARIO}.png"></p>
+<p><strong>SDK events and network</strong></p>
+<pre><code>[lab] sdk init 0.7.11 (Maven Central) env=Development api=https://api-dev.deepdots.com
+[lab] sdk scenario=checkout-time key=unR0ncfqAPCBAwIcK1E0gY5bLB4In33p nav=history lang=en
+[lab] sdk userId=d241981f-ea9e-455c-868f-e64c9a7721b8
+[lab] nav launch → /
+[lab] host consent accepted
+[lab] sdk init 0.7.11 (Maven Central) env=Development api=https://api-dev.deepdots.com
+[lab] sdk scenario=checkout-time key=unR0ncfqAPCBAwIcK1E0gY5bLB4In33p nav=history lang=en
+[lab] sdk userId=4c1366db-8b64-4447-ade6-a3e2f5b71c0a
+[lab] nav launch → /
+[lab] host consent accepted
+[lab] sdk init 0.7.11 (Maven Central) env=Development api=https://api-dev.deepdots.com
+[lab] sdk scenario=checkout-time key=unR0ncfqAPCBAwIcK1E0gY5bLB4In33p nav=history lang=en
+[lab] sdk userId=484efd19-e181-4a61-9abe-fba21f8a53f8
+[lab] nav launch → /
+[lab] host consent accepted
+[lab] nav / → /cart
+[lab] nav /cart → /checkout
+[lab] popup shown id=7e3755b0-d2e7-11f1-ab43-833369eb683b survey=5581b5a0-d2df-11f1-b287-1be76c3f931d
+[lab] sdk init 0.7.11 (Maven Central) env=Development api=https://api-dev.deepdots.com
+[lab] sdk scenario=e2e-cooldown-completed key=GrRj95spi2mVHP6L89eZPVpoQTYA4hHY nav=history lang=en
+[lab] sdk userId=9681dbc8-9c09-4987-9867-142fccaf5ef2
+[lab] nav launch → /
+[lab] sdk init 0.7.11 (Maven Central) env=Development api=https://api-dev.deepdots.com
+[lab] sdk scenario=e2e-cooldown-completed key=GrRj95spi2mVHP6L89eZPVpoQTYA4hHY nav=history lang=en
+[lab] sdk userId=e01b9e00-2b7c-430a-b419-c0e14f4dbd07
+[lab] nav launch → /
+[lab] sdk init 0.7.11 (Maven Central) env=Development api=https://api-dev.deepdots.com
+[lab] sdk scenario=fault-popups-error key=invalid-key-mf3244 nav=history lang=en
+[lab] sdk userId=e92ed3a3-0002-4f3a-8f5a-01f1a4ad1d5d
+[lab] nav launch → /
+[lab] host consent accepted
+[lab] nav / → /shop
+[lab] nav /shop → /product/ull-socks
+[lab] host add to cart ull-socks (cart 3)
+[lab] nav /product/ull-socks → /cart
+[lab] nav /cart → /checkout
+</code></pre>
+<h2>Other checks in this run</h2>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SDK init + version</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>popups-error → no popup, host usable</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>answer → submit</td>
+<td><strong>FAIL</strong></td>
+</tr>
+<tr>
+<td>trigger → render</td>
+<td>PASS</td>
+</tr>
+</tbody></table>
+<h2>What to do</h2>
+<ol>
+<li>SDK or backend? The same failure on the previous SDK version (run the workflow by hand with that version) or in the survey monitors points at the API or the survey frontend.</li>
+<li>Only the latest SDK fails: a released binary cannot be pulled from customer apps. Disable the affected popup configs in Admin, ship a patch release and tell clients the minimum version (runbook).</li>
+<li>This is a synthetic check of our test app in DEV, not of customer apps.</li>
+</ol>
+<p><a href="https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/blob/dev/docs/MONITORING.md">Runbook</a> · <a href="https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/43492128020">Run</a> · <a href="https://dash.deepdots.com/d/survey-ops">Dashboard</a></p>
+
+</body></html>
