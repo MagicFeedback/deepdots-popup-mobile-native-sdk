@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.Alignment
@@ -66,7 +67,7 @@ actual fun SurveyView(
         override fun startForm() { webViewRef?.evaluateJavaScript(SurveyActionsJs.startForm, null) }
     })
 
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         UIKitView(
             factory = {
                 // Build WKWebView and wire bridge
@@ -132,7 +133,8 @@ actual fun SurveyView(
                 webViewRef = wv
                 wv as UIView
             },
-            modifier = Modifier.fillMaxWidth().height(520.dp),
+            // Todo el hueco que le da PopupView (antes 520dp fijos: franja en blanco en iPad).
+            modifier = Modifier.fillMaxSize(),
             update = { /* no-op */ },
             // NonCooperative: the survey's touches go straight to the WKWebView. With the default
             // (Cooperative) the popup's scrollable middle (Compose verticalScroll) claimed every

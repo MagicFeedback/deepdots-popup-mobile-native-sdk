@@ -21,6 +21,12 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   the test suites did not see it. The backdrop now receives the touches without consuming them:
   they still stop at the popup (the host app does not get them) and the buttons work. Both
   Android and iOS. Reported by Lemvigh-Müller on Galaxy S25 (Android 16 and 17).
+- **Tablets: the survey uses the whole height the popup gives it.** The survey's WebView had a
+  fixed height of 520dp. On a tablet the popup has more room than that, so the survey stopped at
+  520dp, a 0-10 scale shown as a list was cut in the middle (it had to be scrolled inside) and a
+  band of white space stayed between it and Send. The WebView now fills its area, up to the
+  popup's maximum height as before. Phones were not affected (their area is below 520dp). Both
+  Android and iOS. Reported by Lemvigh-Müller on a Samsung tablet.
 - **The text box stays in view when the keyboard opens.** With the keyboard open the popup is
   lifted above it and its survey area gets shorter; a text question under a long title (small
   phones, large font sizes) was left below the visible part, so the user typed without seeing
