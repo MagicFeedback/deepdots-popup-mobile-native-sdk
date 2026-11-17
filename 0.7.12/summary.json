@@ -1,0 +1,37 @@
+{
+  "version": "0.7.12",
+  "status": "FAILED",
+  "platforms": {
+    "iOS": "FAILED",
+    "Android": "FAILED"
+  },
+  "failures": [
+    {
+      "platform": "iOS",
+      "row": "iOS 16.4 iPhone SE (3rd generation) Debug",
+      "flow": "popups-error",
+      "message": "xcuitest.installer.LocalXCTestInstaller$IOSDriverTimeoutException: iOS driver not ready in time, consider increasing timeout by configuring MAESTRO_DRIVER_STARTUP_TIMEOUT env variable"
+    },
+    {
+      "platform": "iOS",
+      "row": "iOS 16.4 iPhone SE (3rd generation) Debug",
+      "flow": "survey-missing",
+      "message": "xcuitest.installer.LocalXCTestInstaller$IOSDriverTimeoutException: iOS driver not ready in time, consider increasing timeout by configuring MAESTRO_DRIVER_STARTUP_TIMEOUT env variable"
+    },
+    {
+      "platform": "Android",
+      "row": "A34 tablet debug",
+      "flow": "redisplay",
+      "message": "You have 0 devices connected, which is not enough to run 1 shards. Missing 1 device(s)."
+    }
+  ],
+  "knownIssues": {},
+  "counts": {
+    "executions": 398,
+    "passed": 372,
+    "retried": 5,
+    "failed": 3,
+    "skipped": 23,
+    "known": 0
+  }
+}
