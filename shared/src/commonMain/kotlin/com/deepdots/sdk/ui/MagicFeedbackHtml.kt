@@ -302,6 +302,26 @@ ${PopupReveal.REVEAL_JS}
                   new ResizeObserver(function(){ ddReportHeight(); }).observe(document.getElementById('dd-content'));
                 }
               } catch(e){ console.error('[MagicFeedback] ResizeObserver error', e); }
+              // Campo de texto a la vista con el teclado abierto. Al salir el teclado el popup
+              // sube y encoge, el WebView se queda más bajo y el campo enfocado (una pregunta de
+              // texto debajo de un enunciado largo) quedaba bajo el borde: se escribía sin ver
+              // lo escrito. Al encoger el WebView (resize) o al enfocar un campo, se lleva al
+              // centro de lo que se ve. ES5 (WebViews viejos): scrollIntoView con opciones y, si
+              // el motor no las entiende, la forma antigua.
+              function ddKeepFocusedFieldVisible(){
+                try {
+                  var el = document.activeElement;
+                  if (!el || !el.tagName) { return; }
+                  var tag = el.tagName.toLowerCase();
+                  if (tag !== 'input' && tag !== 'textarea' && !el.isContentEditable) { return; }
+                  var r = el.getBoundingClientRect();
+                  var vh = window.innerHeight || document.documentElement.clientHeight;
+                  if (r.top >= 0 && r.bottom <= vh) { return; }
+                  try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e1) { el.scrollIntoView(false); }
+                } catch(e){ console.error('[MagicFeedback] focus scroll error', e); }
+              }
+              window.addEventListener('resize', function(){ setTimeout(ddKeepFocusedFieldVisible, 120); });
+              document.addEventListener('focusin', function(){ setTimeout(ddKeepFocusedFieldVisible, 350); });
               function initMF(){
                 try {
                   if (window.magicfeedback && !initialized) {

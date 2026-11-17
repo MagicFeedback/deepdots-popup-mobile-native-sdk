@@ -14,8 +14,7 @@ import android.webkit.WebViewClient
 import android.view.MotionEvent
 import android.view.View
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,14 +47,16 @@ actual fun SurveyView(
     // al enviar) salían en el idioma del host aunque el resto del chrome siguiera al survey.
     val currentOnEvent by rememberUpdatedState(onEvent)
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(520.dp)
+        // Todo el hueco que PopupView le da al survey (un alto fijo, el que dice el survey hasta
+        // el techo de la tarjeta). Antes eran 520dp fijos: en una tablet el hueco es más alto, el
+        // WebView se quedaba en 520dp y debajo, hasta Enviar, quedaba una franja en blanco con
+        // la escala cortada (Lemvigh-Müller, tablet Samsung, 0-10 en lista).
+        modifier = Modifier.fillMaxSize()
     ) {
-        // Tamaño explícito: sin él el AndroidView mide wrap_content y, mientras el survey no
-        // pinta nada (cargando, o si falla la carga), el WebView se queda con alto 0. Un WebView
-        // de alto 0 pinta su fondo sin recortar encima de lo que Compose dibujó antes, y tapaba
-        // la cabecera del popup con la X: sin survey no había forma de cerrarlo desde la UI.
+        // Tamaño explícito (el del padre, nunca wrap_content): con wrap_content, mientras el
+        // survey no pinta nada (cargando, o si falla la carga), el WebView se queda con alto 0. Un
+        // WebView de alto 0 pinta su fondo sin recortar encima de lo que Compose dibujó antes, y
+        // tapaba la cabecera del popup con la X: sin survey no había forma de cerrarlo.
         AndroidView(modifier = Modifier.matchParentSize(), factory = { ctx ->
             WebView.setWebContentsDebuggingEnabled(true)
             val assetSize = try { ctx.assets.open("magicfeedback/magicfeedback-sdk.browser.js").use { it.available() } } catch (e: Exception) { -1 }
