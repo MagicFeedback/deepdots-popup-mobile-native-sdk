@@ -4,6 +4,10 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.12 - 2026-11-17
+
+Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1–3.6.0); bundled: 2.2.39. Compatibility table: docs.deepdots.com/popup-native/reference/survey-compatibility/.
+
 ### Added
 
 - **Catalan (`ca`) popup texts.** Buttons, progress, aria-labels and error notices in Catalan;
