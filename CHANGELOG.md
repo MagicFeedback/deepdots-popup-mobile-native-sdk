@@ -4,6 +4,39 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.12 - 2026-11-17
+
+Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1–3.6.0); bundled: 2.2.39. Compatibility table: docs.deepdots.com/popup-native/reference/survey-compatibility/.
+
+### Added
+
+- **Catalan (`ca`) popup texts.** Buttons, progress, aria-labels and error notices in Catalan;
+  `ca`/`ca-ES` resolve to it. Same strings as the web SDK. Catalan is not an official EU language;
+  asked for in the v2.2.29 review.
+
+### Fixed
+
+- **The popup's X, Send, Back and Start respond to a real finger again.** Since 0.7.2 the dimmed
+  backdrop consumed every touch so it would not reach the host app. The card with the buttons is
+  a child of that backdrop, and when a parent consumes the small movements a finger always makes
+  between pressing and lifting, the button cancels the click. On real phones the native buttons
+  often did nothing (the survey itself, in the WebView, still answered), so the popup could not
+  be closed or moved past a page that needs Send. Automated taps have no movement, which is why
+  the test suites did not see it. The backdrop now receives the touches without consuming them:
+  they still stop at the popup (the host app does not get them) and the buttons work. Both
+  Android and iOS. Reported by Lemvigh-Müller on Galaxy S25 (Android 16 and 17).
+- **Tablets: the survey uses the whole height the popup gives it.** The survey's WebView had a
+  fixed height of 520dp. On a tablet the popup has more room than that, so the survey stopped at
+  520dp, a 0-10 scale shown as a list was cut in the middle (it had to be scrolled inside) and a
+  band of white space stayed between it and Send. The WebView now fills its area, up to the
+  popup's maximum height as before. Phones were not affected (their area is below 520dp). Both
+  Android and iOS. Reported by Lemvigh-Müller on a Samsung tablet.
+- **The text box stays in view when the keyboard opens.** With the keyboard open the popup is
+  lifted above it and its survey area gets shorter; a text question under a long title (small
+  phones, large font sizes) was left below the visible part, so the user typed without seeing
+  the text. The survey now scrolls the focused field into view when its area shrinks or a field
+  gets focus. Both Android and iOS.
+
 ## 0.7.11 - 2026-11-07
 
 Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1); bundled: 2.2.39. Compatibility table: docs.deepdots.com/popup-native/reference/survey-compatibility/.
