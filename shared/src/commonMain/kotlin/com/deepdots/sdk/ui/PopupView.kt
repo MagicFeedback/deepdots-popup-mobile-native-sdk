@@ -178,7 +178,14 @@ fun PopupView(
             // El velo es modal: un toque fuera de la tarjeta no debe llegar a la app de debajo.
             // Sin esto pasaba de largo (el contenedor no consumía nada) y, con el popup abierto,
             // el usuario podía pulsar botones del host que ni siquiera veía bien.
-            .pointerInput(Unit) { consumeAllTouches() }
+            // Sin consumir nada: basta con que el velo tenga un pointerInput para que el toque se
+            // quede en el popup (en Android el ComposeView lo da por despachado y no sigue hacia
+            // las vistas del host; en iOS el popup es un modal a pantalla completa). Consumirlos
+            // rompía los botones nativos: el velo es el PADRE de la tarjeta y, si consume los MOVE
+            // de un dedo real (siempre hay alguno), `clickable` cancela el clic. X, Enviar y Atrás
+            // no respondían en móviles reales (Lemvigh-Müller, Galaxy S25); un `adb input tap`
+            // (sin MOVE) sí funcionaba, por eso las pruebas automáticas no lo veían.
+            .pointerInput(Unit) { blockTouchesToHost() }
             // El velo cubre toda la pantalla; la tarjeta se centra en lo que deja el teclado.
             .avoidKeyboard()
             // ...y en la zona segura: sin esto, en iOS un popup arriba con un survey alto se metía
@@ -697,11 +704,15 @@ fun PopupView(
  * Consume todos los toques que llegan al velo sin hacer nada con ellos. Los hijos (la tarjeta,
  * sus botones y el WebView) los reciben antes, así que esto solo se queda con los que caen fuera.
  */
-private suspend fun PointerInputScope.consumeAllTouches() {
+/**
+ * El velo modal: recibe los toques (así no llegan al host) pero NO los consume. Un padre que
+ * consume los MOVE cancela el `clickable` de sus hijos (`waitForUpOrCancellation` mira el pase
+ * Final), y la tarjeta con la X y los botones es hija del velo.
+ */
+private suspend fun PointerInputScope.blockTouchesToHost() {
     awaitEachGesture {
         do {
             val event = awaitPointerEvent()
-            event.changes.forEach { it.consume() }
         } while (event.changes.any { it.pressed })
     }
 }
