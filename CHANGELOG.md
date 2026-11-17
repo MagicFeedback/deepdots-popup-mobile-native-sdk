@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.12 - 2026-11-17
+
 ### Added
 
 - **Catalan (`ca`) popup texts.** Buttons, progress, aria-labels and error notices in Catalan;
