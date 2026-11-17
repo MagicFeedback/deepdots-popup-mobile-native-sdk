@@ -165,6 +165,15 @@ videos. Android runs on an
 `ubuntu-latest` emulator (API 34), iOS on `macos-15` (Xcode 16.4, iPhone 16). Each job uploads
 the device log, the `[lab]` lines, JUnit, Maestro output and, with recording, one MP4 per flow.
 
+**Parallel parts:** a run with more than 12 flows (the release PR, the full suite) is split into
+4 parts per platform and version by `scripts/plan-shards.py`: 3 parts of the suite (round-robin,
+~17 flows each) and one with the `visual/` flows plus the small-screen pass. iOS builds the SDK
+and the app once ("iOS build · SDK …", ~10 min) and every part installs that build. On the
+release PR that is ~10 min + ~45 min per part in parallel (iOS), instead of one ~2.5 h job.
+"Android · SDK local" and "iOS · SDK local" sum the parts up: those are the checks the release
+gate requires. *Run workflow* takes `parts` to force a number. Uploads retry and never turn a
+check red; only the suite and the visual compare do.
+
 **Pull requests run a short suite:** only the first version of `sdk-versions.json`, and only the
 flows the PR adds or changes plus a smoke test (`00-version`, `checkout-time`). The apps use the
 published SDK, so the rest of the suite would re-test binaries that already passed. A change to a
