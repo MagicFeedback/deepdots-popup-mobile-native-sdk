@@ -25,20 +25,20 @@
       "approvalId": "20261104T131515Z-41828530913"
     },
     "android-pixel-6-api34/dark-font.png": {
-      "sha256": "0396f03fd79d7c361d875362d79a701fc0c30368ab517e702767bb093247f887",
-      "approvalId": "20261104T131515Z-41828530913"
+      "sha256": "91f0b2a45a024bd8ec61d1d38b6fc54b88fcad7abd7011a41759e904f19aa9c9",
+      "approvalId": "20261117T183252Z-44119037764"
     },
     "android-pixel-6-api34/position-bottom.png": {
-      "sha256": "c5d5c2a8f905c049b96f763ada864edfa8bb7b2785affc3535b55f0e81512d37",
-      "approvalId": "20261104T131515Z-41828530913"
+      "sha256": "e1b629034e13260def01988394f04784ac24b2a88a95fe788a606fcffef4d75d",
+      "approvalId": "20261117T183252Z-44119037764"
     },
     "android-pixel-6-api34/position-top.png": {
-      "sha256": "f8b8eaa37a58f8edd01d9063ca36b9e9b2249f90867f669b1bc04cfd03cd0a1f",
-      "approvalId": "20261104T131515Z-41828530913"
+      "sha256": "24b69af97936c4b3fc8f19dd668fe702f448839a7746141dfc90be8327224ff7",
+      "approvalId": "20261117T183252Z-44119037764"
     },
     "android-pixel-6-api34/simple-1-open.png": {
-      "sha256": "302e9f803aedfbf2546b7ec4ea429309b6a16a8250b69511db7a9b050424531b",
-      "approvalId": "20261104T131515Z-41828530913"
+      "sha256": "b2a48bbcb0f20e430de0b87c2a691468630561274fed4af1ed1888065b9a48f4",
+      "approvalId": "20261117T183252Z-44119037764"
     },
     "android-pixel-6-api34/text-large.png": {
       "sha256": "345f9e0859aa12ebd052d878e193a953fe9303cdb1dee0ef62924910f8690d7f",
@@ -433,6 +433,45 @@
           "key": "android-small-720x1280-api34/text-large.png",
           "sha256": "059b1a11bc8e560d6f2a1b8b4746223d2f858e2f1f22083de3ddac26ae902db7",
           "previousSha256": null
+        }
+      ]
+    },
+    {
+      "id": "20261117T183252Z-44119037764",
+      "approvedAt": "2026-11-17T18:32:52.161Z",
+      "approvedBy": "sarias980",
+      "reason": "0.7.12 (DD-209): the survey WebView fills its area instead of a fixed 520dp, so on the Pixel 6 the 0-10 list shows one more row above Send. Intended.",
+      "source": {
+        "runId": "44119037764",
+        "runUrl": "https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/44119037764",
+        "sdk": "local",
+        "sdkVersion": "local (local :shared)",
+        "platform": "android",
+        "devices": {
+          "android-pixel-6-api34": "Android API 34 emulator · pixel_6 · 1080x2400 @420dpi",
+          "android-small-720x1280-api34": "Android API 34 emulator · small-720x1280 · 720x1280 @320dpi"
+        }
+      },
+      "files": [
+        {
+          "key": "android-pixel-6-api34/dark-font.png",
+          "sha256": "91f0b2a45a024bd8ec61d1d38b6fc54b88fcad7abd7011a41759e904f19aa9c9",
+          "previousSha256": "0396f03fd79d7c361d875362d79a701fc0c30368ab517e702767bb093247f887"
+        },
+        {
+          "key": "android-pixel-6-api34/position-bottom.png",
+          "sha256": "e1b629034e13260def01988394f04784ac24b2a88a95fe788a606fcffef4d75d",
+          "previousSha256": "c5d5c2a8f905c049b96f763ada864edfa8bb7b2785affc3535b55f0e81512d37"
+        },
+        {
+          "key": "android-pixel-6-api34/position-top.png",
+          "sha256": "24b69af97936c4b3fc8f19dd668fe702f448839a7746141dfc90be8327224ff7",
+          "previousSha256": "f8b8eaa37a58f8edd01d9063ca36b9e9b2249f90867f669b1bc04cfd03cd0a1f"
+        },
+        {
+          "key": "android-pixel-6-api34/simple-1-open.png",
+          "sha256": "b2a48bbcb0f20e430de0b87c2a691468630561274fed4af1ed1888065b9a48f4",
+          "previousSha256": "302e9f803aedfbf2546b7ec4ea429309b6a16a8250b69511db7a9b050424531b"
         }
       ]
     }
