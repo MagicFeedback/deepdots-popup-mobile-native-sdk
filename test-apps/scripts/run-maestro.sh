@@ -5,7 +5,8 @@
 #
 # env: DEVICE (simulator UDID / adb serial, optional), RECORD=1 (one video per flow),
 #      FLOWS (space-separated flow files relative to test-apps/maestro; default: all),
-#      MONITOR_SCENARIO (synthetic monitor failure test, maestro/monitor; passed to the flows).
+#      MONITOR_SCENARIO (synthetic monitor failure test, maestro/monitor; passed to the flows),
+#      DRIVER_RESTARTS (iOS: simulator reboots per run when Maestro's driver does not start; 6).
 # Per flow it writes Maestro's output and a JUnit report; for the run, the device log with the
 # app's [lab] lines. Exit code != 0 when a flow fails, when the expected-failure test passes, or
 # when anything in the log points at the production API.
@@ -14,6 +15,7 @@ set -uo pipefail
 PLATFORM=$1 SDK=$2 OUT=$(mkdir -p "$3" && cd "$3" && pwd)
 RECORD=${RECORD:-0}
 DEVICE=${DEVICE:-}
+DRIVER_RESTARTS_LEFT=${DRIVER_RESTARTS:-6}
 cd "$(dirname "$0")/../maestro"
 export MAESTRO_CLI_NO_ANALYTICS=1 MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true
 mkdir -p "$OUT/maestro" "$OUT/junit" "$OUT/videos"
@@ -173,10 +175,22 @@ run_flow() { # <flow file> -> exit code of maestro
   [ -n "$text" ] && { echo "[lab] $name: text size $text"; set_text_size "$text"; }
   settle_android_app
   start_recording "$name"
-  rm -f "$OUT/junit/$name.xml"
-  maestro_cmd test $DRIVER_OPTS -e SDK_VERSION="$SDK" -e ANDROID_API="${ANDROID_API:-}" -e MONITOR_SCENARIO="${MONITOR_SCENARIO:-}" --format junit --output "$OUT/junit/$name.xml" \
-    --test-output-dir "$OUT/maestro/$name" "$1" > "$OUT/maestro/$name.txt" 2>&1
-  local code=$?
+  local code
+  while :; do
+    rm -f "$OUT/junit/$name.xml"
+    maestro_cmd test $DRIVER_OPTS -e SDK_VERSION="$SDK" -e ANDROID_API="${ANDROID_API:-}" -e MONITOR_SCENARIO="${MONITOR_SCENARIO:-}" --format junit --output "$OUT/junit/$name.xml" \
+      --test-output-dir "$OUT/maestro/$name" "$1" > "$OUT/maestro/$name.txt" 2>&1
+    code=$?
+    # iOS: the driver not starting is not a result of the flow, so it does not use up one of the
+    # flow's tries. It comes in streaks (release validation 0.7.12: four in a row on iOS 16.4,
+    # then fine after the next reboot), so reboot and start the same try again, within a budget
+    # for the whole run so a dead simulator cannot eat the job's timeout.
+    [ "$code" != 0 ] && [ "$PLATFORM" = ios ] && grep -q 'IOSDriverTimeoutException' "$OUT/maestro/$name.txt" \
+      && [ "$DRIVER_RESTARTS_LEFT" -gt 0 ] || break
+    DRIVER_RESTARTS_LEFT=$((DRIVER_RESTARTS_LEFT - 1))
+    echo "[lab] $name: Maestro iOS driver did not start, rebooting and starting the flow again ($DRIVER_RESTARTS_LEFT reboots left)"
+    reboot_if_driver_timeout "$OUT/maestro/$name.txt"
+  done
   # Maestro writes no JUnit when it cannot start (e.g. the iOS driver did not come up): write one
   # with the error, so the flow reads as failed and not as "not run" in the results.
   if [ "$code" != 0 ] && [ ! -s "$OUT/junit/$name.xml" ]; then
@@ -331,7 +345,8 @@ if knows_survey_sdk; then
     name=$(basename "$f" .yaml)
     case "$name" in survey-sdk-*) ;; *) continue ;; esac
     v=${name#survey-sdk-}
-    printf '%s\n' "${failed[@]}" | grep -qx "$name" && continue
+    # ${failed[@]+...}: bash 3.2 (macOS) treats an empty array as unbound under set -u.
+    printf '%s\n' ${failed[@]+"${failed[@]}"} | grep -qx "$name" && continue
     if grep -aqF "[MagicFeedback] survey-sdk $v assigned" "$OUT/device.log"; then
       echo "[lab] survey SDK $v assigned (JS + CSS) in $name"
     else
