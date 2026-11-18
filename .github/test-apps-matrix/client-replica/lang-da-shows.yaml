@@ -8,7 +8,8 @@ tags: [client-replica]
     env:
       SCENARIO: client-replica-da
       LANG: da
+# A slow CI simulator asked DEV for popups up to 48 s after launch (0.7.12 validation): wait 60 s.
 - extendedWaitUntil:
     visible: ".*Meget dårlig.*"
-    timeout: 30000
+    timeout: 60000
 - takeScreenshot: client-replica-da-shows

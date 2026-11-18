@@ -9,11 +9,12 @@ tags: [client-replica, known-issue]
     env:
       SCENARIO: client-replica-da
       LANG: en
-# time_on_page is 5 s: wait the full 15 s for the popup (optional, so not seeing it is fine),
-# then assert it never appeared.
+# time_on_page is 5 s: wait 60 s for the popup (optional, so not seeing it is fine), then assert
+# it never appeared. As long as lang-da-shows: on a slow CI simulator the popup can come 48 s after
+# launch, and a shorter wait would pass without having checked anything.
 - extendedWaitUntil:
     visible: ".*Meget dårlig.*"
-    timeout: 15000
+    timeout: 60000
     optional: true
 - assertNotVisible: ".*Meget dårlig.*"
 - assertNotVisible: ".*Hvordan vil du vurdere.*"
