@@ -79,6 +79,21 @@ class PopupFingerTapTest {
     }
 
     @Test
+    fun startRespondsToAFingerTap() {
+        rule.setContent { PopupView(popup = testPopup(), onAction = {}) }
+        rule.waitForIdle()
+        val web = rule.activity.surveyWebView()
+        // Un survey con mensaje de bienvenida abre en la pantalla de inicio, con el botón Start.
+        web.emitFromSurvey("""{"name":"loaded","startMessage":"Welcome","progress":0,"total":3}""")
+        web.emitFromSurvey("""{"name":"ready"}""")
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Start survey").fingerTap()
+
+        assertEquals(SurveyActionsJs.startForm, web.lastSurveyCall())
+    }
+
+    @Test
     fun aFingerTapOnTheBackdropDoesNotReachTheHostApp() {
         var hostClicks = 0
         rule.setContent {
