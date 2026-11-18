@@ -331,7 +331,8 @@ if knows_survey_sdk; then
     name=$(basename "$f" .yaml)
     case "$name" in survey-sdk-*) ;; *) continue ;; esac
     v=${name#survey-sdk-}
-    printf '%s\n' "${failed[@]}" | grep -qx "$name" && continue
+    # ${failed[@]+...}: bash 3.2 (macOS) treats an empty array as unbound under set -u.
+    printf '%s\n' ${failed[@]+"${failed[@]}"} | grep -qx "$name" && continue
     if grep -aqF "[MagicFeedback] survey-sdk $v assigned" "$OUT/device.log"; then
       echo "[lab] survey SDK $v assigned (JS + CSS) in $name"
     else
