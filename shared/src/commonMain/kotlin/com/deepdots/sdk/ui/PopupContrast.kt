@@ -34,16 +34,18 @@ internal object PopupContrast {
     }
 
     /**
-     * Oscuro si el texto blanco contrasta más que el negro (WCAG). El corte cae en una
-     * luminancia relativa de ~0,179. Un fondo con alfa se trata por su color opaco: la tarjeta
-     * es opaca en la práctica y el velo de detrás es oscuro.
+     * Debajo de esta luminancia relativa (WCAG, 0 = negro, 1 = blanco) el fondo es oscuro.
+     * Mismo corte que el survey (magicfeedback-sdk DD-238, `DARK_LUMINANCE_THRESHOLD`) y que el
+     * aviso del Admin (DD-237): así el chrome nativo y el survey cambian de paleta a la vez.
      */
-    fun isDark(background: Color): Boolean {
-        val l = background.copy(alpha = 1f).luminance()
-        val contrastWithWhite = 1.05f / (l + 0.05f)
-        val contrastWithBlack = (l + 0.05f) / 0.05f
-        return contrastWithWhite > contrastWithBlack
-    }
+    const val DARK_LUMINANCE_THRESHOLD = 0.2f
+
+    /**
+     * Un fondo con alfa se trata por su color opaco: la tarjeta es opaca en la práctica y el velo
+     * de detrás es oscuro.
+     */
+    fun isDark(background: Color): Boolean =
+        background.copy(alpha = 1f).luminance() < DARK_LUMINANCE_THRESHOLD
 
     fun colorsFor(styleBackground: Color?, theme: Theme): PopupChromeColors {
         val bg = styleBackground ?: defaultBackground(theme)

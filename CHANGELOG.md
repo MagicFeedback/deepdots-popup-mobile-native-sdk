@@ -8,7 +8,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 - **Popup text follows the Style background, not the theme (DD-246).** Title, close X, progress
   text and the progress track now pick black or white from the luminance of the final card
-  background. A dark `boxBackgroundColor` with theme Light used to give black text on dark.
+  background (dark below WCAG luminance 0.2, the same cut the survey uses since DD-238). A dark
+  `boxBackgroundColor` with theme Light used to give black text on dark.
   `style.theme` only sets the default background when the Style has none.
 
 ## 0.7.12 - 2026-11-17

@@ -46,6 +46,9 @@ class PopupContrastTest {
         assertFalse(PopupContrast.isDark(Color(0xFFFACC15))) // yellow
         assertFalse(PopupContrast.isDark(Color(0xFFE5E7EB))) // light grey
         assertFalse(PopupContrast.isDark(Color(0xFF22C55E))) // green 500
+        // Same 0.2 cut as the survey (DD-238): #767676 (~0.18) is dark, mid grey #808080 (~0.22) is not.
+        assertTrue(PopupContrast.isDark(Color(0xFF767676)))
+        assertFalse(PopupContrast.isDark(Color(0xFF808080)))
     }
 
     @Test
