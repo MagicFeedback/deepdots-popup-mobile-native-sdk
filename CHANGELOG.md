@@ -4,6 +4,16 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- **Surveys SDK 2.2.44** (`@magicfeedback/native`, from 2.2.39), vendored on Android and from the
+  CDN on iOS (`MAGICFEEDBACK_VERSION`), also accepted when the Admin assigns it. It brings the
+  survey dark palette (DD-238): a dark Style, the forced mode from `appearance` (DD-240) or the
+  Style's `dark` colours (DD-239) render the questions dark. Also Catalan, star colour, subtitle
+  alignment, end screens (2.2.40–2.2.43). The survey stylesheet comes from popup-sdk 1.22.0
+  (`POPUP_SDK_CSS_VERSION`, from 1.19.0), the first one with the 2.2.44 CSS: **publish popup-sdk
+  1.22.0 before releasing this**, or the WebView asks for a stylesheet that does not exist yet.
+
 ### Fixed
 
 - **Popup text follows the Style background, not the theme (DD-246).** Title, close X, progress

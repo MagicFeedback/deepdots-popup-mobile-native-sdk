@@ -171,6 +171,12 @@
       "popupOptionId": "1dc592a0-d904-11f1-a5b0-45f433fd27de",
       "describe": "DD-70 release gate: time_on_page 3 s + segments.path /checkout, survey 'DD-70 gate · survey SDK 2.2.38' (3df976b0, copy of SDK Test App · Complex, es/en/pl) pinned in the Admin to MagicSurvey 3.4.0 = @magicfeedback/native 2.2.38. Do not unpin.",
       "title": "DD-70 · survey SDK 2.2.38"
+    },
+    "survey-sdk-2.2.39": {
+      "publicKey": "haIobNX67m60rT087tJRZdc4pLAsChsZ",
+      "popupOptionId": "d6843040-e367-11f1-8538-1f39264f70c7",
+      "describe": "DD-70 release gate: time_on_page 3 s + segments.path /checkout, survey 'DD-70 gate · survey SDK 2.2.39' (6ad7a4d0, copy of the 2.2.38 gate survey; the copy keeps es/en but drops the Polish translations, so the flow answers in Spanish) pinned in the Admin to MagicSurvey 3.4.1 = @magicfeedback/native 2.2.39. Do not unpin.",
+      "title": "DD-70 · survey SDK 2.2.39"
     }
   }
 }

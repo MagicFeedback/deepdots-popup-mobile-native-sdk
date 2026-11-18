@@ -152,7 +152,8 @@
     {
       "name": "Survey SDK versions assigned in the Admin (DD-70)",
       "flows": [
-        "survey-sdk-2.2.38"
+        "survey-sdk-2.2.38",
+        "survey-sdk-2.2.39"
       ]
     }
   ],
