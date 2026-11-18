@@ -22,6 +22,16 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   `boxBackgroundColor` with theme Light used to give black text on dark.
   `style.theme` only sets the default background when the Style has none.
 
+### Tests
+
+- **UI tests on the JVM, no emulator (DD-269, DD-270).** Robolectric + Compose UI test + Roborazzi
+  in `androidUnitTest`. The X, Send and Back of the popup are tapped like a real finger (down, a
+  small move, up): with the backdrop of 0.7.2–0.7.11 these taps were lost (DD-209), and the tests
+  fail on that code. The survey must fill its whole slot (the 520 dp fixed height left white space
+  on tablets), and the popup is compared with reference screenshots on a small phone, a tall phone
+  and a tablet in portrait and landscape. CI runs `verifyRoborazziDebug`. No SDK behaviour change;
+  the backdrop modifier is now `internal` so the tests can use it.
+
 ## 0.7.12 - 2026-11-17
 
 Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1–3.6.0); bundled: 2.2.39. Compatibility table: docs.deepdots.com/popup-native/reference/survey-compatibility/.
