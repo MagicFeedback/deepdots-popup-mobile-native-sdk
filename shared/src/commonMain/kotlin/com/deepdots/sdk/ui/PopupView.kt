@@ -68,11 +68,11 @@ fun PopupView(
     var bgColorOverride by remember { mutableStateOf<Color?>(null) }
     var didApplyLoadedOnce by remember { mutableStateOf(false) }
 
-    val bgColor = bgColorOverride ?: when (popup.style.theme) {
-        Theme.Light -> Color.White
-        Theme.Dark -> Color(0xFF2B2B2B)
-    }
-    val textColor = if (popup.style.theme == Theme.Light) Color.Black else Color.White
+    // Texto, X y pista del progreso salen del fondo FINAL (Style o, si no trae, el del theme),
+    // no del theme: un Style oscuro con theme Light pintaba texto negro sobre oscuro (DD-246).
+    val chromeColors = PopupContrast.colorsFor(bgColorOverride, popup.style.theme)
+    val bgColor = chromeColors.background
+    val textColor = chromeColors.text
     val paragraphs = remember(popup.message) { parsePopupHtml(popup.message) }
 
     // Apertura diferida (paridad con Web): el popup se monta invisible y se enseña cuando el
@@ -331,7 +331,7 @@ fun PopupView(
                                     progress = { progressBar.fraction },
                                     modifier = Modifier.fillMaxWidth().height(4.dp),
                                     color = progressBarColor,
-                                    trackColor = Color(0xFFE5E7EB),
+                                    trackColor = chromeColors.progressTrack,
                                     strokeCap = StrokeCap.Round,
                                     gapSize = 0.dp,
                                     drawStopIndicator = {}
