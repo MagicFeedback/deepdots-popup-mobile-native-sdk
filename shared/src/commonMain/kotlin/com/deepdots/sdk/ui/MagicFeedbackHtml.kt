@@ -6,7 +6,7 @@ import com.deepdots.sdk.models.PopupFont
 import com.deepdots.sdk.tracking.buildSurveyIdentity
 
 // Centralized MagicFeedback package version used for all CDN URLs
-internal const val MAGICFEEDBACK_VERSION: String = "2.2.39"
+internal const val MAGICFEEDBACK_VERSION: String = "2.2.44"
 
 /**
  * Version de `@magicfeedback/popup-sdk` de la que se sirve la hoja de estilos del survey.
@@ -22,7 +22,7 @@ internal const val MAGICFEEDBACK_VERSION: String = "2.2.39"
  * con su CSS re-vendorizado y apuntar aqui a esa version; mientras ese npm no este publicado,
  * el WebView pedira una URL que no existe y el survey saldra sin estilos.
  */
-internal const val POPUP_SDK_CSS_VERSION: String = "1.19.0"
+internal const val POPUP_SDK_CSS_VERSION: String = "1.22.0"
 
 /**
  * Common HTML builder for MagicFeedback survey popup used by Android/iOS WebViews.
