@@ -8,6 +8,8 @@ name: CI
 #   pueda ser un check obligatorio (un workflow filtrado por `paths` dejaria el check pendiente).
 #   Los tests en el simulador de iOS siguen en el "Release dry run" (macOS): en cada PR harian cola
 #   en los runners de macOS que comparten las demas suites.
+#   Con `verifyRoborazziDebug` además compara las capturas del popup (DD-270); si cambian a
+#   propósito: `./gradlew :shared:recordRoborazziDebug` y se suben las nuevas.
 #   En local: JAVA_HOME=... ./gradlew :shared:testDebugUnitTest (CLAUDE.md, "Comandos").
 
 on:
@@ -73,14 +75,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         if: steps.changes.outputs.run == 'true'
 
+      # verifyRoborazziDebug corre los mismos unit tests y además compara las capturas del popup
+      # por tamaño de pantalla (DD-270) con las de shared/src/androidUnitTest/screenshots/.
       - name: Unit tests (JVM)
         if: steps.changes.outputs.run == 'true'
-        run: ./gradlew :shared:testDebugUnitTest
+        run: ./gradlew :shared:verifyRoborazziDebug
 
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-reports
-          path: shared/build/reports/tests/
+          path: |
+            shared/build/reports/tests/
+            shared/build/outputs/roborazzi/
           retention-days: 7
