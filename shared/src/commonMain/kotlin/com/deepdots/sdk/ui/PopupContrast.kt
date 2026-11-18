@@ -47,8 +47,24 @@ internal object PopupContrast {
     fun isDark(background: Color): Boolean =
         background.copy(alpha = 1f).luminance() < DARK_LUMINANCE_THRESHOLD
 
-    fun colorsFor(styleBackground: Color?, theme: Theme): PopupChromeColors {
-        val bg = styleBackground ?: defaultBackground(theme)
+    /**
+     * Colores del chrome. Sin modo forzado ([forcedMode] `null`) manda el Style, como en DD-246.
+     * Con modo forzado por la app (DD-240):
+     * - Light: el `boxBackgroundColor` del Style o, si no trae, blanco.
+     * - Dark: el `dark.boxBackgroundColor` del Style (DD-239); si no, el del Style si ya es oscuro;
+     *   si no, el gris oscuro por defecto (un color claro de marca no sirve en oscuro).
+     */
+    fun colorsFor(
+        styleBackground: Color?,
+        theme: Theme,
+        forcedMode: Theme? = null,
+        darkStyleBackground: Color? = null,
+    ): PopupChromeColors {
+        val bg = when (forcedMode) {
+            null -> styleBackground ?: defaultBackground(theme)
+            Theme.Light -> styleBackground ?: LIGHT_DEFAULT_BG
+            Theme.Dark -> darkStyleBackground ?: styleBackground?.takeIf { isDark(it) } ?: DARK_DEFAULT_BG
+        }
         val dark = isDark(bg)
         return PopupChromeColors(
             background = bg,
@@ -57,4 +73,26 @@ internal object PopupContrast {
             isDark = dark,
         )
     }
+
+    /** Botón principal por defecto (sin `buttonPrimaryColor`) sobre tarjeta clara. */
+    val DEFAULT_PRIMARY = Color(0xFF1E293B)
+    /** Y sobre tarjeta oscura: el slate oscuro casi no se ve ahí, así que va uno claro. */
+    val DARK_DEFAULT_PRIMARY = Color(0xFFE2E8F0)
+    /** Texto del botón cuando el botón es claro. */
+    val ON_LIGHT_PRIMARY = Color(0xFF0F172A)
+
+    /**
+     * Color del botón principal. En tarjeta oscura: `dark.buttonPrimaryColor` (DD-239), si no el de
+     * marca, si no el claro por defecto. En clara: el de marca o el slate de siempre.
+     */
+    fun primaryFor(stylePrimary: Color?, darkStylePrimary: Color?, darkCard: Boolean): Color =
+        if (darkCard) darkStylePrimary ?: stylePrimary ?: DARK_DEFAULT_PRIMARY
+        else stylePrimary ?: DEFAULT_PRIMARY
+
+    /**
+     * Texto sobre el botón principal. Blanco como siempre; solo en tarjeta oscura con un botón
+     * claro pasa a oscuro (si no, el texto blanco no se lee). En clara no cambia nada.
+     */
+    fun onPrimary(primary: Color, darkCard: Boolean): Color =
+        if (darkCard && !isDark(primary)) ON_LIGHT_PRIMARY else Color.White
 }

@@ -4,6 +4,20 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- **Light / dark popup and survey from the app (DD-240).** New `InitOptions.appearance`
+  (`Appearance.System`, `Light`, `Dark`) and `DeepdotsPopups.setAppearance()` / `getAppearance()`.
+  `null` (default) keeps today's behaviour: the survey Style colours decide (DD-246). `System`
+  follows the device (Android `uiMode`, iOS `traitCollection`); the popup frame also recolours
+  while it is open, the survey takes the mode when the popup opens. In dark the card, primary
+  button and progress bar use the Style's optional `dark` colours (DD-239), else the Style colour
+  if it is already dark, else a default dark palette (light primary button with dark text). The
+  survey gets the mode (`mode` option of the survey SDK, DD-238; older survey SDKs ignore it) and
+  iOS no longer forces a light WebView when the mode is dark. `appearance` is the last
+  `InitOptions` parameter and the previous full constructor stays, so existing Swift
+  `InitOptions(...)` calls keep compiling. Asked by Danske Spil (DD-236).
+
 ### Changed
 
 - **Surveys SDK 2.2.44** (`@magicfeedback/native`, from 2.2.39), vendored on Android and from the

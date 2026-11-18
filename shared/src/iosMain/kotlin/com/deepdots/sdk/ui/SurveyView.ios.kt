@@ -17,6 +17,7 @@ import androidx.compose.ui.viewinterop.UIKitView
 import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import com.deepdots.sdk.models.PopupFont
+import com.deepdots.sdk.models.Theme
 import androidx.compose.ui.unit.dp
 import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -50,6 +51,7 @@ actual fun SurveyView(
     onController: (SurveyController) -> Unit,
     font: PopupFont?,
     surveySdkVersion: String?,
+    colorMode: Theme?,
 ) {
     // Keep a reference to WKWebView for controller actions
     var webViewRef by remember { mutableStateOf<WKWebView?>(null) }
@@ -126,9 +128,13 @@ actual fun SurveyView(
                         alpha = backgroundColor.alpha.toDouble()
                     )
                 )
-                // Also force light UI controls so native form widgets don't adopt dark styling.
-                wv.overrideUserInterfaceStyle = UIUserInterfaceStyle.UIUserInterfaceStyleLight
-                val html = platformSurveyHtml(surveyId, productId, font, surveySdkVersion)
+                // Native form widgets follow the survey: light unless the app forced dark (DD-240).
+                // Without a forced mode it stays light; a dark Style switches the survey's own
+                // palette and `color-scheme` in CSS (DD-238).
+                wv.overrideUserInterfaceStyle = if (colorMode == Theme.Dark)
+                    UIUserInterfaceStyle.UIUserInterfaceStyleDark
+                else UIUserInterfaceStyle.UIUserInterfaceStyleLight
+                val html = iosSurveyHtml(surveyId, productId, font, surveySdkVersion, colorMode)
                 wv.loadHTMLString(html, baseURL = NSURL(string = "https://magicfeedback.app/"))
                 webViewRef = wv
                 wv as UIView
@@ -151,7 +157,18 @@ actual fun SurveyView(
     }
 }
 
-actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?, surveySdkVersion: String?): String {
+actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?, surveySdkVersion: String?): String =
+    iosSurveyHtml(surveyId, productId, font, surveySdkVersion, colorMode = null)
+
+// Same HTML as [platformSurveyHtml] plus the app's color mode (DD-240). Kept apart so the public
+// `platformSurveyHtml` signature (and its Swift name) does not change.
+internal fun iosSurveyHtml(
+    surveyId: String,
+    productId: String,
+    font: PopupFont?,
+    surveySdkVersion: String?,
+    colorMode: Theme?,
+): String {
     val bundle = NSBundle.mainBundle
     val resPath = bundle.pathForResource("magicfeedback/magicfeedback-sdk.browser", ofType = "js")
     val localScript = resPath?.let { "file://${it}" }
@@ -164,5 +181,6 @@ actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFo
         isIOS = true,
         font = font,
         surveySdkVersion = surveySdkVersion,
+        colorMode = colorMode,
     )
 }

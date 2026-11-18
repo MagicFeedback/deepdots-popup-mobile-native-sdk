@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import android.webkit.ConsoleMessage
 import com.deepdots.sdk.models.PopupFont
+import com.deepdots.sdk.models.Theme
 import org.json.JSONObject
 
 /**
@@ -39,6 +40,7 @@ actual fun SurveyView(
     onController: (SurveyController) -> Unit,
     font: PopupFont?,
     surveySdkVersion: String?,
+    colorMode: Theme?,
 ) {
     var loading by remember { mutableStateOf(true) }
     // El WebView y su puente se crean una sola vez (factory), pero PopupView pasa un `onEvent`
@@ -163,6 +165,7 @@ actual fun SurveyView(
                     isIOS = false,
                     font = font,
                     surveySdkVersion = surveySdkVersion,
+                    colorMode = colorMode,
                 )
                 loadDataWithBaseURL("https://magicfeedback.app/", html, "text/html", "utf-8", null)
             }

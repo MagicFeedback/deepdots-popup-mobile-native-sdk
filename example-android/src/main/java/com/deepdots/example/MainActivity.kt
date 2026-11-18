@@ -209,6 +209,9 @@ private fun initSdkForUser(sdk: DeepdotsPopupsSdk, userId: String) {
         // Read from the mutable holder so the user can change the locale on the
         // Login screen and the next popup picks it up immediately.
         provideLang = { currentLang },
+        // Popup chrome follows the phone's light/dark setting. Apps with their own dark mode
+        // toggle call sdk.setAppearance(Appearance.Dark / Light) when it changes.
+        appearance = Appearance.System,
         metadata = mapOf("userId" to userId)
     )
     sdk.init(options)
