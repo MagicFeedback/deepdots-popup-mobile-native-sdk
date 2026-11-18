@@ -165,6 +165,34 @@ settle_android_app() {
   sleep 1
 }
 
+# rate-delay (trigger.delaySeconds 8 in DEV): the popup must show >= 6 s after the event, measured
+# from the app's own log lines of this flow (from line <from> of device.log). Maestro cannot time
+# it: on a slow CI simulator its steps took up to 20 s.
+check_popup_delay() { # <first device.log line of the flow>
+  sleep 2 # the log stream lags behind the app a little
+  local gap msg
+  gap=$(tail -n +"$1" "$OUT/device.log" | python3 -I -c '
+import re, sys
+def t(line):
+    m = re.search(r"(\d\d):(\d\d):(\d\d(?:\.\d+)?)", line)
+    return int(m[1]) * 3600 + int(m[2]) * 60 + float(m[3])
+event = None
+for line in sys.stdin:
+    if "triggerEvent(rate_product)" in line:
+        event = t(line)
+    elif "[lab] popup shown" in line and event is not None:
+        print(round(t(line) - event, 1))
+        break
+')
+  if [ -z "$gap" ]; then msg="no popup after the rate_product event in the device log"
+  elif awk -v g="$gap" 'BEGIN { exit !(g >= 6) }'; then echo "[lab] rate-delay: popup ${gap} s after the event (delaySeconds 8)"; return 0
+  else msg="popup ${gap} s after the event, expected about 8 s (trigger.delaySeconds ignored)"; fi
+  echo "[lab] rate-delay: $msg"
+  junit_case rate-delay error "$msg"
+  echo "[Failed] rate-delay ($msg)" >> "$OUT/maestro/rate-delay.txt"
+  return 1
+}
+
 run_flow() { # <flow file> -> exit code of maestro
   local name; name=$(basename "$1" .yaml)
   ensure_device_log
@@ -175,6 +203,7 @@ run_flow() { # <flow file> -> exit code of maestro
   [ -n "$text" ] && { echo "[lab] $name: text size $text"; set_text_size "$text"; }
   settle_android_app
   start_recording "$name"
+  local from; from=$(( $(wc -l < "$OUT/device.log" 2>/dev/null || echo 0) + 1 ))
   local code
   while :; do
     rm -f "$OUT/junit/$name.xml"
@@ -201,6 +230,8 @@ run_flow() { # <flow file> -> exit code of maestro
   fi
   stop_recording "$name"
   ensure_device_log "$mark"
+  # rate-delay: the delay is measured in the app's log, not by Maestro's pace.
+  if [ "$code" = 0 ] && [ "$name" = rate-delay ] && ! check_popup_delay "$from"; then code=1; fi
   [ -n "$net" ] && set_network full none
   [ -n "$text" ] && set_text_size default
   return $code
