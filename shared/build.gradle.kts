@@ -11,6 +11,7 @@ plugins {
     id("maven-publish")
     id("signing")
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.roborazzi)
 }
 
 group = providers.gradleProperty("PUBLISHING_GROUP").orNull ?: "com.deepdots"
@@ -150,7 +151,16 @@ kotlin {
         commonTest.dependencies { implementation(libs.kotlin.test) }
         // ReleaseContractTest lee InitOptions por reflexión para generar release/config.schema.json.
         val androidUnitTest by getting {
-            dependencies { implementation(kotlin("reflect")) }
+            dependencies {
+                implementation(kotlin("reflect"))
+                // Pruebas de UI en la JVM (DD-269 toques de dedo, DD-270 capturas por tamaño):
+                // Compose de verdad sobre Robolectric, sin emulador.
+                implementation(libs.robolectric)
+                implementation(libs.compose.ui.test.junit4)
+                implementation(libs.roborazzi)
+                implementation(libs.roborazzi.compose)
+                implementation(libs.roborazzi.rule)
+            }
         }
     }
 
@@ -166,6 +176,7 @@ android {
         // Viajan dentro del AAR y R8 las aplica en la app del cliente.
         consumerProguardFiles("consumer-rules.pro")
     }
+    testOptions { unitTests { isIncludeAndroidResources = true } }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
     buildTypes { getByName("release") { isMinifyEnabled = false }; getByName("debug") { } }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
@@ -182,7 +193,10 @@ java {
     }
 }
 
-dependencies { debugImplementation(compose.uiTooling) }
+dependencies {
+    debugImplementation(compose.uiTooling)
+    debugImplementation(libs.compose.ui.test.manifest)
+}
 
 val copyAarToDist by tasks.registering(Copy::class) {
     dependsOn(tasks.named("assembleRelease"))

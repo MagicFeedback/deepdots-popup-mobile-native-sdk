@@ -185,7 +185,7 @@ fun PopupView(
             // de un dedo real (siempre hay alguno), `clickable` cancela el clic. X, Enviar y Atrás
             // no respondían en móviles reales (Lemvigh-Müller, Galaxy S25); un `adb input tap`
             // (sin MOVE) sí funcionaba, por eso las pruebas automáticas no lo veían.
-            .pointerInput(Unit) { blockTouchesToHost() }
+            .popupBackdropTouches()
             // El velo cubre toda la pantalla; la tarjeta se centra en lo que deja el teclado.
             .avoidKeyboard()
             // ...y en la zona segura: sin esto, en iOS un popup arriba con un survey alto se metía
@@ -701,9 +701,11 @@ fun PopupView(
 }
 
 /**
- * Consume todos los toques que llegan al velo sin hacer nada con ellos. Los hijos (la tarjeta,
- * sus botones y el WebView) los reciben antes, así que esto solo se queda con los que caen fuera.
+ * El velo modal como modificador, para que las pruebas de toque (`PopupFingerTapTest`) lo usen
+ * tal cual con botones de prueba dentro.
  */
+internal fun Modifier.popupBackdropTouches(): Modifier = pointerInput(Unit) { blockTouchesToHost() }
+
 /**
  * El velo modal: recibe los toques (así no llegan al host) pero NO los consume. Un padre que
  * consume los MOVE cancela el `clickable` de sus hijos (`waitForUpOrCancellation` mira el pase
