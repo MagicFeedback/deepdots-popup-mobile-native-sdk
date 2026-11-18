@@ -208,6 +208,11 @@ jobs:
         run: |
           xcrun simctl runtime list || true
           sudo xcodebuild -downloadPlatform iOS -buildVersion "${{ matrix.ios }}"
+          # A freshly installed runtime builds its dyld shared cache in the background after the first
+          # boot. Until it is done, Maestro's driver does not start in time (release validation 0.7.12,
+          # iOS 16.4: driver timeouts for ~45 min after the download, reboots did not help). Build it
+          # now, before the simulator boots.
+          time sudo xcrun simctl runtime dyld_shared_cache update --all
       - name: Install tools
         run: brew install xcodegen
       - *maestro
