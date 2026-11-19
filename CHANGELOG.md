@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.13 - 2026-11-19
+
 ### Added
 
 - **Light / dark popup and survey from the app (DD-240).** New `InitOptions.appearance`
