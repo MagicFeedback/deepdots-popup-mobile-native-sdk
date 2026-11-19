@@ -272,6 +272,16 @@ ${PopupReveal.REVEAL_JS}
                   var form = document.getElementById('dd-form-wrapper'); if (form) { form.style.display = 'none'; }
                   var done = document.getElementById('mf-success'); if (!done) return;
                   done.innerHTML = successMessageHtml || '<p>Thank you for your feedback!</p>';
+                  // El gracias va fuera del contenedor del survey, donde el CSS del survey sigue en su
+                  // paleta clara: en tarjeta oscura salía gris sobre oscuro (DD-248). Copia los
+                  // colores de texto del contenedor (los oscuros si está en modo oscuro).
+                  var mfc = document.querySelector('.magicfeedback-container');
+                  if (mfc) {
+                    var mcs = getComputedStyle(mfc);
+                    var sec = mcs.getPropertyValue('--mf-text-secondary');
+                    if (sec) { done.style.setProperty('--mf-text-secondary', sec.trim()); }
+                    done.style.color = mcs.color;
+                  }
                   done.style.display = 'block';
                   // Si el usuario había hecho scroll en la última pregunta, el mensaje quedaría
                   // fuera de la vista: el WebView encoge a su alto y el scroll se queda abajo.

@@ -40,4 +40,13 @@ class DarkModeHtmlTest {
         assertTrue(h.contains("mode: 'light',"))
         assertTrue(h.contains(":root{color-scheme:light;}"))
     }
+
+    // DD-248: el gracias va fuera del contenedor del survey y heredaba el gris de modo claro.
+    @Test
+    fun thank_you_takes_the_survey_container_text_colours() {
+        val h = html(null)
+        assertTrue(h.contains("document.querySelector('.magicfeedback-container')"))
+        assertTrue(h.contains("done.style.setProperty('--mf-text-secondary', sec.trim());"))
+        assertTrue(h.contains("done.style.color = mcs.color;"))
+    }
 }
