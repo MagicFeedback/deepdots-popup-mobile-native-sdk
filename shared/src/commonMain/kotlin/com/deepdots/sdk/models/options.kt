@@ -6,6 +6,15 @@ import com.deepdots.sdk.storage.KeyValueStorage
 enum class Mode { Client, Server }
 
 /**
+ * Light or dark popup and survey chosen by the host app. [System] follows the device setting
+ * (Android `uiMode`, iOS `traitCollection`). Set it with `InitOptions.appearance` or change it
+ * later with `DeepdotsPopups.setAppearance`. `null` (default) lets the survey Style colours
+ * decide. In dark, the Style's optional `dark` colours are used, else a default dark palette.
+ * Same values as the web SDK (`'system' | 'light' | 'dark'`).
+ */
+enum class Appearance { System, Light, Dark }
+
+/**
  * Backend environment the SDK should talk to.
  *
  * Defaults to [Production] (https://api.deepdots.com). Set [Development] to point
@@ -79,8 +88,54 @@ data class InitOptions(
      * inicio y antes de completar. Paridad con Web/RN `DeepdotsInitParams.showProgressBar`.
      */
     val showProgressBar: Boolean? = null,
-    val metadata: Map<String, Any>? = null // arbitrary host-supplied metadata forwarded to the backend
-)
+    val metadata: Map<String, Any>? = null, // arbitrary host-supplied metadata forwarded to the backend
+    /**
+     * Light or dark popup and survey from the app ([Appearance]). `null` (default) lets the survey
+     * Style colours decide. Can be changed later with `DeepdotsPopups.setAppearance`.
+     */
+    val appearance: Appearance? = null,
+) {
+    /**
+     * The parameter list before `appearance` (0.7.12 and older). Kotlin default arguments are not
+     * visible from Swift, so Swift apps pass every parameter: this keeps their existing
+     * `InitOptions(...)` call compiling. No defaults here on purpose, so Kotlin calls that name only
+     * some parameters keep resolving to the primary constructor.
+     */
+    constructor(
+        debug: Boolean?,
+        environment: Environment?,
+        mode: Mode?,
+        popupOptions: PopupOptions,
+        provideLang: () -> String?,
+        autoLaunch: Boolean?,
+        storage: KeyValueStorage?,
+        trackingEnabled: Boolean?,
+        analytics: AnalyticsKeys?,
+        onFeedbackSession: ((FeedbackSession) -> Unit)?,
+        geolocation: Boolean?,
+        contactAttributes: Map<String, Any?>?,
+        renderChrome: Boolean?,
+        showProgressBar: Boolean?,
+        metadata: Map<String, Any>?,
+    ) : this(
+        debug = debug,
+        environment = environment,
+        mode = mode,
+        popupOptions = popupOptions,
+        provideLang = provideLang,
+        autoLaunch = autoLaunch,
+        storage = storage,
+        trackingEnabled = trackingEnabled,
+        analytics = analytics,
+        onFeedbackSession = onFeedbackSession,
+        geolocation = geolocation,
+        contactAttributes = contactAttributes,
+        renderChrome = renderChrome,
+        showProgressBar = showProgressBar,
+        metadata = metadata,
+        appearance = null,
+    )
+}
 
 data class ShowOptions(
     val surveyId: String,

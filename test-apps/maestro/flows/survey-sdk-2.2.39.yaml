@@ -1,0 +1,69 @@
+# DD-70 release gate: a survey assigned in the Admin to a MagicSurvey release built with
+# @magicfeedback/native 2.2.39 is drawn with 2.2.39 (JS and CSS), not with the vendored version.
+# One flow per version of SUPPORTED_SURVEY_SDK_VERSIONS other than MAGICFEEDBACK_VERSION
+# (scripts/release/rules.mjs checks it). Scenario survey-sdk-2.2.39: time_on_page 3 s on /checkout,
+# survey pinned to 3.4.1 (needed since MAGICFEEDBACK_VERSION moved to 2.2.44).
+#
+# The flow answers the survey page by page in Spanish, the survey's base language: duplicating a
+# survey in the Admin drops its Polish translations, and the version check does not need them
+# (survey-sdk-2.2.38.yaml covers Polish). Which version drew it is checked by
+# test-apps/scripts/run-maestro.sh in the device log: the WebView logs
+# "[MagicFeedback] survey-sdk 2.2.39 assigned" only once that version's CSS and JS are in; if
+# either fails it falls back to the vendored version ("… bundled") and the run fails.
+#
+# Only SDKs that know surveyFrontend.sdkVersion (local and 0.7.10+). Needs POPUP_SDK_CSS_VERSION
+# with survey-css/2.2.39.css (popup-sdk 1.19.0+).
+appId: com.deepdots.testapp
+tags: [smoke]
+# Texts are regular expressions in Maestro ('?' is a quantifier): the questions go as patterns.
+---
+- runFlow:
+    when:
+      true: ${SDK_VERSION == 'local' || (function (v) { var p = v.split('.').map(Number); return p[0] > 0 || p[1] > 7 || (p[1] == 7 && p[2] >= 10); })(SDK_VERSION)}
+    commands:
+      - runFlow:
+          file: ../subflows/launch.yaml
+          env:
+            SCENARIO: survey-sdk-2.2.39
+            LANG: es
+      - tapOn:
+          id: tab-cart
+      - tapOn:
+          id: go-checkout
+      - extendedWaitUntil:
+          visible: "DD-70 · survey SDK 2.2.39"
+          timeout: 15000
+      - extendedWaitUntil:
+          visible: ".*Encontraste lo que buscabas.*"
+          timeout: 30000
+      - tapOn: "Sí, del todo"
+      - tapOn: "Send|Enviar"
+      - extendedWaitUntil:
+          visible: "Valora la ficha de producto"
+          timeout: 15000
+      # Android 8 (API 26-27, WebView 69): the accessibility bounds of the stars are wrong (each
+      # one reaches the right edge of the card and sits ~100 px below where it is drawn), so
+      # Maestro taps next to the star and the page does not advance (0.7.11 validation). There the
+      # flow stops at page 2: the survey is loaded and the version check in run-maestro.sh still runs.
+      - runFlow:
+          when:
+            true: ${typeof ANDROID_API == 'undefined' || ANDROID_API == '' || Number(ANDROID_API) >= 28}
+          commands:
+            - tapOn:
+                text: "★"
+                index: 3
+            - tapOn: "Send|Enviar"
+            - extendedWaitUntil:
+                visible: ".*Volver.*comprar en NORDLY.*"
+                timeout: 15000
+            - tapOn: "Sí"
+            - tapOn: "Send|Enviar"
+            - extendedWaitUntil:
+                visible: ".*Algo m.*s que quieras contarnos.*"
+                timeout: 15000
+      - runFlow:
+          file: ../subflows/close-popup.yaml
+          env:
+            TITLE: "DD-70 · survey SDK 2.2.39"
+            # The native chrome follows the survey language (Spanish here).
+            CLOSE_LABEL: "Close popup|Cerrar ventana emergente"

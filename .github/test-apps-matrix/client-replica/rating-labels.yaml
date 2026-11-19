@@ -15,10 +15,10 @@ tags: [client-replica, negative-control]
       # en, not da: the popup is segmented to en (as in prod) and 0.7.4 applies segments.lang.
       # The survey only exists in Danish, so it still renders in Danish.
       LANG: en
-# time_on_page 5 s + survey load.
+# time_on_page 5 s + survey load. A slow CI simulator asked DEV for popups up to 48 s after launch (0.7.12 validation): wait 60 s.
 - extendedWaitUntil:
     visible: ".*Meget dårlig.*"
-    timeout: 30000
+    timeout: 60000
 - takeScreenshot: client-replica-rating
 - assertNotVisible: "1 = .*"
 - assertNotVisible: "5 = .*"

@@ -36,6 +36,9 @@ deepdots-popup-sdk; `scripts/visual/{compare,check,approve}.mjs` are the same fi
 | `position-top`, `position-bottom` | `visual-position-*` (E2E scenarios) | top/bottom anchoring, status bar and home indicator safe areas |
 | `dark-font` | `visual-dark-font` | dark theme + custom font (Georgia) |
 | `text-large` | `visual-text-large` | largest system text (Android 1.3, iOS XXXL) |
+| `dark-style-1-open` | `visual-dark-style` (DD-248, scenario `visual-dark-style`) | survey with dark Style colours, popup theme Light: light chrome text, dark survey (DD-246, DD-238) |
+| `dark-style-2-text` | idem, NPS 9 | dark textarea and counter |
+| `dark-style-3-thanks` | idem, Send | thank-you screen on a dark card |
 
 Content is fixed: dedicated DEV popup configs (`scenarios.json`) on the DEV surveys "SDK Test App ·
 Simple / Complex", and the survey renderer version is pinned in the SDK (`MAGICFEEDBACK_VERSION`,

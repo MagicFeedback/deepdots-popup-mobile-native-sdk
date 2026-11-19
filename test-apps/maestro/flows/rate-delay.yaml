@@ -20,13 +20,10 @@ tags: [known-issue]
     id: star-5
 - tapOn:
     id: submit-rating
-# ~4 s of the 8 s delay: still nothing (with the bug the popup is up within ~1-2 s).
+# The delay itself is checked by run-maestro.sh in the app's log (event -> "popup shown" >= 6 s):
+# on a slow CI simulator Maestro took up to 20 s between two steps, so a "not visible yet" check
+# here ran after the 8 s and failed with the SDK right (release validation 0.7.12, 8.6 s in the log).
 - extendedWaitUntil:
     visible: "Thanks for rating the product"
-    timeout: 4000
-    optional: true
-- assertNotVisible: "Thanks for rating the product"
-- extendedWaitUntil:
-    visible: "Thanks for rating the product"
-    timeout: 15000
+    timeout: 30000
 - takeScreenshot: rate-delay

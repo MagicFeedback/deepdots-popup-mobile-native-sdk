@@ -17,6 +17,7 @@ import androidx.compose.ui.viewinterop.UIKitView
 import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import com.deepdots.sdk.models.PopupFont
+import com.deepdots.sdk.models.Theme
 import androidx.compose.ui.unit.dp
 import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -50,6 +51,7 @@ actual fun SurveyView(
     onController: (SurveyController) -> Unit,
     font: PopupFont?,
     surveySdkVersion: String?,
+    colorMode: Theme?,
 ) {
     // Keep a reference to WKWebView for controller actions
     var webViewRef by remember { mutableStateOf<WKWebView?>(null) }
@@ -109,6 +111,8 @@ actual fun SurveyView(
                     })();
                 """.trimIndent()
                 controller.addUserScript(WKUserScript(source = consoleForwardScript, injectionTime = WKUserScriptInjectionTime.WKUserScriptInjectionTimeAtDocumentEnd, forMainFrameOnly = true))
+                // Page canvas in the card colour from the first paint (DD-248, see SurveyCanvas).
+                controller.addUserScript(WKUserScript(source = SurveyCanvas.backgroundJs(backgroundColor), injectionTime = WKUserScriptInjectionTime.WKUserScriptInjectionTimeAtDocumentStart, forMainFrameOnly = true))
                 config.userContentController = controller
                 val wv = WKWebView(frame = CGRectMake(0.0, 0.0, 0.0, 0.0), configuration = config)
                 // Paint the popup's themed background as an OPAQUE color on the WebView.
@@ -126,16 +130,35 @@ actual fun SurveyView(
                         alpha = backgroundColor.alpha.toDouble()
                     )
                 )
-                // Also force light UI controls so native form widgets don't adopt dark styling.
-                wv.overrideUserInterfaceStyle = UIUserInterfaceStyle.UIUserInterfaceStyleLight
-                val html = platformSurveyHtml(surveyId, productId, font, surveySdkVersion)
+                // Native form widgets follow the survey: light unless the app forced dark (DD-240).
+                // Without a forced mode it stays light; a dark Style switches the survey's own
+                // palette and `color-scheme` in CSS (DD-238).
+                wv.overrideUserInterfaceStyle = if (colorMode == Theme.Dark)
+                    UIUserInterfaceStyle.UIUserInterfaceStyleDark
+                else UIUserInterfaceStyle.UIUserInterfaceStyleLight
+                val html = iosSurveyHtml(surveyId, productId, font, surveySdkVersion, colorMode)
                 wv.loadHTMLString(html, baseURL = NSURL(string = "https://magicfeedback.app/"))
                 webViewRef = wv
                 wv as UIView
             },
             // Todo el hueco que le da PopupView (antes 520dp fijos: franja en blanco en iPad).
             modifier = Modifier.fillMaxSize(),
-            update = { /* no-op */ },
+            // The card colour changes when the survey Style arrives (DD-246) or the app mode changes
+            // (DD-240); the page canvas has to follow, or the first colour (white in light, black
+            // with the WebView in dark) shows as a band above the survey on a dark card (DD-248).
+            update = { view ->
+                val wv = view as? WKWebView
+                wv?.setBackgroundColor(
+                    UIColor(
+                        red = backgroundColor.red.toDouble(),
+                        green = backgroundColor.green.toDouble(),
+                        blue = backgroundColor.blue.toDouble(),
+                        alpha = backgroundColor.alpha.toDouble()
+                    )
+                )
+                // An opaque WKWebView shows the page canvas, not its backgroundColor: repaint it.
+                wv?.evaluateJavaScript(SurveyCanvas.backgroundJs(backgroundColor), completionHandler = null)
+            },
             // NonCooperative: the survey's touches go straight to the WKWebView. With the default
             // (Cooperative) the popup's scrollable middle (Compose verticalScroll) claimed every
             // vertical drag, could not move because its content already fit, and the WebView never
@@ -151,7 +174,18 @@ actual fun SurveyView(
     }
 }
 
-actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?, surveySdkVersion: String?): String {
+actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFont?, surveySdkVersion: String?): String =
+    iosSurveyHtml(surveyId, productId, font, surveySdkVersion, colorMode = null)
+
+// Same HTML as [platformSurveyHtml] plus the app's color mode (DD-240). Kept apart so the public
+// `platformSurveyHtml` signature (and its Swift name) does not change.
+internal fun iosSurveyHtml(
+    surveyId: String,
+    productId: String,
+    font: PopupFont?,
+    surveySdkVersion: String?,
+    colorMode: Theme?,
+): String {
     val bundle = NSBundle.mainBundle
     val resPath = bundle.pathForResource("magicfeedback/magicfeedback-sdk.browser", ofType = "js")
     val localScript = resPath?.let { "file://${it}" }
@@ -164,5 +198,6 @@ actual fun platformSurveyHtml(surveyId: String, productId: String, font: PopupFo
         isIOS = true,
         font = font,
         surveySdkVersion = surveySdkVersion,
+        colorMode = colorMode,
     )
 }

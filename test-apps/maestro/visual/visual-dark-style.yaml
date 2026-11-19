@@ -1,0 +1,74 @@
+# Visual regression (DD-248): a survey whose Style colours are dark (popup theme Light). The
+# popup text and the survey turn light-on-dark by themselves (DD-246, DD-238): NPS page, the text
+# page and the thank-you screen. Leaves one answer in MAGICFEEDBACK_DEV per run, like
+# visual-complex. Screenshots: visual-dark-style-*.png (test-apps/visual/README.md).
+# min-sdk: 0.7.13
+appId: com.deepdots.testapp
+tags: [visual]
+---
+- runFlow:
+    file: ../subflows/launch.yaml
+    env:
+      VISUAL: "1"
+      SCENARIO: visual-dark-style
+- runFlow:
+    file: ../subflows/lab-tap.yaml
+    env:
+      ID: lab-event-visual_dark_style
+- extendedWaitUntil:
+    visible: "Visual · Dark Style"
+    timeout: 20000
+# The survey must be there before the screenshot (see visual-simple). The DEV copy of the survey
+# keeps only Spanish (the duplicate drops the English translation), like the DD-70 gate survey.
+- extendedWaitUntil:
+    visible: "¿Qué probabilidad hay de que recomiendes NORDLY a un amigo?"
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    file: ../subflows/visual-shot.yaml
+    env:
+      NAME: dark-style-1-open
+# NPS advances by itself.
+- scrollUntilVisible:
+    element: "9"
+    direction: DOWN
+- tapOn: "9"
+# The text page's question, not the "0/500" counter: on the small Android screen the keyboard the
+# survey opens covers the counter.
+- extendedWaitUntil:
+    visible: "¿Qué podríamos mejorar?"
+    timeout: 10000
+# No text typed (keyboard suggestions differ between runs); close the keyboard the survey opens.
+- runFlow:
+    when:
+      platform: iOS
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    when:
+      platform: iOS
+      visible: "Done"
+    commands:
+      - tapOn: "Done"
+- runFlow:
+    file: ../subflows/visual-shot.yaml
+    env:
+      NAME: dark-style-2-text
+- tapOn: "Send"
+- extendedWaitUntil:
+    visible: "Complete survey"
+    timeout: 15000
+- runFlow:
+    file: ../subflows/visual-shot.yaml
+    env:
+      NAME: dark-style-3-thanks
+- tapOn: "Complete survey"
+- waitForAnimationToEnd:
+    timeout: 3000

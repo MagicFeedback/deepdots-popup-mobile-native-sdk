@@ -4,6 +4,58 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.13 - 2026-11-19
+
+Survey SDK supported: 2.2.38–2.2.44 (survey frontend 3.4.1–3.6.0); bundled: 2.2.44.
+
+### Added
+
+- **Light / dark popup and survey from the app (DD-240).** New `InitOptions.appearance`
+  (`Appearance.System`, `Light`, `Dark`) and `DeepdotsPopups.setAppearance()` / `getAppearance()`.
+  `null` (default) keeps today's behaviour: the survey Style colours decide (DD-246). `System`
+  follows the device (Android `uiMode`, iOS `traitCollection`); the popup frame also recolours
+  while it is open, the survey takes the mode when the popup opens. In dark the card, primary
+  button and progress bar use the Style's optional `dark` colours (DD-239), else the Style colour
+  if it is already dark, else a default dark palette (light primary button with dark text). The
+  survey gets the mode (`mode` option of the survey SDK, DD-238; older survey SDKs ignore it) and
+  iOS no longer forces a light WebView when the mode is dark. `appearance` is the last
+  `InitOptions` parameter and the previous full constructor stays, so existing Swift
+  `InitOptions(...)` calls keep compiling. Asked by Danske Spil (DD-236).
+
+### Changed
+
+- **Surveys SDK 2.2.44** (`@magicfeedback/native`, from 2.2.39), vendored on Android and from the
+  CDN on iOS (`MAGICFEEDBACK_VERSION`), also accepted when the Admin assigns it. It brings the
+  survey dark palette (DD-238): a dark Style, the forced mode from `appearance` (DD-240) or the
+  Style's `dark` colours (DD-239) render the questions dark. Also Catalan, star colour, subtitle
+  alignment, end screens (2.2.40–2.2.43). The survey stylesheet comes from popup-sdk 1.22.0
+  (`POPUP_SDK_CSS_VERSION`, from 1.19.0), the first one with the 2.2.44 CSS: **publish popup-sdk
+  1.22.0 before releasing this**, or the WebView asks for a stylesheet that does not exist yet.
+
+### Fixed
+
+- **Band above the survey on a dark card (DD-248).** On iOS the page behind the survey kept its
+  default colour (white, or black when the app forces dark), so a strip showed above the first
+  question on a dark card. The page and the WebView background now follow the card colour.
+- **Thank-you text on a dark card (DD-248).** The default "Thank you for your feedback!" kept the
+  survey's light-mode grey on a dark card. It now takes the survey's text colours (light on dark).
+
+- **Popup text follows the Style background, not the theme (DD-246).** Title, close X, progress
+  text and the progress track now pick black or white from the luminance of the final card
+  background (dark below WCAG luminance 0.2, the same cut the survey uses since DD-238). A dark
+  `boxBackgroundColor` with theme Light used to give black text on dark.
+  `style.theme` only sets the default background when the Style has none.
+
+### Tests
+
+- **UI tests on the JVM, no emulator (DD-269, DD-270).** Robolectric + Compose UI test + Roborazzi
+  in `androidUnitTest`. The X, Send and Back of the popup are tapped like a real finger (down, a
+  small move, up): with the backdrop of 0.7.2–0.7.11 these taps were lost (DD-209), and the tests
+  fail on that code. The survey must fill its whole slot (the 520 dp fixed height left white space
+  on tablets), and the popup is compared with reference screenshots on a small phone, a tall phone
+  and a tablet in portrait and landscape. CI runs `verifyRoborazziDebug`. No SDK behaviour change;
+  the backdrop modifier is now `internal` so the tests can use it.
+
 ## 0.7.12 - 2026-11-17
 
 Survey SDK supported: 2.2.38–2.2.39 (survey frontend 3.4.1–3.6.0); bundled: 2.2.39. Compatibility table: docs.deepdots.com/popup-native/reference/survey-compatibility/.

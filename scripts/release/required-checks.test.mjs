@@ -166,3 +166,27 @@ test('required checks: a later skipped run does not hide the real result', () =>
   assert.equal(r[0].conclusion, 'success');
   assert.equal(r[3].conclusion, 'failure');
 });
+
+// Partes en paralelo (test-apps.yml, plan-shards.py): el check requerido es el job que las resume.
+test('required checks: the parts of a sharded run are not the required check, the summary job is', () => {
+  const parts = ['1/4', '2/4', '3/4', '4/4'].map((p) => ({
+    name: `Test apps (release build) / iOS · SDK local · ${p}`, conclusion: 'success', started_at: '2',
+  }));
+  const withoutSummary = requiredChecksFrom([...GREEN.filter((c) => !c.name.endsWith('/ iOS · SDK local')), ...parts]);
+  assert.deepEqual(failingChecks(withoutSummary), ['"Test apps (release build) · iOS" missing']);
+  const redSummary = requiredChecksFrom([
+    ...GREEN.filter((c) => !c.name.endsWith('/ iOS · SDK local')),
+    ...parts,
+    { name: 'Test apps (release build) / iOS · SDK local', conclusion: 'failure', started_at: '3', html_url: 's' },
+  ]);
+  assert.deepEqual(failingChecks(redSummary), ['"Test apps (release build) · iOS" failure s']);
+});
+
+// Editar la descripción de la PR de release vuelve a lanzar release-check, que se salta los jobs
+// largos: el `skipped` más nuevo no tapa el resultado real (ni un rojo ni un verde).
+test('required checks: a newer skipped run (description edit) does not hide the real result', () => {
+  const skipped = { name: 'Release dry run', conclusion: 'skipped', started_at: '9' };
+  assert.deepEqual(failingChecks(requiredChecksFrom([...GREEN, skipped])), []);
+  const red = GREEN.map((c) => (c.name === 'Release dry run' ? { ...c, conclusion: 'failure', html_url: 'd' } : c));
+  assert.deepEqual(failingChecks(requiredChecksFrom([...red, skipped])), ['"Release dry run" failure d']);
+});

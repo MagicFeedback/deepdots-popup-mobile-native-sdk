@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import android.webkit.ConsoleMessage
 import com.deepdots.sdk.models.PopupFont
+import com.deepdots.sdk.models.Theme
 import org.json.JSONObject
 
 /**
@@ -39,6 +40,7 @@ actual fun SurveyView(
     onController: (SurveyController) -> Unit,
     font: PopupFont?,
     surveySdkVersion: String?,
+    colorMode: Theme?,
 ) {
     var loading by remember { mutableStateOf(true) }
     // El WebView y su puente se crean una sola vez (factory), pero PopupView pasa un `onEvent`
@@ -163,6 +165,7 @@ actual fun SurveyView(
                     isIOS = false,
                     font = font,
                     surveySdkVersion = surveySdkVersion,
+                    colorMode = colorMode,
                 )
                 loadDataWithBaseURL("https://magicfeedback.app/", html, "text/html", "utf-8", null)
             }
@@ -174,7 +177,11 @@ actual fun SurveyView(
                 override fun startForm() { webView.post { webView.evaluateJavascript(SurveyActionsJs.startForm, null) } }
             })
             webView
-        }, update = {})
+        }, update = { view ->
+            // Follows the card when the survey Style or the app mode changes it (DD-246, DD-240);
+            // otherwise the first (theme) colour stays behind the survey (DD-248).
+            view.setBackgroundColor(backgroundColor.toArgb())
+        })
         DisposableEffect(Unit) { onDispose { } }
     }
 }

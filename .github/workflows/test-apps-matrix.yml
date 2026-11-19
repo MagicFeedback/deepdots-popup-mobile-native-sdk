@@ -179,7 +179,9 @@ jobs:
     name: iOS ${{ matrix.ios }} · ${{ matrix.device }} · ${{ matrix.config }}
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-matrix')
     runs-on: macos-15
-    timeout-minutes: 90
+    # 90 + room for run-maestro.sh's simulator reboots when Maestro's driver does not start
+    # (up to 6 per run, ~4.5 min each; iOS 16.4 took 69 min with four of them).
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -206,6 +208,11 @@ jobs:
         run: |
           xcrun simctl runtime list || true
           sudo xcodebuild -downloadPlatform iOS -buildVersion "${{ matrix.ios }}"
+          # A freshly installed runtime builds its dyld shared cache in the background after the first
+          # boot. Until it is done, Maestro's driver does not start in time (release validation 0.7.12,
+          # iOS 16.4: driver timeouts for ~45 min after the download, reboots did not help). Build it
+          # now, before the simulator boots.
+          time sudo xcrun simctl runtime dyld_shared_cache update --all
       - name: Install tools
         run: brew install xcodegen
       - *maestro

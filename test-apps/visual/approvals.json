@@ -25,8 +25,20 @@
       "approvalId": "20261104T131515Z-41828530913"
     },
     "android-pixel-6-api34/dark-font.png": {
-      "sha256": "91f0b2a45a024bd8ec61d1d38b6fc54b88fcad7abd7011a41759e904f19aa9c9",
-      "approvalId": "20261117T183252Z-44119037764"
+      "sha256": "0d6ca9d923fe784bfbc067876bcc2fad62a7f4126638ddc0d1ef9aec61db415d",
+      "approvalId": "20261119T114612Z-44510718160"
+    },
+    "android-pixel-6-api34/dark-style-1-open.png": {
+      "sha256": "e8d5fecf194b7c79cb7fe76a50ae733b9a2bac094ebc5ea9a413482961ab2d63",
+      "approvalId": "20261119T114612Z-44510718160"
+    },
+    "android-pixel-6-api34/dark-style-2-text.png": {
+      "sha256": "80daadb084f933f3902489a819f956f580f794740d2dcd3bfb4dbf5466f82cdb",
+      "approvalId": "20261119T114612Z-44510718160"
+    },
+    "android-pixel-6-api34/dark-style-3-thanks.png": {
+      "sha256": "4ed1bb4e794e054d0388dd9274ed91c7ee038e996c5f04745bf1a176800715b0",
+      "approvalId": "20261119T114612Z-44510718160"
     },
     "android-pixel-6-api34/position-bottom.png": {
       "sha256": "e1b629034e13260def01988394f04784ac24b2a88a95fe788a606fcffef4d75d",
@@ -69,8 +81,20 @@
       "approvalId": "20261104T131515Z-41828530913"
     },
     "android-small-720x1280-api34/dark-font.png": {
-      "sha256": "e0bf0932f23e5d7fa58aed8a8834e8a1e10bf7c97b82b91a33e2c72587bbb5dd",
-      "approvalId": "20261104T131515Z-41828530913"
+      "sha256": "8b598d88394e33e9d8a0484762136cc7910244462191514e866ee49df4914e8f",
+      "approvalId": "20261119T114612Z-44510718160"
+    },
+    "android-small-720x1280-api34/dark-style-1-open.png": {
+      "sha256": "1f918a4b0ddc2eef53ae7672b1296bf64933b9c2d4e0da81202bf50069b14d37",
+      "approvalId": "20261119T114612Z-44510718160"
+    },
+    "android-small-720x1280-api34/dark-style-2-text.png": {
+      "sha256": "bf8f87861110fba4194bff1a4fff6ce34c7e0cf918f68fc2af77f79c04c56cce",
+      "approvalId": "20261119T121714Z-44517812440"
+    },
+    "android-small-720x1280-api34/dark-style-3-thanks.png": {
+      "sha256": "41ea2344b5d6bc44e870cbde029b5907eccae8111d35bcd1477e5974a036bbbe",
+      "approvalId": "20261119T121714Z-44517812440"
     },
     "android-small-720x1280-api34/position-bottom.png": {
       "sha256": "9c5d6fc5990b0bab86e2f18c2f8a4158da2abdf2453399daccbe541c5457e3fd",
@@ -113,8 +137,20 @@
       "approvalId": "20261104T131511Z-41828530913"
     },
     "ios-iphone-16-ios18/dark-font.png": {
-      "sha256": "0d4ccd28da83eaafe5231d0e188c6dbb434f176e5a2ae114a5426c591d7ed3c8",
-      "approvalId": "20261104T131511Z-41828530913"
+      "sha256": "e09e09fdd84e1fe0123d2bc9585eaeaf8937ea48b75a51de3af6585061f06507",
+      "approvalId": "20261119T114607Z-44510718160"
+    },
+    "ios-iphone-16-ios18/dark-style-1-open.png": {
+      "sha256": "7bd137b76a5391b058f7dcc55b3f85d21c8e693865d5d664accf321844fb7a93",
+      "approvalId": "20261119T114607Z-44510718160"
+    },
+    "ios-iphone-16-ios18/dark-style-2-text.png": {
+      "sha256": "cea6d4a34e50f05e98d40e77c2bdf6f72af3394abdbfcc861425db32b92a73e5",
+      "approvalId": "20261119T114607Z-44510718160"
+    },
+    "ios-iphone-16-ios18/dark-style-3-thanks.png": {
+      "sha256": "ca20136550f41edae6cbc36677b7b01141e73d2ceed115718ae7fa81e5a517e0",
+      "approvalId": "20261119T114607Z-44510718160"
     },
     "ios-iphone-16-ios18/position-bottom.png": {
       "sha256": "9bd85b8a34970a68b1f65ce3729bb0b9fdf85b10f0ec369963ad2ad056d101ef",
@@ -157,8 +193,20 @@
       "approvalId": "20261104T131511Z-41828530913"
     },
     "ios-iphone-se-3rd-generation-ios18/dark-font.png": {
-      "sha256": "6aa29c0eea2e3dc0b986ad2d2dcbe25bf33a3dc731b653b05b1be3b338f30d21",
-      "approvalId": "20261104T131511Z-41828530913"
+      "sha256": "bdb54b00eda37dd25c40dc62d0a5a57da05d250c92886f3e14d0717f4d809ef0",
+      "approvalId": "20261119T114607Z-44510718160"
+    },
+    "ios-iphone-se-3rd-generation-ios18/dark-style-1-open.png": {
+      "sha256": "e7accd4b4acce74199a18aff0698f021aad9baa1e3decfe299238ce7304ef96e",
+      "approvalId": "20261119T114607Z-44510718160"
+    },
+    "ios-iphone-se-3rd-generation-ios18/dark-style-2-text.png": {
+      "sha256": "660a35000bfbb93d827869aa99cf2c2773ef40904e9353bcad3940055d1d4ab5",
+      "approvalId": "20261119T114607Z-44510718160"
+    },
+    "ios-iphone-se-3rd-generation-ios18/dark-style-3-thanks.png": {
+      "sha256": "92657bc8330c93b9cc13ecce3b4a0350507c33314194160ccd2db86b02dffeb7",
+      "approvalId": "20261119T114607Z-44510718160"
     },
     "ios-iphone-se-3rd-generation-ios18/position-bottom.png": {
       "sha256": "cec8d276e32571c5fdf355ed567182d03226eda445b2551e652a22d1c3e5c65b",
@@ -472,6 +520,143 @@
           "key": "android-pixel-6-api34/simple-1-open.png",
           "sha256": "b2a48bbcb0f20e430de0b87c2a691468630561274fed4af1ed1888065b9a48f4",
           "previousSha256": "302e9f803aedfbf2546b7ec4ea429309b6a16a8250b69511db7a9b050424531b"
+        }
+      ]
+    },
+    {
+      "id": "20261119T114607Z-44510718160",
+      "approvedAt": "2026-11-19T11:46:07.594Z",
+      "approvedBy": "sarias980",
+      "reason": "DD-248: dark Style screens (new) and dark-font after native#113 (light Send button on the dark card, no band above the survey)",
+      "source": {
+        "runId": "44510718160",
+        "runUrl": "https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/44510718160",
+        "sdk": "local",
+        "sdkVersion": "local (SPM)",
+        "platform": "ios",
+        "devices": {
+          "ios-iphone-16-ios18": "iOS 18.5 simulator · iPhone 16",
+          "ios-iphone-se-3rd-generation-ios18": "iOS 18.5 simulator · iPhone SE 3rd generation"
+        }
+      },
+      "files": [
+        {
+          "key": "ios-iphone-16-ios18/dark-font.png",
+          "sha256": "e09e09fdd84e1fe0123d2bc9585eaeaf8937ea48b75a51de3af6585061f06507",
+          "previousSha256": "0d4ccd28da83eaafe5231d0e188c6dbb434f176e5a2ae114a5426c591d7ed3c8"
+        },
+        {
+          "key": "ios-iphone-16-ios18/dark-style-1-open.png",
+          "sha256": "7bd137b76a5391b058f7dcc55b3f85d21c8e693865d5d664accf321844fb7a93",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-16-ios18/dark-style-2-text.png",
+          "sha256": "cea6d4a34e50f05e98d40e77c2bdf6f72af3394abdbfcc861425db32b92a73e5",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-16-ios18/dark-style-3-thanks.png",
+          "sha256": "ca20136550f41edae6cbc36677b7b01141e73d2ceed115718ae7fa81e5a517e0",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/dark-font.png",
+          "sha256": "bdb54b00eda37dd25c40dc62d0a5a57da05d250c92886f3e14d0717f4d809ef0",
+          "previousSha256": "6aa29c0eea2e3dc0b986ad2d2dcbe25bf33a3dc731b653b05b1be3b338f30d21"
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/dark-style-1-open.png",
+          "sha256": "e7accd4b4acce74199a18aff0698f021aad9baa1e3decfe299238ce7304ef96e",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/dark-style-2-text.png",
+          "sha256": "660a35000bfbb93d827869aa99cf2c2773ef40904e9353bcad3940055d1d4ab5",
+          "previousSha256": null
+        },
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/dark-style-3-thanks.png",
+          "sha256": "92657bc8330c93b9cc13ecce3b4a0350507c33314194160ccd2db86b02dffeb7",
+          "previousSha256": null
+        }
+      ]
+    },
+    {
+      "id": "20261119T114612Z-44510718160",
+      "approvedAt": "2026-11-19T11:46:12.860Z",
+      "approvedBy": "sarias980",
+      "reason": "DD-248: dark Style screens (new) and dark-font after native#113 (light Send button on the dark card, no band above the survey)",
+      "source": {
+        "runId": "44510718160",
+        "runUrl": "https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/44510718160",
+        "sdk": "local",
+        "sdkVersion": "local (local :shared)",
+        "platform": "android",
+        "devices": {
+          "android-pixel-6-api34": "Android API 34 emulator · pixel_6 · 1080x2400 @420dpi",
+          "android-small-720x1280-api34": "Android API 34 emulator · small-720x1280 · 720x1280 @320dpi"
+        }
+      },
+      "files": [
+        {
+          "key": "android-pixel-6-api34/dark-font.png",
+          "sha256": "0d6ca9d923fe784bfbc067876bcc2fad62a7f4126638ddc0d1ef9aec61db415d",
+          "previousSha256": "91f0b2a45a024bd8ec61d1d38b6fc54b88fcad7abd7011a41759e904f19aa9c9"
+        },
+        {
+          "key": "android-pixel-6-api34/dark-style-1-open.png",
+          "sha256": "e8d5fecf194b7c79cb7fe76a50ae733b9a2bac094ebc5ea9a413482961ab2d63",
+          "previousSha256": null
+        },
+        {
+          "key": "android-pixel-6-api34/dark-style-2-text.png",
+          "sha256": "80daadb084f933f3902489a819f956f580f794740d2dcd3bfb4dbf5466f82cdb",
+          "previousSha256": null
+        },
+        {
+          "key": "android-pixel-6-api34/dark-style-3-thanks.png",
+          "sha256": "4ed1bb4e794e054d0388dd9274ed91c7ee038e996c5f04745bf1a176800715b0",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/dark-font.png",
+          "sha256": "8b598d88394e33e9d8a0484762136cc7910244462191514e866ee49df4914e8f",
+          "previousSha256": "e0bf0932f23e5d7fa58aed8a8834e8a1e10bf7c97b82b91a33e2c72587bbb5dd"
+        },
+        {
+          "key": "android-small-720x1280-api34/dark-style-1-open.png",
+          "sha256": "1f918a4b0ddc2eef53ae7672b1296bf64933b9c2d4e0da81202bf50069b14d37",
+          "previousSha256": null
+        }
+      ]
+    },
+    {
+      "id": "20261119T121714Z-44517812440",
+      "approvedAt": "2026-11-19T12:17:14.552Z",
+      "approvedBy": "sarias980",
+      "reason": "DD-248: dark Style text page and thank-you on the small Android screen (flow fixed to wait for the question)",
+      "source": {
+        "runId": "44517812440",
+        "runUrl": "https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/44517812440",
+        "sdk": "local",
+        "sdkVersion": "local (local :shared)",
+        "platform": "android",
+        "devices": {
+          "android-pixel-6-api34": "Android API 34 emulator · pixel_6 · 1080x2400 @420dpi",
+          "android-small-720x1280-api34": "Android API 34 emulator · small-720x1280 · 720x1280 @320dpi"
+        }
+      },
+      "files": [
+        {
+          "key": "android-small-720x1280-api34/dark-style-2-text.png",
+          "sha256": "bf8f87861110fba4194bff1a4fff6ce34c7e0cf918f68fc2af77f79c04c56cce",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/dark-style-3-thanks.png",
+          "sha256": "41ea2344b5d6bc44e870cbde029b5907eccae8111d35bcd1477e5974a036bbbe",
+          "previousSha256": null
         }
       ]
     }

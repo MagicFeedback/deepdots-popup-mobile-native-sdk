@@ -85,7 +85,10 @@ struct DeepdotsDemoView: View {
             contactAttributes: nil,
             renderChrome: true,
             showProgressBar: nil,
-            metadata: ["userId": uid]
+            metadata: ["userId": uid],
+            // Popup chrome follows the device's light/dark setting. Apps with their own toggle
+            // call popups?.setAppearance(appearance: .dark / .light) when it changes.
+            appearance: Appearance.system
         )
         let instance = DeepdotsSDK.DeepdotsPopups()
         instance.initialize(options: options)

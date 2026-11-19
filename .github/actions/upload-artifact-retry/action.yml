@@ -1,0 +1,52 @@
+name: Upload artifact (with retry)
+description: >
+  actions/upload-artifact with up to three tries 30 s apart. GitHub's artifact service sometimes
+  answers "The server is busy" (release PR #110, 17-nov), which turned a passing check red. A
+  report upload should also carry `continue-on-error: true` on the calling step: the check result
+  must come from the suite / compare step, never from an upload.
+inputs:
+  name:
+    required: true
+  path:
+    required: true
+  retention-days:
+    required: false
+    default: "14"
+  if-no-files-found:
+    required: false
+    default: warn
+runs:
+  using: composite
+  steps:
+    - id: try1
+      uses: actions/upload-artifact@v4
+      continue-on-error: true
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+        retention-days: ${{ inputs.retention-days }}
+        if-no-files-found: ${{ inputs.if-no-files-found }}
+    - if: steps.try1.outcome == 'failure'
+      shell: bash
+      run: echo "::warning::upload of ${{ inputs.name }} failed, retrying in 30 s"; sleep 30
+    - id: try2
+      if: steps.try1.outcome == 'failure'
+      uses: actions/upload-artifact@v4
+      continue-on-error: true
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+        retention-days: ${{ inputs.retention-days }}
+        if-no-files-found: ${{ inputs.if-no-files-found }}
+        overwrite: true
+    - if: steps.try2.outcome == 'failure'
+      shell: bash
+      run: echo "::warning::upload of ${{ inputs.name }} failed again, last try in 60 s"; sleep 60
+    - if: steps.try2.outcome == 'failure'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+        retention-days: ${{ inputs.retention-days }}
+        if-no-files-found: ${{ inputs.if-no-files-found }}
+        overwrite: true

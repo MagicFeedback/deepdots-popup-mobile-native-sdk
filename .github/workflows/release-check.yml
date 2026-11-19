@@ -21,8 +21,13 @@ permissions:
   contents: read
   checks: read # metadata.mjs
 
+# Only a new push (or a base change) cancels the run in progress. Editing the description (an
+# `edited` event without a base change) gets its own group: it re-runs "Version & changelog"
+# (cheap) and skips the long jobs, so it never cancels the test apps of the release PR (PR #110,
+# 17-nov: an edit cancelled iOS after 2 h). A re-run (attempt > 1) gets its own group too: re-running
+# one job does not cancel another run, nor gets cancelled by one.
 concurrency:
-  group: release-check-${{ github.ref }}
+  group: release-check-${{ github.ref }}${{ ((github.event.action == 'edited' && !github.event.changes.base) || github.run_attempt > 1) && format('-run-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 # Mismas versiones que release.yml: el dry-run tiene que probar lo mismo que la publicacion.
@@ -88,7 +93,9 @@ jobs:
     name: Release dry run
     needs: version
     # Tambien cuando "Version & changelog" falla: asi se ve que el gate de publicacion bloquea igual.
-    if: ${{ !cancelled() && needs.version.outputs.kind == 'release' }}
+    # No en un `edited` sin cambio de base: el commit ya se probo (o se esta probando) y el
+    # resultado anterior sigue valiendo (latestRun ignora los checks `skipped`).
+    if: ${{ !cancelled() && needs.version.outputs.kind == 'release' && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: macos-15
     timeout-minutes: 90
     steps:
@@ -182,7 +189,10 @@ jobs:
           cp release/compatibility.json release/config.schema.json "$RUNNER_TEMP/notes.md" "$OUT/"
           (cd "$OUT" && shasum -a 256 -- *.aar *.zip > SHA256SUMS && cat SHA256SUMS)
 
-      - uses: actions/upload-artifact@v4
+      # Las subidas no deciden el check: se reintentan y no lo ponen en rojo.
+      - name: Upload artifacts
+        continue-on-error: true
+        uses: ./.github/actions/upload-artifact-retry
         with:
           name: release-dry-run-v${{ needs.version.outputs.version }}
           path: ${{ runner.temp }}/out/
@@ -190,7 +200,8 @@ jobs:
 
       - name: Upload test reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        uses: ./.github/actions/upload-artifact-retry
         with:
           name: test-reports
           path: shared/build/reports/tests/
@@ -203,7 +214,7 @@ jobs:
   test-apps:
     name: Test apps (release build)
     needs: version
-    if: ${{ !cancelled() && needs.version.outputs.kind == 'release' }}
+    if: ${{ !cancelled() && needs.version.outputs.kind == 'release' && !(github.event.action == 'edited' && !github.event.changes.base) }}
     uses: ./.github/workflows/test-apps.yml
     with:
       versions: '["local"]'
