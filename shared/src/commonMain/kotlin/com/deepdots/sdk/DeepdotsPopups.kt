@@ -22,6 +22,7 @@ import com.deepdots.sdk.models.SessionStartReason
 import com.deepdots.sdk.models.ShowOptions
 import com.deepdots.sdk.models.Style
 import com.deepdots.sdk.models.SurveyProgressState
+import com.deepdots.sdk.models.Appearance
 import com.deepdots.sdk.models.Theme
 import com.deepdots.sdk.tracking.TrackingManager
 import com.deepdots.sdk.storage.KeyValueStorage
@@ -310,6 +311,7 @@ class DeepdotsPopups {
         SdkRuntime.renderChrome = options.renderChrome ?: true
         SdkRuntime.debug = options.debug == true
         SdkRuntime.showProgressBar = options.showProgressBar
+        SdkRuntime.appearance = options.appearance
         SdkRuntime.userId = when (val userIdMeta = options.metadata?.get("userId")) {
             is String -> userIdMeta
             is Number -> userIdMeta.toString()
@@ -492,6 +494,19 @@ class DeepdotsPopups {
             log("analytics · onFeedbackSession threw", t.message)
         }
     }
+
+    /**
+     * Light or dark popup and survey from the app, at any time (for apps with their own dark mode
+     * toggle). [Appearance.System] follows the device; `null` goes back to the survey Style
+     * colours. An open popup's frame recolours right away; the survey takes the mode when the
+     * next popup opens. Paridad con Web `setAppearance()`.
+     */
+    fun setAppearance(appearance: Appearance?) {
+        SdkRuntime.appearance = appearance
+    }
+
+    /** The app's current [Appearance] (`null` = the survey Style colours decide). */
+    fun getAppearance(): Appearance? = SdkRuntime.appearance
 
     /**
      * Activa/desactiva el tracking (identidad + sesión). Kill-switch del contrato §7bis.

@@ -3,6 +3,7 @@ package com.deepdots.sdk.ui
 import com.deepdots.sdk.SdkRuntime
 import com.deepdots.sdk.analytics.resolveLanguage
 import com.deepdots.sdk.models.PopupFont
+import com.deepdots.sdk.models.Theme
 import com.deepdots.sdk.tracking.buildSurveyIdentity
 
 // Centralized MagicFeedback package version used for all CDN URLs
@@ -45,7 +46,13 @@ internal fun buildMagicFeedbackHtml(
     lang: String? = resolveLanguage(SdkRuntime.provideLang?.invoke()),
     // DD-70: `surveyFrontend.sdkVersion` del popup (versión asignada al survey en el Admin).
     surveySdkVersion: String? = null,
+    // DD-240: modo forzado por la app. `null` = el survey decide por los colores del Style (DD-238).
+    colorMode: Theme? = null,
 ): String {
+    // Opción `mode` del survey SDK (DD-238); las versiones sin ella la ignoran. Valor fijo, no del API.
+    val modeOptionJs = surveyModeOption(colorMode)?.let { "mode: '$it'," } ?: ""
+    // Esquema de la página (scroll, controles fuera del formulario): oscuro solo si la app lo fuerza.
+    val pageColorScheme = if (colorMode == Theme.Dark) "dark" else "light"
     val surveySdk = chooseSurveySdkVersion(surveySdkVersion)
     if (surveySdk.isProblem) println("[DeepdotsPopups] ${surveySdk.describe()}")
     else if (SdkRuntime.debug) println("[DeepdotsPopups] ${surveySdk.describe()}")
@@ -178,13 +185,13 @@ internal fun buildMagicFeedbackHtml(
     return """
         <html><head>
           <meta name='viewport' content='width=device-width, initial-scale=1.0'/>
-          <!-- Render the survey in light mode only. The host app may be in system dark mode,
-               which otherwise leaks into the WebView (prefers-color-scheme: dark) and turns the
-               survey background/text dark and illegible. Native side also forces a light UI style. -->
-          <meta name='color-scheme' content='light'/>
+          <!-- Page scheme: light unless the app forces dark (DD-240). The device's dark mode must
+               not leak in on its own (prefers-color-scheme: dark turned text dark on a light
+               card). The survey's own palette comes from the survey SDK (DD-238). -->
+          <meta name='color-scheme' content='$pageColorScheme'/>
           <style>
             $fontFaceCss
-            :root{color-scheme:light;}
+            :root{color-scheme:$pageColorScheme;}
             html,body{margin:0;padding:0;height:100%;background:transparent;font-family:$fontFamilyValue;}
             /* Allow the survey to scroll vertically inside the WebView, never horizontally. */
             body{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;font-size:15px;line-height:1.4;}
@@ -265,6 +272,16 @@ ${PopupReveal.REVEAL_JS}
                   var form = document.getElementById('dd-form-wrapper'); if (form) { form.style.display = 'none'; }
                   var done = document.getElementById('mf-success'); if (!done) return;
                   done.innerHTML = successMessageHtml || '<p>Thank you for your feedback!</p>';
+                  // El gracias va fuera del contenedor del survey, donde el CSS del survey sigue en su
+                  // paleta clara: en tarjeta oscura salía gris sobre oscuro (DD-248). Copia los
+                  // colores de texto del contenedor (los oscuros si está en modo oscuro).
+                  var mfc = document.querySelector('.magicfeedback-container');
+                  if (mfc) {
+                    var mcs = getComputedStyle(mfc);
+                    var sec = mcs.getPropertyValue('--mf-text-secondary');
+                    if (sec) { done.style.setProperty('--mf-text-secondary', sec.trim()); }
+                    done.style.color = mcs.color;
+                  }
                   done.style.display = 'block';
                   // Si el usuario había hecho scroll en la última pregunta, el mensaje quedaría
                   // fuera de la vista: el WebView encoge a su alto y el scroll se queda abajo.
@@ -446,6 +463,7 @@ ${PopupReveal.REVEAL_JS}
                       // lo aplica despues de afterSubmitEvent/onBackEvent, cuando ya se ha soltado el
                       // bloqueo de carga. Las versiones sin la opcion la ignoran.
                       autofocus: 'navigation',
+                      $modeOptionJs
                       customMetaData: $customMetaJsArray
                     }).catch(function(e){ console.error(e); emit('error:init'); });
                     return true;

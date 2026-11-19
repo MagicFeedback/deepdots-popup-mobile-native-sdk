@@ -11,6 +11,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -63,16 +64,27 @@ fun PopupView(
      */
     onReady: () -> Unit = {}
 ) {
-    val primaryColorDefault = Color(0xFF1E293B)
-    var primaryColor by remember { mutableStateOf(primaryColorDefault) }
+    // Colores del Style del survey (llegan con el `loaded`). `dark*` = bloque opcional `dark` (DD-239).
+    var stylePrimaryColor by remember { mutableStateOf<Color?>(null) }
     var bgColorOverride by remember { mutableStateOf<Color?>(null) }
+    var darkPrimaryColor by remember { mutableStateOf<Color?>(null) }
+    var darkBgOverride by remember { mutableStateOf<Color?>(null) }
+    var darkProgressBarColor by remember { mutableStateOf<Color?>(null) }
     var didApplyLoadedOnce by remember { mutableStateOf(false) }
 
-    // Texto, X y pista del progreso salen del fondo FINAL (Style o, si no trae, el del theme),
-    // no del theme: un Style oscuro con theme Light pintaba texto negro sobre oscuro (DD-246).
-    val chromeColors = PopupContrast.colorsFor(bgColorOverride, popup.style.theme)
+    // Modo forzado por la app (DD-240): Light/Dark, o System = el del dispositivo. `null` = la app
+    // no dice nada y deciden los colores del Style (DD-246). Ambas entradas son estado de Compose:
+    // el marco se recolorea si la app o el dispositivo cambian con el popup abierto.
+    val forcedMode = resolveForcedMode(SdkRuntime.appearance, isSystemInDarkTheme())
+    // El survey (WebView) recibe el modo una vez, al abrir: su HTML se construye una sola vez.
+    val surveyMode = remember { forcedMode }
+    // Fondo, texto, X y pista del progreso salen del fondo FINAL, no del theme (DD-246). En oscuro
+    // forzado, el `dark` del Style (DD-239) o un oscuro por defecto.
+    val chromeColors = PopupContrast.colorsFor(bgColorOverride, popup.style.theme, forcedMode, darkBgOverride)
     val bgColor = chromeColors.background
     val textColor = chromeColors.text
+    val primaryColor = PopupContrast.primaryFor(stylePrimaryColor, darkPrimaryColor, chromeColors.isDark)
+    val onPrimaryColor = PopupContrast.onPrimary(primaryColor, chromeColors.isDark)
     val paragraphs = remember(popup.message) { parsePopupHtml(popup.message) }
 
     // Apertura diferida (paridad con Web): el popup se monta invisible y se enseña cuando el
@@ -330,7 +342,7 @@ fun PopupView(
                                 LinearProgressIndicator(
                                     progress = { progressBar.fraction },
                                     modifier = Modifier.fillMaxWidth().height(4.dp),
-                                    color = progressBarColor,
+                                    color = if (chromeColors.isDark) darkProgressBarColor ?: progressBarColor else progressBarColor,
                                     trackColor = chromeColors.progressTrack,
                                     strokeCap = StrokeCap.Round,
                                     gapSize = 0.dp,
@@ -384,6 +396,7 @@ fun PopupView(
                                     backgroundColor = bgColor,
                                     font = popup.style.font,
                                     surveySdkVersion = popup.surveySdkVersion,
+                                    colorMode = surveyMode,
                                     onEvent = { eventJson ->
                                         val name: String
                                         val payload: String?
@@ -448,10 +461,15 @@ fun PopupView(
                                                 }
                                             PopupReveal.LOADED_EVENT -> {
                                                 // Apply runtime style overrides if provided
-                                                val primaryHex = Regex("\"buttonPrimaryColor\"\\s*:\\s*\"(#[0-9A-Fa-f]{3,8})\"").find(payload ?: "")?.groupValues?.get(1)
-                                                val bgHex = Regex("\"boxBackgroundColor\"\\s*:\\s*\"(#[0-9A-Fa-f]{3,8})\"").find(payload ?: "")?.groupValues?.get(1)
-                                                parseHexColor(primaryHex)?.let { primaryColor = it }
-                                                parseHexColor(bgHex)?.let { bgColorOverride = it }
+                                                // El bloque `dark` del Style (DD-239) se lee aparte y se quita
+                                                // antes de buscar los colores claros: si no, la primera
+                                                // coincidencia podría ser la del modo oscuro.
+                                                val styleColors = StyleColors.from(payload)
+                                                styleColors.light("buttonPrimaryColor")?.let { stylePrimaryColor = parseHexColor(it) ?: stylePrimaryColor }
+                                                styleColors.light("boxBackgroundColor")?.let { bgColorOverride = parseHexColor(it) ?: bgColorOverride }
+                                                darkPrimaryColor = parseHexColor(styleColors.dark("buttonPrimaryColor"))
+                                                darkBgOverride = parseHexColor(styleColors.dark("boxBackgroundColor"))
+                                                darkProgressBarColor = parseHexColor(styleColors.dark("loadingBarColor"))
                                                 val startMessage = payloadValue("startMessage")
                                                 if (!didApplyLoadedOnce && !startMessage.isNullOrBlank()) {
                                                     viewState = ViewState.Start
@@ -485,7 +503,7 @@ fun PopupView(
                                                 payloadBool("showProgressBar")?.let { platformShowProgressBar = it }
                                                 payloadBool("showProgressUnit")?.let { progressShowUnit = it }
                                                 if (payloadValue("progressUnit") == "percentage") progressUnit = ProgressUnit.Percentage
-                                                parseHexColor(Regex("\"loadingBarColor\"\\s*:\\s*\"(#[0-9A-Fa-f]{3,8})\"").find(payload ?: "")?.groupValues?.get(1))
+                                                parseHexColor(styleColors.light("loadingBarColor"))
                                                     ?.let { progressBarColor = it }
                                                 payloadNumber("total")?.let { progressTotal = it.toInt() }
                                                 payloadNumber("progress")?.let { progressValue = it }
@@ -639,14 +657,14 @@ fun PopupView(
                                             errorHint = null
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(actionLabel(popup.actions.start?.label, DefaultLabels.Slot.START), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.start?.label, DefaultLabels.Slot.START), color = onPrimaryColor) }
                                 }
                                 ViewState.InProgressFirst -> {
                                     Spacer(modifier = Modifier.weight(1f))
                                     Button(
                                         onClick = { if (!pageLoading) surveyController?.send() },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(actionLabel(popup.actions.accept?.label, DefaultLabels.Slot.ACCEPT), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.accept?.label, DefaultLabels.Slot.ACCEPT), color = onPrimaryColor) }
                                 }
                                 ViewState.InProgressNext -> {
                                     OutlinedButton(
@@ -658,7 +676,7 @@ fun PopupView(
                                     Button(
                                         onClick = { if (!pageLoading) surveyController?.send() },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(actionLabel(popup.actions.accept?.label, DefaultLabels.Slot.ACCEPT), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.accept?.label, DefaultLabels.Slot.ACCEPT), color = onPrimaryColor) }
                                 }
                                 ViewState.Completed -> {
                                     Button(
@@ -669,7 +687,7 @@ fun PopupView(
                                             if (complete != null) onAction(complete) else onAction(Action.Complete(label = "" ))
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(actionLabel(popup.actions.complete?.label, DefaultLabels.Slot.COMPLETE), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.complete?.label, DefaultLabels.Slot.COMPLETE), color = onPrimaryColor) }
                                 }
                                 ViewState.Error -> {
                                     Spacer(modifier = Modifier.weight(1f))
@@ -678,7 +696,7 @@ fun PopupView(
                                         // mandase `actions.decline`; sin él el botón no hacía nada.
                                         onClick = requestClose,
                                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
-                                    ) { Text(actionLabel(popup.actions.decline?.label, DefaultLabels.Slot.DECLINE), color = Color.White) }
+                                    ) { Text(actionLabel(popup.actions.decline?.label, DefaultLabels.Slot.DECLINE), color = onPrimaryColor) }
                                 }
                             }
                         }

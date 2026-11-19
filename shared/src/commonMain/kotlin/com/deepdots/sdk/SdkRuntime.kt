@@ -1,5 +1,10 @@
 package com.deepdots.sdk
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.deepdots.sdk.models.Appearance
+
 /**
  * Simple runtime holder for SDK-wide config needed by UI/HTML builders.
  */
@@ -31,6 +36,12 @@ object SdkRuntime {
      * (`style.showProgressBar` del survey). Se fija en init desde `InitOptions.showProgressBar`.
      */
     var showProgressBar: Boolean? = null
+
+    /**
+     * Light/dark chosen by the host (`InitOptions.appearance` / `setAppearance`). `null` = the
+     * survey Style colours decide. Compose state, so an open popup recolours when the app changes it.
+     */
+    var appearance: Appearance? by mutableStateOf(null)
 
     /** `InitOptions.debug`: con debug se loguea qué survey SDK pinta cada popup (DD-70). */
     var debug: Boolean = false

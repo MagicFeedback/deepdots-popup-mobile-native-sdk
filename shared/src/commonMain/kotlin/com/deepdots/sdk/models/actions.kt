@@ -66,6 +66,11 @@ data class PopupFont(
     val url: String? = null,
 )
 
+/**
+ * Popup `style.theme`. Only the default card colour when the survey Style has no
+ * `boxBackgroundColor` (DD-246). The app picks light or dark with [Appearance]
+ * (`InitOptions.appearance` or `DeepdotsPopups.setAppearance`).
+ */
 enum class Theme {
     Light, Dark
 }
