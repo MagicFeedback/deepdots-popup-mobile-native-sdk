@@ -2,3 +2,5 @@
 NordlyTestApp.xcodeproj/
 NordlyTestApp/Info.plist
 build/
+build-testlab/
+project.testlab.yml

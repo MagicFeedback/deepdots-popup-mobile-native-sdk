@@ -4,6 +4,16 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Tests
+
+- **Key popup checks on real devices (DD-273).** Open popup, X / Send / Back with a finger-like
+  tap, keyboard over the text question and the survey filling its slot on a tablet, as Android
+  instrumented tests with the real WebView (`shared/src/androidInstrumentedTest`) and as XCUITest
+  on NORDLY (`test-apps/ios/NordlyDeviceChecks`). New workflow `testlab.yml` runs them in Firebase
+  Test Lab on a fixed device list (`testlab/devices.json`) only on release PRs and by hand, with a
+  10 min timeout, no retries and the billed minutes in the job summary. No change to the SDK
+  itself: the build only gains the instrumented test set-up.
+
 ## 0.7.13 - 2026-11-19
 
 Survey SDK supported: 2.2.38–2.2.44 (survey frontend 3.4.1–3.6.0); bundled: 2.2.44.

@@ -1,0 +1,22 @@
+{
+  "$comment": "DD-273: the ONLY devices the key popup checks run on in Firebase Test Lab. Fixed on purpose: Test Lab bills every device minute (physical devices $5/device-hour), so testlab/testlab.py refuses to run more than maxDevices per platform, a timeout over maxTimeout or more than maxFlakyAttempts retries. Adding a device is a reviewed change to this file. Ids from `gcloud firebase test android|ios models list` (checked 19-nov-2026).",
+  "limits": {
+    "timeout": "10m",
+    "maxTimeoutMinutes": 10,
+    "flakyAttempts": 0,
+    "maxFlakyAttempts": 1,
+    "maxDevices": 4,
+    "pollSlackMinutes": 10
+  },
+  "android": [
+    { "model": "pa1q", "version": "36", "name": "Samsung Galaxy S25 (Android 16), recent Samsung" },
+    { "model": "gts8wifi", "version": "34", "name": "Samsung Galaxy Tab S8 (Android 14), Samsung tablet" },
+    { "model": "houji", "version": "35", "name": "Xiaomi 14 (Android 15, HyperOS)" },
+    { "model": "blueline", "version": "28", "name": "Google Pixel 3 (Android 9), old Android and old WebView" }
+  ],
+  "ios": [
+    { "model": "iphone16pro", "version": "18.3", "name": "iPhone 16 Pro (iOS 18.3), recent iPhone" },
+    { "model": "ipad10", "version": "16.6", "name": "iPad 10th gen (iOS 16.6)" },
+    { "model": "iphone14pro", "version": "16.6", "name": "iPhone 14 Pro (iOS 16.6)" }
+  ]
+}
