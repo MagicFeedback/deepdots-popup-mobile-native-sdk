@@ -177,7 +177,11 @@ actual fun SurveyView(
                 override fun startForm() { webView.post { webView.evaluateJavascript(SurveyActionsJs.startForm, null) } }
             })
             webView
-        }, update = {})
+        }, update = { view ->
+            // Follows the card when the survey Style or the app mode changes it (DD-246, DD-240);
+            // otherwise the first (theme) colour stays behind the survey (DD-248).
+            view.setBackgroundColor(backgroundColor.toArgb())
+        })
         DisposableEffect(Unit) { onDispose { } }
     }
 }

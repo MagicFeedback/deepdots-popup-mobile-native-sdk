@@ -30,6 +30,10 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ### Fixed
 
+- **Band above the survey on a dark card (DD-248).** On iOS the page behind the survey kept its
+  default colour (white, or black when the app forces dark), so a strip showed above the first
+  question on a dark card. The page and the WebView background now follow the card colour.
+
 - **Popup text follows the Style background, not the theme (DD-246).** Title, close X, progress
   text and the progress track now pick black or white from the luminance of the final card
   background (dark below WCAG luminance 0.2, the same cut the survey uses since DD-238). A dark

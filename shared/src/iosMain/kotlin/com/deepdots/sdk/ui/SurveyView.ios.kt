@@ -111,6 +111,8 @@ actual fun SurveyView(
                     })();
                 """.trimIndent()
                 controller.addUserScript(WKUserScript(source = consoleForwardScript, injectionTime = WKUserScriptInjectionTime.WKUserScriptInjectionTimeAtDocumentEnd, forMainFrameOnly = true))
+                // Page canvas in the card colour from the first paint (DD-248, see SurveyCanvas).
+                controller.addUserScript(WKUserScript(source = SurveyCanvas.backgroundJs(backgroundColor), injectionTime = WKUserScriptInjectionTime.WKUserScriptInjectionTimeAtDocumentStart, forMainFrameOnly = true))
                 config.userContentController = controller
                 val wv = WKWebView(frame = CGRectMake(0.0, 0.0, 0.0, 0.0), configuration = config)
                 // Paint the popup's themed background as an OPAQUE color on the WebView.
@@ -141,7 +143,22 @@ actual fun SurveyView(
             },
             // Todo el hueco que le da PopupView (antes 520dp fijos: franja en blanco en iPad).
             modifier = Modifier.fillMaxSize(),
-            update = { /* no-op */ },
+            // The card colour changes when the survey Style arrives (DD-246) or the app mode changes
+            // (DD-240); the page canvas has to follow, or the first colour (white in light, black
+            // with the WebView in dark) shows as a band above the survey on a dark card (DD-248).
+            update = { view ->
+                val wv = view as? WKWebView
+                wv?.setBackgroundColor(
+                    UIColor(
+                        red = backgroundColor.red.toDouble(),
+                        green = backgroundColor.green.toDouble(),
+                        blue = backgroundColor.blue.toDouble(),
+                        alpha = backgroundColor.alpha.toDouble()
+                    )
+                )
+                // An opaque WKWebView shows the page canvas, not its backgroundColor: repaint it.
+                wv?.evaluateJavaScript(SurveyCanvas.backgroundJs(backgroundColor), completionHandler = null)
+            },
             // NonCooperative: the survey's touches go straight to the WKWebView. With the default
             // (Cooperative) the popup's scrollable middle (Compose verticalScroll) claimed every
             // vertical drag, could not move because its content already fit, and the WebView never
