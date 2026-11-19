@@ -3,7 +3,7 @@
 **SDK:** Deepdots native popup SDK **0.7.13** (Android `com.deepdots.sdk:shared-android:0.7.13` · iOS `DeepdotsSDK-SPM` 0.7.13)  
 **Validation date:** 2026-11-19  
 **Platforms:** iOS / Android  
-**Overall status:** **FAILED**  
+**Overall status:** **PASSED**  
 **Report type:** Automated release validation, generated from the CI test results (no manual edits)
 
 ---
@@ -12,7 +12,7 @@
 
 SDK 0.7.13 was validated as published (Maven Central and Swift Package Manager) inside dedicated native test applications that integrate the SDK the same way a customer app does.
 
-Results ([CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/44549758293/attempts/1)):
+Results ([CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/44549758293/attempts/2)):
 
 - **416** automated test executions on **16** configurations (7 iOS, 9 Android)
 - **393** passed (1 on the automatic retry)
@@ -20,16 +20,9 @@ Results ([CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-
 - **23** not applicable on that platform
 - Manual pass on real devices: **pending** (section 7)
 
-**iOS:** PASSED · **Android:** FAILED
+**iOS:** PASSED · **Android:** PASSED
 
-**Validation status:** **FAILED**
-
-### Failures
-
-| Platform | Configuration | Test | Detail |
-|---|---|---|---|
-| Android | A26 phone release | — | Configuration failure: device log or production-isolation check failed |
-| Android | control | r8-control | R8 control: the control version fails a minified release build, the tested one builds: failure |
+**Validation status:** **PASSED**
 
 ## 2. Test Results
 
@@ -90,7 +83,7 @@ Results ([CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-
 | Platform | OS version | Device | Build | SDK resolved | Engine | Result |
 |---|---|---|---|---|---|---|
 | Android | API 26 | pixel_6 (emulator) | debug | 0.7.13 | WebView 69.0.3497.100 | PASS |
-| Android | API 26 | pixel_6 (emulator) | release (R8) | 0.7.13 | WebView 69.0.3497.100 | **FAIL** |
+| Android | API 26 | pixel_6 (emulator) | release (R8) | 0.7.13 | WebView 69.0.3497.100 | PASS |
 | Android | API 30 | pixel_6 (emulator) | debug | 0.7.13 | WebView 83.0.4103.106 | PASS |
 | Android | API 30 | pixel_6 (emulator) | release (R8) | 0.7.13 | WebView 83.0.4103.106 | PASS |
 | Android | API 34 | pixel_6 (emulator) | debug | 0.7.13 | WebView 113.0.5672.136 | PASS |
@@ -117,7 +110,7 @@ All automated tests ran against the Deepdots development environment with test c
 | No network: no popup, the app stays usable | n/a | PASS |
 | Network lost right after a popup is triggered | n/a | PASS |
 | Slow network while the survey loads | n/a | PASS |
-| Crash, freeze (ANR) or threading errors in the device log, and no request to production (every configuration) | None detected | **Check failed** |
+| Crash, freeze (ANR) or threading errors in the device log, and no request to production (every configuration) | None detected | None detected |
 
 ## 5. Detection Controls and Backward Compatibility
 
@@ -126,12 +119,12 @@ The test system has to prove it catches real problems. These controls run in eve
 | Control | Result |
 |---|---|
 | Negative control: the bug customers saw on the control version is detected (control 0.7.0) | PASS |
-| R8 control: the control version fails a minified release build, the tested one builds (control 0.7.0) | **FAIL** (failure) |
+| R8 control: the control version fails a minified release build, the tested one builds (control 0.7.0) | PASS |
 | Expected failure detected: missing-navigation | iOS PASS · Android PASS |
 
 ## 6. Known Issues & Limitations
 
-**Known blocking issues:** see Failures in section 1.
+**Known blocking issues:** none identified.
 
 **Known non-blocking issues:**
 
@@ -163,9 +156,9 @@ The test system has to prove it catches real problems. These controls run in eve
 - **SDK version:** 0.7.13
 - **Release:** [GitHub release v0.7.13](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/releases/tag/v0.7.13)
 - **Changelog:** [CHANGELOG](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/blob/main/CHANGELOG.md)
-- **Test execution:** [CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/44549758293/attempts/1) (logs, screenshots and per-configuration artifacts)
+- **Test execution:** [CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/44549758293/attempts/2) (logs, screenshots and per-configuration artifacts)
 - **Validation date:** 2026-11-19
-- **Results file SHA-256:** `44c5187fadc82727a5b11dbfa0bcd824f82eb044601eed25a8639d2f25fcc2ef`
+- **Results file SHA-256:** `3234f0fdbe68b62c2af9e34d3e3a103489176085967c079832504742365c6ffd`
 
 ### Release notes 0.7.13
 

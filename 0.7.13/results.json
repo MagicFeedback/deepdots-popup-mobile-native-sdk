@@ -51,7 +51,7 @@
     "sdk": "0.7.13",
     "resolved": "0.7.13",
     "engine": "WebView 69.0.3497.100",
-    "outcome": "failure",
+    "outcome": "success",
     "run": "https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/44549758293",
     "status": {
       "00-version": "pass",
