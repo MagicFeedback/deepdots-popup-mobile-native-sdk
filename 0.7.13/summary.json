@@ -1,0 +1,31 @@
+{
+  "version": "0.7.13",
+  "status": "FAILED",
+  "platforms": {
+    "iOS": "PASSED",
+    "Android": "FAILED"
+  },
+  "failures": [
+    {
+      "platform": "Android",
+      "row": "A26 phone release",
+      "flow": "—",
+      "message": "Configuration failure: device log or production-isolation check failed"
+    },
+    {
+      "platform": "Android",
+      "row": "control",
+      "flow": "r8-control",
+      "message": "R8 control: the control version fails a minified release build, the tested one builds: failure"
+    }
+  ],
+  "knownIssues": {},
+  "counts": {
+    "executions": 416,
+    "passed": 393,
+    "retried": 1,
+    "failed": 0,
+    "skipped": 23,
+    "known": 0
+  }
+}
