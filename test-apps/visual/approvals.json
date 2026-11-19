@@ -88,6 +88,14 @@
       "sha256": "1f918a4b0ddc2eef53ae7672b1296bf64933b9c2d4e0da81202bf50069b14d37",
       "approvalId": "20261119T114612Z-44510718160"
     },
+    "android-small-720x1280-api34/dark-style-2-text.png": {
+      "sha256": "bf8f87861110fba4194bff1a4fff6ce34c7e0cf918f68fc2af77f79c04c56cce",
+      "approvalId": "20261119T121714Z-44517812440"
+    },
+    "android-small-720x1280-api34/dark-style-3-thanks.png": {
+      "sha256": "41ea2344b5d6bc44e870cbde029b5907eccae8111d35bcd1477e5974a036bbbe",
+      "approvalId": "20261119T121714Z-44517812440"
+    },
     "android-small-720x1280-api34/position-bottom.png": {
       "sha256": "9c5d6fc5990b0bab86e2f18c2f8a4158da2abdf2453399daccbe541c5457e3fd",
       "approvalId": "20261104T131515Z-41828530913"
@@ -619,6 +627,35 @@
         {
           "key": "android-small-720x1280-api34/dark-style-1-open.png",
           "sha256": "1f918a4b0ddc2eef53ae7672b1296bf64933b9c2d4e0da81202bf50069b14d37",
+          "previousSha256": null
+        }
+      ]
+    },
+    {
+      "id": "20261119T121714Z-44517812440",
+      "approvedAt": "2026-11-19T12:17:14.552Z",
+      "approvedBy": "sarias980",
+      "reason": "DD-248: dark Style text page and thank-you on the small Android screen (flow fixed to wait for the question)",
+      "source": {
+        "runId": "44517812440",
+        "runUrl": "https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/44517812440",
+        "sdk": "local",
+        "sdkVersion": "local (local :shared)",
+        "platform": "android",
+        "devices": {
+          "android-pixel-6-api34": "Android API 34 emulator · pixel_6 · 1080x2400 @420dpi",
+          "android-small-720x1280-api34": "Android API 34 emulator · small-720x1280 · 720x1280 @320dpi"
+        }
+      },
+      "files": [
+        {
+          "key": "android-small-720x1280-api34/dark-style-2-text.png",
+          "sha256": "bf8f87861110fba4194bff1a4fff6ce34c7e0cf918f68fc2af77f79c04c56cce",
+          "previousSha256": null
+        },
+        {
+          "key": "android-small-720x1280-api34/dark-style-3-thanks.png",
+          "sha256": "41ea2344b5d6bc44e870cbde029b5907eccae8111d35bcd1477e5974a036bbbe",
           "previousSha256": null
         }
       ]
