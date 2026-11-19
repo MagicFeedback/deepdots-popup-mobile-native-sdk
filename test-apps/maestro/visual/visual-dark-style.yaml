@@ -34,8 +34,10 @@ tags: [visual]
     element: "9"
     direction: DOWN
 - tapOn: "9"
+# The text page's question, not the "0/500" counter: on the small Android screen the keyboard the
+# survey opens covers the counter.
 - extendedWaitUntil:
-    visible: "0/500"
+    visible: "¿Qué podríamos mejorar?"
     timeout: 10000
 # No text typed (keyboard suggestions differ between runs); close the keyboard the survey opens.
 - runFlow:
