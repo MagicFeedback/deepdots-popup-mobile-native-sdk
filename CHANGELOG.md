@@ -4,6 +4,10 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.13 - 2026-11-19
+
+Survey SDK supported: 2.2.38–2.2.44 (survey frontend 3.4.1–3.6.0); bundled: 2.2.44.
+
 ### Added
 
 - **Light / dark popup and survey from the app (DD-240).** New `InitOptions.appearance`
