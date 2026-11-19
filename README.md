@@ -207,10 +207,28 @@ Frameworks for each iOS target are placed in `shared/build/bin/`.
 
 ## 11. Runtime Style Overrides
 The `loaded` bridge event (survey mounted) may include style overrides in the payload:
-- Colors: `buttonPrimaryColor`, `boxBackgroundColor`.
+- Colors: `buttonPrimaryColor`, `boxBackgroundColor`, `loadingBarColor`; optional `dark` block with the same keys for dark mode.
 - Start message: `startMessage` (shows a Start button initially if present).
 - Image/Logo: `image` or `logo` URL; `imageSize`/`logoSize` (small|medium|large); `imagePosition`/`logoPosition` (left|right|center).
 - Popup sizing: `popupMaxWidth` (dp), `popupMaxHeightFraction` (0.5–0.98).
+
+### Light / dark (appearance)
+By default the survey Style colours decide: a dark `boxBackgroundColor` gives a dark popup and
+survey with light text (DD-246, survey SDK DD-238). For apps with light and dark mode:
+- `InitOptions(appearance = Appearance.System | Light | Dark)` and `setAppearance(...)` at any
+  time (`null` = back to the Style colours).
+- `System` follows the device (Android `uiMode`, iOS `traitCollection`). The popup frame
+  recolours while it is open; the survey takes the mode when the popup opens.
+- In dark: the Style's optional `dark` colours (`boxBackgroundColor`, `buttonPrimaryColor`,
+  `loadingBarColor`), else the Style colour if it is already dark, else a default dark palette.
+
+```kotlin
+DeepdotsPopups().init(InitOptions(popupOptions = PopupOptions(publicKey = "..."), appearance = Appearance.System))
+popups.setAppearance(Appearance.Dark) // app with its own dark mode toggle
+```
+```swift
+popups.setAppearance(appearance: .dark)
+```
 
 ## 12. Error Handling (Validation & Submit)
 - Validation errors:

@@ -572,6 +572,14 @@
       },
       "required": []
     },
+    "models.Appearance": {
+      "x-kotlin": "models.Appearance",
+      "enum": [
+        "System",
+        "Light",
+        "Dark"
+      ]
+    },
     "models.CooldownCondition": {
       "type": "object",
       "x-kotlin": "models.CooldownCondition",
@@ -731,6 +739,17 @@
             "x-kotlin": "Any"
           },
           "x-kotlin": "Map<String, Any>?"
+        },
+        "appearance": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/models.Appearance",
+              "x-kotlin": "Appearance?"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": []
