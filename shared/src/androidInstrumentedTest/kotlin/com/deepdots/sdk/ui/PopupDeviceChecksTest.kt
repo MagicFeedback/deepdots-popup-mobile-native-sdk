@@ -11,10 +11,16 @@ import com.deepdots.sdk.SdkRuntime
 import com.deepdots.sdk.models.Action
 import com.deepdots.sdk.platform.PlatformContext
 import com.deepdots.sdk.renderer.PopupRenderer
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assume.assumeTrue
 import org.junit.Before
+import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
+import org.junit.rules.TestRule
+import org.junit.rules.Timeout
+import java.util.concurrent.TimeUnit
 import org.junit.runner.RunWith
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
@@ -36,8 +42,14 @@ import kotlin.test.assertTrue
 @RunWith(AndroidJUnit4::class)
 class PopupDeviceChecksTest {
 
-    @get:Rule
     val rule = createAndroidComposeRule<ComponentActivity>()
+
+    // A hung test fails alone after TEST_TIMEOUT_S instead of eating the whole 10 min Test Lab
+    // matrix (Xiaomi 14, run 44774904996: the activity never opened and nothing else ran).
+    @get:Rule
+    val chain: TestRule = RuleChain
+        .outerRule(Timeout.builder().withTimeout(TEST_TIMEOUT_S, TimeUnit.SECONDS).withLookingForStuckThread(true).build())
+        .around(rule)
 
     private val events = CopyOnWriteArrayList<String>()
     private val actions = CopyOnWriteArrayList<Action>()
@@ -190,7 +202,24 @@ class PopupDeviceChecksTest {
         )
     }
 
-    private companion object {
+    companion object {
+        /**
+         * HyperOS / MIUI block activity starts from an app without "display pop-up windows while
+         * running in the background" (MIUI app op 10021): the Compose rule's activity never opened
+         * on the Xiaomi 14 ("MIUILOG- Permission Denied Activity"). Grant it to ourselves through
+         * the shell before the rule launches anything. On other Android the op is unknown and the
+         * command is a no-op.
+         */
+        @BeforeClass
+        @JvmStatic
+        fun allowActivityStartsOnMiui() {
+            val instrumentation = InstrumentationRegistry.getInstrumentation()
+            val pkg = instrumentation.targetContext.packageName
+            val out = instrumentation.uiAutomation.executeShellCommand("appops set $pkg 10021 allow")
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(out).use { it.readBytes() }
+        }
+
+        const val TEST_TIMEOUT_S = 120L
         // Primera apertura en frío: arranque del WebView + bundle del CDN + survey de DEV.
         const val LOAD_TIMEOUT_MS = 60_000L
         const val EVENT_TIMEOUT_MS = 15_000L
