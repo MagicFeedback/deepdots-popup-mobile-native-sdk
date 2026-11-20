@@ -57,6 +57,12 @@ def gcloud_command(args, devices, limits):
            "--timeout", limits["timeout"], "--num-flaky-test-attempts", str(limits["flakyAttempts"]),
            "--results-history-name", f"popup-device-checks-{args.platform}",
            "--client-details", f"matrixLabel=DD-273 {args.label}".strip()]
+    if args.results_bucket:
+        # Our own bucket (EU, 60-day lifecycle): the default Test Lab bucket lives in a Google
+        # project where testlab-ci can't write. One folder per CI run and platform.
+        cmd += ["--results-bucket", args.results_bucket]
+        if args.results_dir:
+            cmd += ["--results-dir", args.results_dir]
     if args.platform == "android":
         # A library module has no app APK: its self-instrumenting test APK is both app and test.
         cmd += ["--type", "instrumentation", "--app", args.apk, "--test", args.apk]
@@ -115,6 +121,8 @@ def main():
     p.add_argument("--apk")
     p.add_argument("--zip")
     p.add_argument("--label", default="")
+    p.add_argument("--results-bucket", default="")
+    p.add_argument("--results-dir", default="")
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args()
     if args.platform == "android" and not args.apk:

@@ -105,9 +105,9 @@ never touches prod. Replace the emails. Nothing here runs a test.
    Action a short-lived token on each run and only accepts tokens from
    `MagicFeedback/deepdots-popup-mobile-native-sdk`. Nothing to store or rotate.
 
-   If the first run fails with a permission error on the results bucket, do **not** give
-   `roles/editor` (this project has other DEV resources): give the service account
-   `roles/storage.objectAdmin` only on the Test Lab results bucket (`test-lab-…`) instead.
+   Results go to our own bucket `gs://magicfeedback-c6458-dev-testlab-results` (EU, deleted after
+   60 days; testlab-ci has `roles/storage.objectAdmin` only there, set up by Fran). The default
+   `test-lab-…` bucket lives in a Google project, nobody here can give it permissions.
 
 4. **Repo variables** (Settings › Secrets and variables › Actions › Variables; not secrets, none
    of them is a credential):
@@ -115,6 +115,7 @@ never touches prod. Replace the emails. Nothing here runs a test.
    ```bash
    R=MagicFeedback/deepdots-popup-mobile-native-sdk
    gh variable set TEST_LAB_PROJECT_ID --repo $R --body magicfeedback-c6458-dev
+   gh variable set TEST_LAB_RESULTS_BUCKET --repo $R --body magicfeedback-c6458-dev-testlab-results
    gh variable set WIF_PROVIDER --repo $R --body projects/685439469805/locations/global/workloadIdentityPools/github/providers/popup-sdk
    gh variable set WIF_SERVICE_ACCOUNT --repo $R --body testlab-ci@magicfeedback-c6458-dev.iam.gserviceaccount.com
    ```

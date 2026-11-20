@@ -13,7 +13,7 @@ name: Test Lab (real devices)
 # MagicFeedback-Survey-DEV project, with a $30/month budget filtered to Test Lab (testlab/README.md).
 #
 # Auth: Workload Identity Federation, no stored key. Repo variables TEST_LAB_PROJECT_ID,
-# WIF_PROVIDER and WIF_SERVICE_ACCOUNT (set up by Fran, 20-nov). The provider only accepts tokens
+# TEST_LAB_RESULTS_BUCKET, WIF_PROVIDER and WIF_SERVICE_ACCOUNT (set up by Fran, 20-nov). The provider only accepts tokens
 # from this repo. Without the variables the jobs skip with a notice: nothing is billed.
 
 on:
@@ -100,8 +100,10 @@ jobs:
         env:
           PROJECT: ${{ vars.TEST_LAB_PROJECT_ID }}
           LABEL: ${{ github.head_ref || github.ref_name }}
+          RESULTS_BUCKET: ${{ vars.TEST_LAB_RESULTS_BUCKET }}
         run: |
           python3 testlab/testlab.py android --project "$PROJECT" --label "$LABEL" \
+            --results-bucket "$RESULTS_BUCKET" --results-dir "run-$GITHUB_RUN_ID-android" \
             --apk shared/build/outputs/apk/androidTest/debug/shared-debug-androidTest.apk
 
       # A cancelled job (new push, timeout) does not stop the matrix in Test Lab: cancel it here.
@@ -151,8 +153,10 @@ jobs:
         env:
           PROJECT: ${{ vars.TEST_LAB_PROJECT_ID }}
           LABEL: ${{ github.head_ref || github.ref_name }}
+          RESULTS_BUCKET: ${{ vars.TEST_LAB_RESULTS_BUCKET }}
         run: |
           python3 testlab/testlab.py ios --project "$PROJECT" --label "$LABEL" \
+            --results-bucket "$RESULTS_BUCKET" --results-dir "run-$GITHUB_RUN_ID-ios" \
             --zip out/testlab/ios-tests.zip
 
       - name: Cancel the Test Lab matrix
