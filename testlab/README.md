@@ -61,52 +61,61 @@ manual runs, $10–30 a month.
 
 ## Setup (once, by Sergi or Fran)
 
-Replace `PROJECT`, `BILLING_ACCOUNT` and the emails. Nothing here runs a test.
+Test Lab runs in the existing **MagicFeedback-Survey-DEV** project (`magicfeedback-c6458-dev`),
+already on billing (MagicFeedback OÜ, `0193BB-A5D548-9E3870`). It is a DEV project, so the CI key
+never touches prod. Replace the emails. Nothing here runs a test.
 
-1. **Own Firebase project with billing** (Test Lab needs the Blaze plan):
+1. **APIs** (done on 20-nov-2026):
 
    ```bash
-   gcloud projects create PROJECT --name="Deepdots Test Lab"
-   gcloud billing projects link PROJECT --billing-account=BILLING_ACCOUNT
-   firebase projects:addfirebase PROJECT        # or Firebase console › Add project › existing GCP project
-   gcloud services enable testing.googleapis.com toolresults.googleapis.com --project=PROJECT
+   gcloud services enable testing.googleapis.com toolresults.googleapis.com --project=magicfeedback-c6458-dev
    ```
 
 2. **Budget of $30/month with alerts at 50/90/100 % to Sergi and Fran.** Budgets only alert, they
-   do not stop spending; the guardrails in the workflow are what limit it.
+   do not stop spending; the guardrails in the workflow are what limit it. The project also hosts
+   other DEV things, so filter the budget by project **and** by the Test Lab service, or the alerts
+   would count everything else. Easiest in the console: Billing › Budgets & alerts › Create budget ›
+   Projects = MagicFeedback-Survey-DEV, Services = "Cloud Testing API" (Firebase Test Lab),
+   amount $30, thresholds 50/90/100 %, email alerts to billing admins or to a monitoring channel
+   with Sergi and Fran. With gcloud:
 
    ```bash
-   gcloud services enable billingbudgets.googleapis.com monitoring.googleapis.com --project=PROJECT
-   gcloud beta monitoring channels create --project=PROJECT --display-name="Sergi" \
+   gcloud services enable billingbudgets.googleapis.com monitoring.googleapis.com --project=magicfeedback-c6458-dev
+   gcloud beta monitoring channels create --project=magicfeedback-c6458-dev --display-name="Sergi" \
      --type=email --channel-labels=email_address=SERGI_EMAIL
-   gcloud beta monitoring channels create --project=PROJECT --display-name="Fran" \
+   gcloud beta monitoring channels create --project=magicfeedback-c6458-dev --display-name="Fran" \
      --type=email --channel-labels=email_address=FRAN_EMAIL
-   gcloud beta monitoring channels list --project=PROJECT --format="value(name)"   # the two channel ids
-   gcloud billing budgets create --billing-account=BILLING_ACCOUNT \
+   gcloud beta monitoring channels list --project=magicfeedback-c6458-dev --format="value(name)"   # the two channel ids
+   gcloud billing budgets create --billing-account=0193BB-A5D548-9E3870 \
      --display-name="Test Lab (DD-273)" --budget-amount=30USD \
-     --filter-projects=projects/PROJECT \
+     --filter-projects=projects/magicfeedback-c6458-dev \
+     --filter-services=services/CLOUD_TESTING_SERVICE_ID \
      --threshold-rule=percent=0.5 --threshold-rule=percent=0.9 --threshold-rule=percent=1.0 \
      --notifications-rule-monitoring-notification-channels=CHANNEL_1,CHANNEL_2
-   gcloud billing budgets list --billing-account=BILLING_ACCOUNT   # check it
+   gcloud billing budgets list --billing-account=0193BB-A5D548-9E3870   # check it
    ```
+
+   `CLOUD_TESTING_SERVICE_ID` is the billing id of "Cloud Testing API"; the console filter picks
+   it for you, so prefer the console if you don't have it at hand.
 
 3. **Service account for GitHub Actions** (only Test Lab, in this project only):
 
    ```bash
-   gcloud iam service-accounts create testlab-ci --project=PROJECT --display-name="Test Lab CI (GitHub)"
-   SA=testlab-ci@PROJECT.iam.gserviceaccount.com
-   gcloud projects add-iam-policy-binding PROJECT --member=serviceAccount:$SA --role=roles/cloudtestservice.testAdmin
-   gcloud projects add-iam-policy-binding PROJECT --member=serviceAccount:$SA --role=roles/firebase.analyticsViewer
+   gcloud iam service-accounts create testlab-ci --project=magicfeedback-c6458-dev --display-name="Test Lab CI (GitHub)"
+   SA=testlab-ci@magicfeedback-c6458-dev.iam.gserviceaccount.com
+   gcloud projects add-iam-policy-binding magicfeedback-c6458-dev --member=serviceAccount:$SA --role=roles/cloudtestservice.testAdmin
+   gcloud projects add-iam-policy-binding magicfeedback-c6458-dev --member=serviceAccount:$SA --role=roles/firebase.analyticsViewer
    gcloud iam service-accounts keys create testlab-sa.json --iam-account=$SA
    ```
 
-   If the first run fails with a permission error on the results bucket, the older Test Lab docs ask
-   for `roles/editor` on the project; add it only then (the project has nothing else in it).
+   If the first run fails with a permission error on the results bucket, do **not** give
+   `roles/editor` (this project has other DEV resources): give the service account
+   `roles/storage.objectAdmin` only on the Test Lab results bucket (`test-lab-…`) instead.
 
 4. **Repo secrets** (MagicFeedback/deepdots-popup-mobile-native-sdk › Settings › Secrets › Actions):
 
    ```bash
-   gh secret set TEST_LAB_PROJECT_ID --repo MagicFeedback/deepdots-popup-mobile-native-sdk --body PROJECT
+   gh secret set TEST_LAB_PROJECT_ID --repo MagicFeedback/deepdots-popup-mobile-native-sdk --body magicfeedback-c6458-dev
    gh secret set TEST_LAB_SA_KEY --repo MagicFeedback/deepdots-popup-mobile-native-sdk < testlab-sa.json
    rm testlab-sa.json
    ```

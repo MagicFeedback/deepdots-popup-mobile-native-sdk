@@ -9,8 +9,8 @@ name: Test Lab (real devices)
 # The 57 Maestro flows stay on emulators (test-apps.yml).
 #
 # Cost guardrails: fixed devices, 10 min timeout per matrix, no automatic retries, a new push
-# cancels the old run (and its Test Lab matrices), billed minutes in the job summary. The Firebase
-# project has its own $30/month budget with alerts (see testlab/README.md).
+# cancels the old run (and its Test Lab matrices), billed minutes in the job summary. Runs in the
+# MagicFeedback-Survey-DEV project, with a $30/month budget filtered to Test Lab (testlab/README.md).
 #
 # Secrets: TEST_LAB_PROJECT_ID (Firebase project id) and TEST_LAB_SA_KEY (JSON key of the service
 # account). Without them the jobs skip with a notice: nothing is billed.
