@@ -58,6 +58,7 @@ iOS quits, and the new run starts on the next launch).
 | `start` | `home` · `shop` · `cart` · `checkout` · `account` | First screen (not saved). |
 | `visual` | `1` | The Lab log shows its lines without the time (one-shot): the visual regression flows (DD-28) use it so screenshots do not change between runs. |
 | `consent` | `all` · `necessary` | The cookie choice is already made: no cookie dialog at launch, as in a host app without one (a popup at app start shows right away instead of waiting for the dialog). |
+| `reset` | `1` | iOS: clears what the SDK stored (cooldowns, user id) at launch, like **Reset** in the Lab panel (one-shot). The XCUITests of DD-273 use it. |
 
 **Reset** in the Lab panel clears the SDK's storage (cooldowns, user id) and the cookie choice.
 

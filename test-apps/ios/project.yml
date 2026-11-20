@@ -45,7 +45,31 @@ targets:
         CADisableMinimumFrameDurationOnPhone: true
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+  # DD-273: the key popup checks as XCUITest, for real devices (Firebase Test Lab) and simulators.
+  # Built with TARGETED_DEVICE_FAMILY=1,2 so the iPad runs it natively (testlab/ios-build.sh).
+  NordlyDeviceChecks:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - NordlyDeviceChecks
+    dependencies:
+      - target: NordlyTestApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.deepdots.testapp.devicechecks
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
 schemes:
+  NordlyDeviceChecks:
+    build:
+      targets:
+        NordlyTestApp: all
+        NordlyDeviceChecks: [test]
+    test:
+      targets:
+        - NordlyDeviceChecks
   NordlyTestApp:
     build:
       targets:
