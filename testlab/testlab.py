@@ -85,7 +85,16 @@ def get(url):
 
 
 def cancel(platform, project, matrix):
-    subprocess.run(["gcloud", "firebase", "test", platform, "cancel", matrix, "--project", project])
+    # REST, not gcloud: `gcloud firebase test ios` has no `cancel` (only android does), so an iOS
+    # matrix waiting for a busy device kept PENDING after the job gave up (run 44774904996).
+    url = (f"https://testing.googleapis.com/v1/projects/{project}/testMatrices/{matrix}:cancel")
+    req = urllib.request.Request(url, data=b"", method="POST",
+                                 headers={"Authorization": f"Bearer {token()}"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            print(f"testlab: cancel {matrix} -> {json.load(r)}")
+    except Exception as e:  # never hide the real failure behind a cancel error
+        print(f"testlab: could not cancel {matrix}: {e}")
 
 
 def seconds(duration):

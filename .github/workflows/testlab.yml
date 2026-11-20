@@ -114,7 +114,9 @@ jobs:
         run: |
           [ -f "$TESTLAB_MATRIX_FILE" ] || exit 0
           while read -r platform matrix; do
-            gcloud firebase test "$platform" cancel "$matrix" --project "$PROJECT" || true
+            # REST: `gcloud firebase test ios` has no cancel command.
+            curl -fsS -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Length: 0" \
+              "https://testing.googleapis.com/v1/projects/$PROJECT/testMatrices/$matrix:cancel" || true
           done < "$TESTLAB_MATRIX_FILE"
 
   ios:
@@ -166,5 +168,7 @@ jobs:
         run: |
           [ -f "$TESTLAB_MATRIX_FILE" ] || exit 0
           while read -r platform matrix; do
-            gcloud firebase test "$platform" cancel "$matrix" --project "$PROJECT" || true
+            # REST: `gcloud firebase test ios` has no cancel command.
+            curl -fsS -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Length: 0" \
+              "https://testing.googleapis.com/v1/projects/$PROJECT/testMatrices/$matrix:cancel" || true
           done < "$TESTLAB_MATRIX_FILE"
