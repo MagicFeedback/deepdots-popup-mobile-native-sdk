@@ -1,5 +1,7 @@
 package com.deepdots.sdk.ui
 
+import android.os.SystemClock
+
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -156,24 +158,22 @@ class PopupDeviceChecksTest {
         showPopup()
         goToTextPage()
 
-        // Toque de dedo de verdad en la caja de texto (el foco por JS no abre el teclado).
-        val box = web().runJs(
-            """(function(){
-                 var t = document.querySelector('textarea') || document.querySelector('input[type=text]');
-                 if (!t) return '';
-                 t.scrollIntoView({block:'center'});
-                 var r = t.getBoundingClientRect();
-                 return [r.left + r.width/2, r.top + Math.min(r.height/2, 20), window.innerWidth].join(',');
-               })()"""
-        )?.trim('"')
-        assertTrue(!box.isNullOrEmpty(), "no text box on page 2")
-        val (cssX, cssY, cssWidth) = box!!.split(',').map { it.toFloat() }
-        val webView = web()
-        val loc = IntArray(2).also { webView.getLocationOnScreen(it) }
-        val scale = webView.width / cssWidth
-        fingerTapOnScreen(loc[0] + cssX * scale, loc[1] + cssY * scale)
-
-        rule.waitUntil(KEYBOARD_TIMEOUT_MS) { rule.activity.keyboardTopInWindow() != null }
+        // Toque de dedo de verdad en la caja de texto (el foco por JS no abre el teclado). Tras
+        // el cambio de página la tarjeta crece y se recentra (content_height) y el survey puede
+        // seguir bloqueado (aria-busy): se mide cuando todo está quieto y, si el teclado no sale,
+        // se vuelve a medir y tocar (Xiaomi 14 y Tab S8 fallaban con un solo toque, run 44782965531).
+        var keyboard = false
+        var lastBox = ""
+        for (attempt in 1..TAP_ATTEMPTS) {
+            val (x, y) = stableTextBoxOnScreen().also { lastBox = "${it.first},${it.second}" }
+            fingerTapOnScreen(x, y)
+            keyboard = runCatching {
+                rule.waitUntil(KEYBOARD_TIMEOUT_MS) { rule.activity.keyboardTopInWindow() != null }
+            }.isSuccess
+            if (keyboard) break
+        }
+        val focused = web().runJs("(document.activeElement||{}).tagName")
+        assertTrue(keyboard, "no keyboard after $TAP_ATTEMPTS taps on the text box (last tap at $lastBox, focused $focused)")
         rule.waitForIdle()
         val keyboardTop = requireNotNull(rule.activity.keyboardTopInWindow())
 
@@ -185,6 +185,39 @@ class PopupDeviceChecksTest {
         rule.onNodeWithContentDescription("Close popup").fingerTap()
         rule.waitUntil(EVENT_TIMEOUT_MS) { actions.isNotEmpty() }
         assertTrue(actions.single() is Action.Decline, "X should close with the keyboard open, got $actions")
+    }
+
+    /**
+     * Centro de la caja de texto en coordenadas de pantalla, cuando el survey no está ocupado y
+     * ni la caja ni el WebView se han movido entre dos lecturas seguidas (máx. [LAYOUT_TIMEOUT_MS]).
+     */
+    private fun stableTextBoxOnScreen(): Pair<Float, Float> {
+        var previous: Pair<Float, Float>? = null
+        val deadline = SystemClock.uptimeMillis() + LAYOUT_TIMEOUT_MS
+        while (true) {
+            val box = web().runJs(
+                """(function(){
+                     if (document.body.getAttribute('aria-busy') === 'true') return '';
+                     var t = document.querySelector('textarea') || document.querySelector('input[type=text]');
+                     if (!t) return '';
+                     t.scrollIntoView({block:'center', behavior:'instant'});
+                     var r = t.getBoundingClientRect();
+                     if (r.width === 0 || r.height === 0) return '';
+                     return [r.left + r.width/2, r.top + Math.min(r.height/2, 20), window.innerWidth].join(',');
+                   })()"""
+            )?.trim('"').orEmpty()
+            val point = if (box.isEmpty()) null else {
+                val (cssX, cssY, cssWidth) = box.split(',').map { it.toFloat() }
+                val webView = web()
+                val loc = IntArray(2).also { webView.getLocationOnScreen(it) }
+                val scale = webView.width / cssWidth
+                Pair(loc[0] + cssX * scale, loc[1] + cssY * scale)
+            }
+            if (point != null && point == previous) return point
+            assertTrue(SystemClock.uptimeMillis() < deadline, "the text box on page 2 never settled (last $box)")
+            previous = point
+            Thread.sleep(300)
+        }
     }
 
     @Test
@@ -223,7 +256,9 @@ class PopupDeviceChecksTest {
         // Primera apertura en frío: arranque del WebView + bundle del CDN + survey de DEV.
         const val LOAD_TIMEOUT_MS = 60_000L
         const val EVENT_TIMEOUT_MS = 15_000L
-        const val KEYBOARD_TIMEOUT_MS = 10_000L
+        const val KEYBOARD_TIMEOUT_MS = 8_000L
+        const val TAP_ATTEMPTS = 2
+        const val LAYOUT_TIMEOUT_MS = 10_000L
         const val FOCUS_TIMEOUT_MS = 10_000L
     }
 }
