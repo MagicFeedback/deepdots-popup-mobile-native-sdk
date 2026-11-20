@@ -12,8 +12,9 @@ name: Test Lab (real devices)
 # cancels the old run (and its Test Lab matrices), billed minutes in the job summary. Runs in the
 # MagicFeedback-Survey-DEV project, with a $30/month budget filtered to Test Lab (testlab/README.md).
 #
-# Secrets: TEST_LAB_PROJECT_ID (Firebase project id) and TEST_LAB_SA_KEY (JSON key of the service
-# account). Without them the jobs skip with a notice: nothing is billed.
+# Auth: Workload Identity Federation, no stored key. Repo variables TEST_LAB_PROJECT_ID,
+# WIF_PROVIDER and WIF_SERVICE_ACCOUNT (set up by Fran, 20-nov). The provider only accepts tokens
+# from this repo. Without the variables the jobs skip with a notice: nothing is billed.
 
 on:
   pull_request:
@@ -29,6 +30,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write   # WIF: the auth step asks GitHub for an OIDC token
 
 concurrency:
   group: testlab-${{ github.head_ref || github.ref }}
@@ -51,12 +53,12 @@ jobs:
     steps:
       - id: gate
         env:
-          HAS_PROJECT: ${{ secrets.TEST_LAB_PROJECT_ID != '' }}
-          HAS_KEY: ${{ secrets.TEST_LAB_SA_KEY != '' }}
+          HAS_PROJECT: ${{ vars.TEST_LAB_PROJECT_ID != '' }}
+          HAS_KEY: ${{ vars.WIF_PROVIDER != '' && vars.WIF_SERVICE_ACCOUNT != '' }}
           PLATFORMS: ${{ inputs.platforms || 'both' }}
         run: |
           if [ "$HAS_PROJECT" != true ] || [ "$HAS_KEY" != true ]; then
-            msg="Test Lab skipped: set the repo secrets TEST_LAB_PROJECT_ID and TEST_LAB_SA_KEY (testlab/README.md). Nothing was run or billed."
+            msg="Test Lab skipped: set the repo variables TEST_LAB_PROJECT_ID, WIF_PROVIDER and WIF_SERVICE_ACCOUNT (testlab/README.md). Nothing was run or billed."
             echo "::notice::$msg"
             echo "$msg" >> "$GITHUB_STEP_SUMMARY"
             echo "android=false" >> "$GITHUB_OUTPUT"; echo "ios=false" >> "$GITHUB_OUTPUT"
@@ -87,13 +89,14 @@ jobs:
 
       - uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.TEST_LAB_SA_KEY }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Run on real devices
         timeout-minutes: 25
         env:
-          PROJECT: ${{ secrets.TEST_LAB_PROJECT_ID }}
+          PROJECT: ${{ vars.TEST_LAB_PROJECT_ID }}
           LABEL: ${{ github.head_ref || github.ref_name }}
         run: |
           python3 testlab/testlab.py android --project "$PROJECT" --label "$LABEL" \
@@ -103,7 +106,7 @@ jobs:
       - name: Cancel the Test Lab matrix
         if: cancelled() || failure()
         env:
-          PROJECT: ${{ secrets.TEST_LAB_PROJECT_ID }}
+          PROJECT: ${{ vars.TEST_LAB_PROJECT_ID }}
         run: |
           [ -f "$TESTLAB_MATRIX_FILE" ] || exit 0
           while read -r platform matrix; do
@@ -137,13 +140,14 @@ jobs:
 
       - uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.TEST_LAB_SA_KEY }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Run on real devices
         timeout-minutes: 25
         env:
-          PROJECT: ${{ secrets.TEST_LAB_PROJECT_ID }}
+          PROJECT: ${{ vars.TEST_LAB_PROJECT_ID }}
           LABEL: ${{ github.head_ref || github.ref_name }}
         run: |
           python3 testlab/testlab.py ios --project "$PROJECT" --label "$LABEL" \
@@ -152,7 +156,7 @@ jobs:
       - name: Cancel the Test Lab matrix
         if: cancelled() || failure()
         env:
-          PROJECT: ${{ secrets.TEST_LAB_PROJECT_ID }}
+          PROJECT: ${{ vars.TEST_LAB_PROJECT_ID }}
         run: |
           [ -f "$TESTLAB_MATRIX_FILE" ] || exit 0
           while read -r platform matrix; do

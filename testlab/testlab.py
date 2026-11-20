@@ -15,7 +15,7 @@ Cost guardrails (also in devices.json):
   timeout + pollSlackMinutes;
 - the billed minutes of each device (Tool Results `deviceUsageDuration`) go to the job summary.
 
-Needs gcloud authenticated (the workflow uses the TEST_LAB_SA_KEY service account). Python
+Needs gcloud authenticated (the workflow signs in as testlab-ci through Workload Identity Federation). Python
 standard library only.
 """
 import argparse

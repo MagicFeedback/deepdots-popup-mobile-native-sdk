@@ -51,7 +51,7 @@ python3 testlab/testlab.py android --apk x.apk --project P --dry-run
   done after timeout + 10 min, and writes a table with the **billed device minutes** and the cost
   to the job summary.
 - A new push cancels the old run, and the job cancels its Test Lab matrix too.
-- Without the secrets `TEST_LAB_PROJECT_ID` and `TEST_LAB_SA_KEY` the jobs skip with a notice.
+- Without the repo variables `TEST_LAB_PROJECT_ID`, `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT` the jobs skip with a notice.
 
 ## Cost
 
@@ -98,27 +98,28 @@ never touches prod. Replace the emails. Nothing here runs a test.
    `CLOUD_TESTING_SERVICE_ID` is the billing id of "Cloud Testing API"; the console filter picks
    it for you, so prefer the console if you don't have it at hand.
 
-3. **Service account for GitHub Actions** (only Test Lab, in this project only):
-
-   ```bash
-   gcloud iam service-accounts create testlab-ci --project=magicfeedback-c6458-dev --display-name="Test Lab CI (GitHub)"
-   SA=testlab-ci@magicfeedback-c6458-dev.iam.gserviceaccount.com
-   gcloud projects add-iam-policy-binding magicfeedback-c6458-dev --member=serviceAccount:$SA --role=roles/cloudtestservice.testAdmin
-   gcloud projects add-iam-policy-binding magicfeedback-c6458-dev --member=serviceAccount:$SA --role=roles/firebase.analyticsViewer
-   gcloud iam service-accounts keys create testlab-sa.json --iam-account=$SA
-   ```
+3. **Service account for GitHub Actions** (only Test Lab, in this project only). Done by Fran on
+   20-nov: `testlab-ci@magicfeedback-c6458-dev.iam.gserviceaccount.com` with
+   `roles/cloudtestservice.testAdmin` and `roles/firebase.analyticsViewer`. **No JSON key:** the
+   workflow uses Workload Identity Federation (pool `github`, provider `popup-sdk`), which gives the
+   Action a short-lived token on each run and only accepts tokens from
+   `MagicFeedback/deepdots-popup-mobile-native-sdk`. Nothing to store or rotate.
 
    If the first run fails with a permission error on the results bucket, do **not** give
    `roles/editor` (this project has other DEV resources): give the service account
    `roles/storage.objectAdmin` only on the Test Lab results bucket (`test-lab-…`) instead.
 
-4. **Repo secrets** (MagicFeedback/deepdots-popup-mobile-native-sdk › Settings › Secrets › Actions):
+4. **Repo variables** (Settings › Secrets and variables › Actions › Variables; not secrets, none
+   of them is a credential):
 
    ```bash
-   gh secret set TEST_LAB_PROJECT_ID --repo MagicFeedback/deepdots-popup-mobile-native-sdk --body magicfeedback-c6458-dev
-   gh secret set TEST_LAB_SA_KEY --repo MagicFeedback/deepdots-popup-mobile-native-sdk < testlab-sa.json
-   rm testlab-sa.json
+   R=MagicFeedback/deepdots-popup-mobile-native-sdk
+   gh variable set TEST_LAB_PROJECT_ID --repo $R --body magicfeedback-c6458-dev
+   gh variable set WIF_PROVIDER --repo $R --body projects/685439469805/locations/global/workloadIdentityPools/github/providers/popup-sdk
+   gh variable set WIF_SERVICE_ACCOUNT --repo $R --body testlab-ci@magicfeedback-c6458-dev.iam.gserviceaccount.com
    ```
+
+   The jobs need `id-token: write` (already in the workflow).
 
 5. **First run**: Actions › Test Lab (real devices) › Run workflow (both) on `dev`. Check the job
    summary (billed minutes) and the Billing report the next day; write the cost in DD-273.
