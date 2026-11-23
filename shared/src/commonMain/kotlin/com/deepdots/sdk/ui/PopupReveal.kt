@@ -69,6 +69,20 @@ object PopupReveal {
     }
 
     /**
+     * Techo del área del survey para que quepa en la tarjeta con todo lo demás.
+     *
+     * El 72 % de la tarjeta (`maxCeilingDp`) no descontaba logo, barra de progreso, mensaje ni
+     * aviso de error: con logo la parte central de la tarjeta se desbordaba y hacía su propio
+     * scroll, pero el dedo sobre el WebView solo mueve el scroll del WebView, así que el final del
+     * survey quedaba bajo el footer sin forma de verlo (Lemvigh-Müller: el último número de la
+     * escala 0-10, la cuarta opción, y en iPhone el campo de texto con el teclado abierto). Ahora
+     * el survey se queda con lo que sobra (`columnMaxDp` menos `chromeDp`: cabecera, footer, lo
+     * demás del centro y los huecos) y, si no le llega, el WebView hace scroll por dentro.
+     */
+    fun fitSurveyCeilingDp(maxCeilingDp: Int, columnMaxDp: Int, chromeDp: Int): Int =
+        minOf(maxCeilingDp, columnMaxDp - chromeDp)
+
+    /**
      * Espera a que lleguen las imágenes del survey antes de avisar. Los emojis del rating son SVG
      * y el logo es una imagen: llegan DESPUÉS del `onLoadedEvent`, así que sin esto el popup
      * aparecería y se rellenaría delante del usuario.
