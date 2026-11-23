@@ -21,7 +21,7 @@ The 57 Maestro flows stay on emulators (`test-apps/`).
   Send check leaves one answer in DEV per run, like the Maestro regression.
 - **Devices**: `devices.json` (fixed list, checked against the Test Lab catalog on 19-nov-2026):
   Galaxy S25 (Android 16), Galaxy Tab S8 (14), Xiaomi 14 (15), Pixel 3 (Android 9);
-  iPhone 16 Pro (iOS 18.3), iPad 10th gen (16.6), iPhone 14 Pro (16.6).
+  iPhone 16 Pro (iOS 18.3), iPhone SE 3 (18.4 and 26.3). Test Lab has no iPad since nov-2026; the iPad (A16) simulator job covers it.
 
 ## Run locally
 
