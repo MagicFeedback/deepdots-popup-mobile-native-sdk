@@ -336,7 +336,7 @@ ${PopupReveal.REVEAL_JS}
                   // El enunciado de la pregunta también tiene que verse, no solo el campo: con la
                   // encuesta ajustada a la tarjeta, centrar el campo dejaba el enunciado fuera en
                   // un móvil pequeño (pruebas visuales 360x640, 23-nov-2026). Se sube el bloque de
-                  // la pregunta (.magicfeedback-div) si caben el enunciado y las primeras líneas
+                  // la pregunta (.magicfeedback-div) si caben el enunciado y la primera línea
                   // del campo; si no, el campo arriba del todo.
                   var box = el.parentNode;
                   while (box && box.classList && !box.classList.contains('magicfeedback-div')) { box = box.parentNode; }
@@ -345,9 +345,9 @@ ${PopupReveal.REVEAL_JS}
                   var target = el;
                   if (box) {
                     var b = box.getBoundingClientRect();
-                    if ((r.top - b.top) + Math.min(r.height, 64) <= vh) { target = box; top = b.top; }
+                    if ((r.top - b.top) + Math.min(r.height, 32) <= vh) { target = box; top = b.top; }
                   }
-                  if (top >= 0 && r.top + Math.min(r.height, 64) <= vh) { return; }
+                  if (top >= 0 && r.top + Math.min(r.height, 32) <= vh) { return; }
                   try { target.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch(e1) { target.scrollIntoView(true); }
                 } catch(e){ console.error('[MagicFeedback] focus scroll error', e); }
               }

@@ -9,7 +9,7 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 - **The question stays in view with the keyboard open on small phones.** With the survey fitted
   to the card (0.7.14 candidate), centring the focused text field pushed the question text out of
   view on a 360x640 screen. The survey now scrolls the question block (question text and the
-  first lines of the field) to the top, and only the field when even that does not fit.
+  first line of the field) to the top, and only the field when even that does not fit.
 
 ### Fixed
 
