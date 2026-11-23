@@ -4,6 +4,11 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **iPads are reported as iOS.** On iPad `UIDevice.systemName` is "iPadOS", so `deepdots_sdk`
+  said `android@<version>` and analytics batches had `platform: android`. Both now say `ios`.
+
 ### Tests
 
 - **Key popup checks on real devices (DD-273).** Open popup, X / Send / Back with a finger-like

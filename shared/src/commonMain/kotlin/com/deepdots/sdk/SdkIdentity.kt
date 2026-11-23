@@ -42,6 +42,15 @@ object SdkIdentity {
     /** Valor de `deepdots_sdk_core`: solo con wrapper (sin él coincidiría con `deepdots_sdk`). */
     val sdkCore: String? get() = if (wrapper != null) core else null
 
-    internal fun platformName(): String =
-        if (getPlatform().name.startsWith("iOS", ignoreCase = true)) "ios" else "android"
+    internal fun platformName(): String = platformNameFor(getPlatform().name)
+
+    /**
+     * `ios` o `android` a partir del nombre del sistema. En iPad `UIDevice.systemName` es
+     * "iPadOS", no "iOS": antes los iPad salían como `android` en `deepdots_sdk` y en la
+     * plataforma de la analítica (visto en las respuestas de Lemvigh-Müller, 23-nov-2026).
+     */
+    internal fun platformNameFor(systemName: String): String {
+        val name = systemName.trim()
+        return if (name.startsWith("iOS", ignoreCase = true) || name.startsWith("iPadOS", ignoreCase = true)) "ios" else "android"
+    }
 }

@@ -373,7 +373,7 @@ class DeepdotsPopups {
         analytics = AnalyticsManager(
             sink = instrumentedSink,
             publicKey = analyticsKeys?.publicKey ?: options.popupOptions.publicKey,
-            platform = if (getPlatform().name.startsWith("iOS", ignoreCase = true)) "ios" else "android",
+            platform = SdkIdentity.platformName(),
             language = language,
             device = device,
             maxBatchSize = ANALYTICS_MAX_BATCH_SIZE,
