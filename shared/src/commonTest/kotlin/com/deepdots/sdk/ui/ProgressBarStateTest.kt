@@ -84,4 +84,72 @@ class ProgressBarStateTest {
         assertTrue(s.visible)
         assertEquals("", s.label)
     }
+
+    // DD-210: style.progressMode = "completed" (espejo de progressView.test.ts del SDK Web).
+
+    @Test
+    fun modo_por_defecto_es_la_barra_de_siempre() {
+        assertEquals(ProgressMode.Current, ProgressMode.fromStyle(null))
+        assertEquals(ProgressMode.Current, ProgressMode.fromStyle("otro"))
+        assertEquals(ProgressMode.Completed, ProgressMode.fromStyle("completed"))
+    }
+
+    @Test
+    fun respondidas_empieza_en_cero() {
+        val s = progressBarState(enabled = true, progress = 0.0, total = 5, mode = ProgressMode.Completed)
+        assertTrue(s.visible)
+        assertEquals(0f, s.fraction)
+        assertEquals("0 of 5 answered", s.label)
+    }
+
+    @Test
+    fun respondidas_en_la_pregunta_3_son_2_de_5() {
+        val s = progressBarState(enabled = true, progress = 2.0, total = 5, mode = ProgressMode.Completed)
+        assertEquals(0.4f, s.fraction)
+        assertEquals("2 of 5 answered", s.label)
+    }
+
+    @Test
+    fun respondidas_la_follow_up_abierta_no_mueve_la_barra() {
+        val open = progressBarState(enabled = true, progress = 2.5, total = 5, mode = ProgressMode.Completed)
+        assertEquals(0.4f, open.fraction)
+        assertEquals("2 of 5 answered", open.label)
+    }
+
+    @Test
+    fun respondidas_la_pantalla_final_sale_al_100() {
+        val s = progressBarState(enabled = true, progress = 4.0, total = 5, completed = true, mode = ProgressMode.Completed)
+        assertTrue(s.visible)
+        assertEquals(1f, s.fraction)
+        assertEquals("5 of 5 answered", s.label)
+        // Una rama saltó páginas: se respondieron 3.
+        val branch = progressBarState(enabled = true, progress = 2.0, total = 5, completed = true, mode = ProgressMode.Completed)
+        assertEquals("3 of 3 answered", branch.label)
+    }
+
+    @Test
+    fun respondidas_con_porcentaje_y_traducido() {
+        val pct = progressBarState(
+            enabled = true, progress = 2.0, total = 5, unit = ProgressUnit.Percentage, mode = ProgressMode.Completed,
+        )
+        assertEquals("40%", pct.label)
+        val da = progressBarState(
+            enabled = true, progress = 2.0, total = 5, labels = DefaultLabels.labels("da"), mode = ProgressMode.Completed,
+        )
+        assertEquals("2 af 5 besvaret", da.label)
+    }
+
+    @Test
+    fun modo_actual_sigue_oculta_en_la_pantalla_final() {
+        assertFalse(progressBarState(enabled = true, progress = 4.0, total = 5, completed = true).visible)
+    }
+
+    @Test
+    fun todo_idioma_tiene_answeredOf_con_los_dos_huecos() {
+        for (lang in listOf("en", "es", "da", "no", "sv", "fi", "de", "fr", "pt", "ar", "bn", "zh-CN", "bg", "cs",
+            "el", "et", "ga", "hr", "hu", "it", "lt", "lv", "mt", "nl", "pl", "ro", "sk", "sl", "ca")) {
+            val l = DefaultLabels.labels(lang).answeredOf
+            assertTrue(l.contains("{answered}") && l.contains("{total}"), lang)
+        }
+    }
 }

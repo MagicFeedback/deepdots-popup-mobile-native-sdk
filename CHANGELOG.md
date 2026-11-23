@@ -4,6 +4,13 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- **The progress bar can count answered questions (DD-210).** With `style.progressMode:
+  "completed"` the bar starts at 0 %, shows "2 of 5 answered" on question 3, does not move while
+  an AI follow-up is open, and shows 100 % ("5 of 5 answered") on the thank-you screen. Missing or
+  `"current"` keeps today's bar. Same rules as the web popup and the survey link.
+
 ### Fixed
 
 - **The end of the survey is no longer hidden when the popup has a logo.** The survey area took
