@@ -309,6 +309,17 @@ fun PopupView(
                         // Va ANTES de la barra de progreso: la marca abre la tarjeta y la barra
                         // queda pegada a la pregunta (paridad con el popup web, ui/logo.ts).
                         val finalImageUrl = imageUrlOverride ?: popup.style.imageUrl
+                        // Con el teclado abierto el logo se pliega: la tarjeta encoge y, si se
+                        // quedaba, el enunciado de las preguntas de texto salía de la vista. Vuelve
+                        // al cerrar el teclado.
+                        val keyboardOpen = isKeyboardOpen()
+                        AnimatedVisibility(
+                            visible = finalImageUrl != null && !keyboardOpen,
+                            enter = fadeIn(tween(PageTransition.HEIGHT_ANIMATION_MS)) +
+                                expandVertically(tween(PageTransition.HEIGHT_ANIMATION_MS)),
+                            exit = fadeOut(tween(PageTransition.HEIGHT_ANIMATION_MS)) +
+                                shrinkVertically(tween(PageTransition.HEIGHT_ANIMATION_MS)),
+                        ) {
                         if (finalImageUrl != null) {
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 Box(
@@ -327,6 +338,7 @@ fun PopupView(
                                     )
                                 }
                             }
+                        }
                         }
 
                         // Barra de progreso: "Question X of Y" + barra. El host manda si se
