@@ -82,6 +82,10 @@ After publishing, the release validation report (device matrix, Android API 26â€
 iOS 16.4â€“26.x) is generated and linked from the GitHub Release notes, with the test status per
 platform and the known issues. It does not gate the release: it runs after it.
 
+Before merging the release pull request, someone does the 10 minute **manual finger check** on
+2 or 3 physical devices and writes the result in that pull request. The devices and the steps
+are in [TEST-DEVICES.md](TEST-DEVICES.md), chosen from real usage (DD-272).
+
 `scripts/deploy_sdk_release.sh` (publishing from a laptop) is retired and only prints this.
 
 ### Emergency exception
