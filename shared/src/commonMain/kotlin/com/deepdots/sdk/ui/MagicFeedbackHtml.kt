@@ -333,8 +333,22 @@ ${PopupReveal.REVEAL_JS}
                   if (tag !== 'input' && tag !== 'textarea' && !el.isContentEditable) { return; }
                   var r = el.getBoundingClientRect();
                   var vh = window.innerHeight || document.documentElement.clientHeight;
-                  if (r.top >= 0 && r.bottom <= vh) { return; }
-                  try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e1) { el.scrollIntoView(false); }
+                  // El enunciado de la pregunta también tiene que verse, no solo el campo: con la
+                  // encuesta ajustada a la tarjeta, centrar el campo dejaba el enunciado fuera en
+                  // un móvil pequeño (pruebas visuales 360x640, 23-nov-2026). Se sube el bloque de
+                  // la pregunta (.magicfeedback-div) si caben el enunciado y las primeras líneas
+                  // del campo; si no, el campo arriba del todo.
+                  var box = el.parentNode;
+                  while (box && box.classList && !box.classList.contains('magicfeedback-div')) { box = box.parentNode; }
+                  if (!box || !box.getBoundingClientRect) { box = null; }
+                  var top = r.top;
+                  var target = el;
+                  if (box) {
+                    var b = box.getBoundingClientRect();
+                    if ((r.top - b.top) + Math.min(r.height, 64) <= vh) { target = box; top = b.top; }
+                  }
+                  if (top >= 0 && r.top + Math.min(r.height, 64) <= vh) { return; }
+                  try { target.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch(e1) { target.scrollIntoView(true); }
                 } catch(e){ console.error('[MagicFeedback] focus scroll error', e); }
               }
               window.addEventListener('resize', function(){ setTimeout(ddKeepFocusedFieldVisible, 120); });
