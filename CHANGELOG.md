@@ -6,6 +6,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## 0.7.14 - 2026-11-23
 
+Survey SDK supported: 2.2.38–2.2.44 (survey frontend 3.4.1–3.6.0); bundled: 2.2.44.
+
 ### Fixed
 
 - **The end of the survey is no longer hidden when the popup has a logo.** The survey area took
