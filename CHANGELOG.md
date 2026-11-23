@@ -4,6 +4,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.14 - 2026-11-23
+
 ### Fixed
 
 - **The end of the survey is no longer hidden when the popup has a logo.** The survey area took
