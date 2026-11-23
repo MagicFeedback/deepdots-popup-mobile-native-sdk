@@ -13,6 +13,9 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   0-10 list, the last option of a question, and on iPhone the text field with the keyboard open
   (Lemvigh-Müller, Galaxy S21/S25 and iPhone 17). The survey now gets the height that is left in
   the card and scrolls inside. Android and iOS.
+- **The logo folds away while the keyboard is open.** On text questions the card shrinks with the
+  keyboard and the logo kept its space, so the question text went out of view. The logo comes back
+  when the keyboard closes. Android and iOS.
 
 ### Tests
 
