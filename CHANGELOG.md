@@ -4,6 +4,16 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **The end of the survey is no longer hidden when the popup has a logo.** The survey area took
+  72 % of the card without counting the logo, progress bar, message or error banner. With a logo
+  the middle of the card overflowed and scrolled on its own, but a finger on the survey only
+  scrolls the WebView, so the bottom of the survey stayed under the footer: the last number of a
+  0-10 list, the last option of a question, and on iPhone the text field with the keyboard open
+  (Lemvigh-Müller, Galaxy S21/S25 and iPhone 17). The survey now gets the height that is left in
+  the card and scrolls inside. Android and iOS.
+
 ### Tests
 
 - **Key popup checks on real devices (DD-273).** Open popup, X / Send / Back with a finger-like
