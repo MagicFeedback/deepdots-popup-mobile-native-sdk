@@ -191,6 +191,13 @@
       "describe": "DD-248/DD-240: event visual_dark_colours, survey «SDK Test App · Simple · Dark colours (DD-248)»: light Style with the optional dark colours, for appearance Dark/Light",
       "title": "Visual · Dark colours",
       "events": ["visual_dark_colours"]
+    },
+    "lemu-qa-exact": {
+      "publicKey": "prkai2m0PVnaZuF3JLwiokBmURqWPrKy",
+      "popupOptionId": "c7b6ec50-e750-11f1-b311-a76c350916fe",
+      "describe": "Exact DEV copy of a client's 'DAILY / QA' popup on event `trigger` as in prod on 23-nov-2026: no title or message, centered, cooldown 0/0/0, path /, no lang. Survey 2b7c6a90 (da) = copy of the client's QA survey: 0-10 rating right to left, text with AI follow-up, single choice 1-4 random, stars, info page with a long unbroken word, long text; client logo large, progress 'X of Y'.",
+      "title": null,
+      "events": ["trigger"]
     }
   }
 }
