@@ -170,7 +170,7 @@ def main():
         cancel(args.platform, args.project, matrix)
         tm = get(url)
 
-    rows, total_min = [], 0
+    rows, total_min, estimated = [], 0, False
     for ex in tm.get("testExecutions", []):
         step = ex.get("toolResultsStep")
         billed, outcome = 0.0, ex.get("state", "?")
@@ -179,6 +179,12 @@ def main():
                     f"{step['projectId']}/histories/{step['historyId']}/executions/{step['executionId']}"
                     f"/steps/{step['stepId']}")
             billed = seconds(s.get("deviceUsageDuration"))
+            if not billed:
+                # Tool Results fills deviceUsageDuration a while after the step ends (run
+                # 44795094317 logged 0 for all devices). Fall back to the step's run time, which is
+                # what a physical device is billed for, so the summary never says $0 by mistake.
+                billed = seconds(s.get("runDuration"))
+                estimated = estimated or bool(billed)
             outcome = s.get("outcome", {}).get("summary", outcome)
         minutes = math.ceil(billed / 60) if billed else 0
         total_min += minutes
@@ -196,7 +202,8 @@ def main():
         *rows,
         "",
         f"**Total billed: {total_min} device minutes ≈ ${total_min * PRICE_PER_DEVICE_HOUR / 60:.2f}**"
-        f" (at ${PRICE_PER_DEVICE_HOUR:.0f}/device-hour)",
+        f" (at ${PRICE_PER_DEVICE_HOUR:.0f}/device-hour)"
+        + (" · estimated from the run time: Tool Results had no device usage yet" if estimated else ""),
     ])
     return 0 if result == "SUCCESS" else 1
 
