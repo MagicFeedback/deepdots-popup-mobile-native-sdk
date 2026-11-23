@@ -1,0 +1,174 @@
+name: Test Lab (real devices)
+
+# DD-273: the key popup checks on real phones and tablets in Firebase Test Lab.
+# - Android: shared/src/androidInstrumentedTest (PopupDeviceChecksTest, real WebView).
+# - iOS: test-apps/ios/NordlyDeviceChecks (XCUITest on NORDLY, SDK of this commit).
+# - Devices: testlab/devices.json (fixed list). Runner: testlab/testlab.py.
+#
+# Runs only on release PRs (head branch release/X.Y.Z) and by hand (Actions > Run workflow).
+# The 57 Maestro flows stay on emulators (test-apps.yml).
+#
+# Cost guardrails: fixed devices, 10 min timeout per matrix, no automatic retries, a new push
+# cancels the old run (and its Test Lab matrices), billed minutes in the job summary. Runs in the
+# MagicFeedback-Survey-DEV project, with a $30/month budget filtered to Test Lab (testlab/README.md).
+#
+# Auth: Workload Identity Federation, no stored key. Repo variables TEST_LAB_PROJECT_ID,
+# TEST_LAB_RESULTS_BUCKET, WIF_PROVIDER and WIF_SERVICE_ACCOUNT (set up by Fran, 20-nov). The provider only accepts tokens
+# from this repo. Without the variables the jobs skip with a notice: nothing is billed.
+
+on:
+  pull_request:
+    branches: [dev, main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: Which platforms
+        type: choice
+        options: [both, android, ios]
+        default: both
+
+permissions:
+  contents: read
+  id-token: write   # WIF: the auth step asks GitHub for an OIDC token
+
+concurrency:
+  group: testlab-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "21"
+  XCODE_APP: /Applications/Xcode_16.4.app
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
+
+jobs:
+  gate:
+    name: Test Lab gate
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      android: ${{ steps.gate.outputs.android }}
+      ios: ${{ steps.gate.outputs.ios }}
+    steps:
+      - id: gate
+        env:
+          HAS_PROJECT: ${{ vars.TEST_LAB_PROJECT_ID != '' }}
+          HAS_KEY: ${{ vars.WIF_PROVIDER != '' && vars.WIF_SERVICE_ACCOUNT != '' }}
+          PLATFORMS: ${{ inputs.platforms || 'both' }}
+        run: |
+          if [ "$HAS_PROJECT" != true ] || [ "$HAS_KEY" != true ]; then
+            msg="Test Lab skipped: set the repo variables TEST_LAB_PROJECT_ID, WIF_PROVIDER and WIF_SERVICE_ACCOUNT (testlab/README.md). Nothing was run or billed."
+            echo "::notice::$msg"
+            echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+            echo "android=false" >> "$GITHUB_OUTPUT"; echo "ios=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          [ "$PLATFORMS" = ios ] && echo "android=false" >> "$GITHUB_OUTPUT" || echo "android=true" >> "$GITHUB_OUTPUT"
+          [ "$PLATFORMS" = android ] && echo "ios=false" >> "$GITHUB_OUTPUT" || echo "ios=true" >> "$GITHUB_OUTPUT"
+
+  android:
+    name: Test Lab · Android
+    needs: gate
+    if: needs.gate.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TESTLAB_MATRIX_FILE: ${{ github.workspace }}/testlab-matrices.txt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools   # the default also asks for 'tools', gone from sdkmanager (same as ci.yml)
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build the instrumented test APK
+        run: ./gradlew :shared:assembleDebugAndroidTest
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Run on real devices
+        timeout-minutes: 25
+        env:
+          PROJECT: ${{ vars.TEST_LAB_PROJECT_ID }}
+          LABEL: ${{ github.head_ref || github.ref_name }}
+          RESULTS_BUCKET: ${{ vars.TEST_LAB_RESULTS_BUCKET }}
+        run: |
+          python3 testlab/testlab.py android --project "$PROJECT" --label "$LABEL" \
+            --results-bucket "$RESULTS_BUCKET" --results-dir "run-$GITHUB_RUN_ID-android" \
+            --apk shared/build/outputs/apk/androidTest/debug/shared-debug-androidTest.apk
+
+      # A cancelled job (new push, timeout) does not stop the matrix in Test Lab: cancel it here.
+      - name: Cancel the Test Lab matrix
+        if: cancelled() || failure()
+        env:
+          PROJECT: ${{ vars.TEST_LAB_PROJECT_ID }}
+        run: |
+          [ -f "$TESTLAB_MATRIX_FILE" ] || exit 0
+          while read -r platform matrix; do
+            # REST: `gcloud firebase test ios` has no cancel command.
+            curl -fsS -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Length: 0" \
+              "https://testing.googleapis.com/v1/projects/$PROJECT/testMatrices/$matrix:cancel" || true
+          done < "$TESTLAB_MATRIX_FILE"
+
+  ios:
+    name: Test Lab · iOS
+    needs: gate
+    if: needs.gate.outputs.ios == 'true'
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      TESTLAB_MATRIX_FILE: ${{ github.workspace }}/testlab-matrices.txt
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s "$XCODE_APP"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # SDK of this commit (device slice) + NORDLY + the XCUITests, signed ad hoc (Test Lab
+      # re-signs them). Set SIGN_IDENTITY here if Test Lab ever rejects the ad hoc signature.
+      - name: Build the XCUITest zip for devices
+        run: testlab/ios-build.sh device out/testlab
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Run on real devices
+        timeout-minutes: 25
+        env:
+          PROJECT: ${{ vars.TEST_LAB_PROJECT_ID }}
+          LABEL: ${{ github.head_ref || github.ref_name }}
+          RESULTS_BUCKET: ${{ vars.TEST_LAB_RESULTS_BUCKET }}
+        run: |
+          python3 testlab/testlab.py ios --project "$PROJECT" --label "$LABEL" \
+            --results-bucket "$RESULTS_BUCKET" --results-dir "run-$GITHUB_RUN_ID-ios" \
+            --zip out/testlab/ios-tests.zip
+
+      - name: Cancel the Test Lab matrix
+        if: cancelled() || failure()
+        env:
+          PROJECT: ${{ vars.TEST_LAB_PROJECT_ID }}
+        run: |
+          [ -f "$TESTLAB_MATRIX_FILE" ] || exit 0
+          while read -r platform matrix; do
+            # REST: `gcloud firebase test ios` has no cancel command.
+            curl -fsS -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Length: 0" \
+              "https://testing.googleapis.com/v1/projects/$PROJECT/testMatrices/$matrix:cancel" || true
+          done < "$TESTLAB_MATRIX_FILE"

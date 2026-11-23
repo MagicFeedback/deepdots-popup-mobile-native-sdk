@@ -4,9 +4,11 @@ import android.graphics.Rect
 import android.os.Build
 import android.view.ViewTreeObserver
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -26,8 +28,16 @@ internal actual fun Modifier.avoidKeyboard(): Modifier =
 // el emulador de Android 8 con las pruebas E2E). Se mide con el marco visible de la ventana, que
 // sí descuenta el teclado, y se le resta la barra de navegación, que ya pone systemBars.
 private fun Modifier.legacyKeyboardPadding(): Modifier = composed {
-    val view = LocalView.current
     val density = LocalDensity.current
+    val keyboardPx = rememberLegacyKeyboardPx()
+    val navigationPx = WindowInsets.navigationBars.getBottom(density)
+    padding(bottom = with(density) { (keyboardPx - navigationPx).coerceAtLeast(0).toDp() })
+}
+
+/** Alto del teclado en px en Android 10 y anteriores, medido con el marco visible de la ventana. */
+@Composable
+private fun rememberLegacyKeyboardPx(): Int {
+    val view = LocalView.current
     var keyboardPx by remember { mutableIntStateOf(0) }
     DisposableEffect(view) {
         val root = view.rootView
@@ -40,9 +50,13 @@ private fun Modifier.legacyKeyboardPadding(): Modifier = composed {
         listener.onGlobalLayout()
         onDispose { root.viewTreeObserver.removeOnGlobalLayoutListener(listener) }
     }
-    val navigationPx = WindowInsets.navigationBars.getBottom(density)
-    padding(bottom = with(density) { (keyboardPx - navigationPx).coerceAtLeast(0).toDp() })
+    return keyboardPx
 }
+
+@Composable
+internal actual fun isKeyboardOpen(): Boolean =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    else rememberLegacyKeyboardPx() > 0
 
 /**
  * Alto del teclado a partir del alto de la ventana y del borde inferior de su parte visible. Por
