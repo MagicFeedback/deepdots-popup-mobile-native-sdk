@@ -16,6 +16,8 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 - **The logo folds away while the keyboard is open.** On text questions the card shrinks with the
   keyboard and the logo kept its space, so the question text went out of view. The logo comes back
   when the keyboard closes. Android and iOS.
+- **iPads are reported as iOS.** On iPad `UIDevice.systemName` is "iPadOS", so `deepdots_sdk`
+  said `android@<version>` and analytics batches had `platform: android`. Both now say `ios`.
 
 ### Tests
 
