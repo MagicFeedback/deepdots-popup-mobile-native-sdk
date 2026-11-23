@@ -37,6 +37,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -234,6 +236,22 @@ fun PopupView(
                 // cabecera, logo, barra de progreso y footer. Por encima de esto el WebView hace
                 // su propio scroll vertical.
                 val maxSurveyHeight = maxPopupHeight * 0.72f
+                // Lo que mide todo menos el survey (cabecera, footer, logo, barra, mensaje, aviso
+                // de error y los huecos): el survey se queda con lo que sobra hasta su techo, para
+                // que la parte central no tenga que hacer scroll. Ver PopupReveal.fitSurveyCeilingDp.
+                val density = LocalDensity.current
+                var headerPx by remember { mutableStateOf(0) }
+                var footerPx by remember { mutableStateOf(0) }
+                var middleContentPx by remember { mutableStateOf(0) }
+                var surveyAreaPx by remember { mutableStateOf(0) }
+                val chromeDp = with(density) {
+                    (headerPx + footerPx + (middleContentPx - surveyAreaPx).coerceAtLeast(0)).toDp()
+                } + 16.dp // los dos huecos de 8 dp entre cabecera, centro y footer
+                val surveyCeilingDp = PopupReveal.fitSurveyCeilingDp(
+                    maxCeilingDp = maxSurveyHeight.value.toInt(),
+                    columnMaxDp = maxPopupHeight.value.toInt(),
+                    chromeDp = chromeDp.value.toInt(),
+                )
                 val scrollState = rememberScrollState()
                 Box(modifier = Modifier.fillMaxWidth()) {
                     // Wrap-content column with a hard max-height. The header (title + X) and the
@@ -250,7 +268,7 @@ fun PopupView(
                     ) {
                         // Header row
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().onSizeChanged { headerPx = it.height },
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -278,6 +296,12 @@ fun PopupView(
                             modifier = Modifier
                                 .weight(1f, fill = false)
                                 .verticalScroll(scrollState),
+                        ) {
+                        // Contenedor medido: su alto menos el del survey es lo que ocupa el resto
+                        // del centro. Ya no debería hacer falta el scroll de fuera (el survey se
+                        // ajusta); queda de red para un mensaje enorme o una pantalla diminuta.
+                        Column(
+                            modifier = Modifier.onSizeChanged { middleContentPx = it.height },
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
 
@@ -364,7 +388,7 @@ fun PopupView(
                         // pregunta dejaba un hueco enorme hasta el footer. Mientras no llega el
                         // dato se usa el suelo de siempre, y por encima del techo el WebView hace
                         // su propio scroll vertical (el horizontal lo corta el CSS).
-                        Row(modifier = Modifier.fillMaxWidth()) {
+                        Row(modifier = Modifier.fillMaxWidth().onSizeChanged { surveyAreaPx = it.height }) {
                             val targetSurveyHeight = PopupReveal.resolveSurveyHeightDp(
                                 reportedDp = PageTransition.heightSource(
                                     reported = surveyContentHeightDp,
@@ -372,7 +396,7 @@ fun PopupView(
                                     loading = viewState == ViewState.Loading,
                                 ),
                                 floorDp = minSurveyHeight.value.toInt(),
-                                ceilingDp = maxSurveyHeight.value.toInt(),
+                                ceilingDp = surveyCeilingDp,
                             ).dp
                             // Antes de enseñarse el popup el alto se aplica sin animar, para que
                             // aparezca ya con su tamaño; despues, cada cambio de pagina se ajusta
@@ -630,6 +654,7 @@ fun PopupView(
                             }
                         }
 
+                        } // contenedor medido
                         }
 
                         // Footer buttons, driven by state. Mientras se envia una pagina se
@@ -641,7 +666,7 @@ fun PopupView(
                             label = "footerAlpha",
                         )
                         Row(
-                            modifier = Modifier.fillMaxWidth().alpha(footerAlpha),
+                            modifier = Modifier.fillMaxWidth().alpha(footerAlpha).onSizeChanged { footerPx = it.height },
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             when (if (pageLoading) lastSettledState else viewState) {
