@@ -163,6 +163,7 @@ fun PopupView(
     var platformShowProgressBar by remember { mutableStateOf(false) }
     var progressShowUnit by remember { mutableStateOf(true) }
     var progressUnit by remember { mutableStateOf(ProgressUnit.Fraction) }
+    var progressMode by remember { mutableStateOf(ProgressMode.Current) }
     var progressBarColor by remember { mutableStateOf(Color(0xFF22C55E)) }
 
     var customFontFamily by remember { mutableStateOf<FontFamily?>(null) }
@@ -352,6 +353,7 @@ fun PopupView(
                             showUnit = progressShowUnit,
                             unit = progressUnit,
                             labels = labels,
+                            mode = progressMode,
                         )
                         // Al llegar a la pantalla final la barra se oculta: plegandola con la
                         // misma duracion que el alto del survey, en vez de quitarla de golpe (era
@@ -539,6 +541,8 @@ fun PopupView(
                                                 payloadBool("showProgressBar")?.let { platformShowProgressBar = it }
                                                 payloadBool("showProgressUnit")?.let { progressShowUnit = it }
                                                 if (payloadValue("progressUnit") == "percentage") progressUnit = ProgressUnit.Percentage
+                                                // DD-210: qué cuenta la barra.
+                                                progressMode = ProgressMode.fromStyle(payloadValue("progressMode"))
                                                 parseHexColor(styleColors.light("loadingBarColor"))
                                                     ?.let { progressBarColor = it }
                                                 payloadNumber("total")?.let { progressTotal = it.toInt() }
