@@ -63,7 +63,7 @@ struct LabConfig: Equatable {
 
     /// Saved config, overridden by any launch argument (`-scenario x`, `scenario x` or `scenario=x`).
     static func resolve(arguments: [String] = ProcessInfo.processInfo.arguments) -> LabConfig {
-        let known = keys + ["start", "consent", "instances", "event", "visual"]
+        let known = keys + ["start", "consent", "instances", "event", "visual", "reset"]
         var args: [String: String] = [:]
         var i = 1
         while i < arguments.count {
@@ -76,6 +76,12 @@ struct LabConfig: Equatable {
                 i += 1
             }
             i += 1
+        }
+        // `reset 1` (one-shot): what the Lab panel's Reset does, at launch and before the SDK
+        // starts: no cooldowns or user id from an earlier run. The XCUITests (DD-273) use it,
+        // since a UI test cannot clear the app's data like Maestro's clearState.
+        if args["reset"] == "1", let id = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: id)
         }
         func read(_ key: String, _ fallback: String) -> String {
             args[key] ?? defaults.string(forKey: key) ?? fallback
