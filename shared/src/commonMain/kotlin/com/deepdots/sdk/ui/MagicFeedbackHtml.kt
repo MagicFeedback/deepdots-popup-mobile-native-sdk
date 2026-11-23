@@ -348,11 +348,18 @@ ${PopupReveal.REVEAL_JS}
                     if ((r.top - b.top) + Math.min(r.height, 32) <= vh) { target = box; top = b.top; }
                   }
                   if (top >= 0 && r.top + Math.min(r.height, 32) <= vh) { return; }
-                  try { target.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch(e1) { target.scrollIntoView(true); }
+                  try { target.scrollIntoView({ block: 'start' }); } catch(e1) { target.scrollIntoView(true); }
                 } catch(e){ console.error('[MagicFeedback] focus scroll error', e); }
               }
-              window.addEventListener('resize', function(){ setTimeout(ddKeepFocusedFieldVisible, 120); });
-              document.addEventListener('focusin', function(){ setTimeout(ddKeepFocusedFieldVisible, 350); });
+              // El WebView también sube el campo enfocado por su cuenta cuando encoge, y lo hace
+              // después del primer aviso: se repite para quedar por detrás de ese scroll.
+              function ddKeepFocusedFieldVisibleSoon(first){
+                setTimeout(ddKeepFocusedFieldVisible, first);
+                setTimeout(ddKeepFocusedFieldVisible, first + 400);
+                setTimeout(ddKeepFocusedFieldVisible, first + 900);
+              }
+              window.addEventListener('resize', function(){ ddKeepFocusedFieldVisibleSoon(120); });
+              document.addEventListener('focusin', function(){ ddKeepFocusedFieldVisibleSoon(350); });
               function initMF(){
                 try {
                   if (window.magicfeedback && !initialized) {
