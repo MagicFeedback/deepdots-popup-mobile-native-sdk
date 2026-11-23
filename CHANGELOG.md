@@ -4,6 +4,10 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+## 0.7.14 - 2026-11-23
+
+Survey SDK supported: 2.2.38–2.2.44 (survey frontend 3.4.1–3.6.0); bundled: 2.2.44.
+
 ### Added
 
 - **The progress bar can count answered questions (DD-210).** With `style.progressMode:
@@ -14,12 +18,9 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 ### Fixed
 
 - **The question stays in view with the keyboard open on small phones.** With the survey fitted
-  to the card (0.7.14 candidate), centring the focused text field pushed the question text out of
+  to the card (see below), centring the focused text field pushed the question text out of
   view on a 360x640 screen. The survey now scrolls the question block (question text and the
   first line of the field) to the top, and only the field when even that does not fit.
-
-### Fixed
-
 - **The end of the survey is no longer hidden when the popup has a logo.** The survey area took
   72 % of the card without counting the logo, progress bar, message or error banner. With a logo
   the middle of the card overflowed and scrolled on its own, but a finger on the survey only
