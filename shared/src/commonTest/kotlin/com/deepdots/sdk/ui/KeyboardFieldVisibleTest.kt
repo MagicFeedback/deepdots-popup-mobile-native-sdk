@@ -20,8 +20,11 @@ class KeyboardFieldVisibleTest {
                 isIOS = ios,
             )
             assertTrue(html.contains("function ddKeepFocusedFieldVisible()"), "isIOS=$ios")
-            assertTrue(html.contains("addEventListener('resize', function(){ setTimeout(ddKeepFocusedFieldVisible"), "isIOS=$ios")
+            assertTrue(html.contains("addEventListener('resize', function(){ ddKeepFocusedFieldVisibleSoon("), "isIOS=$ios")
             assertTrue(html.contains("addEventListener('focusin'"), "isIOS=$ios")
+            // El enunciado va con el campo: se sube el bloque de la pregunta, no solo el campo.
+            assertTrue(html.contains("contains('magicfeedback-div')"), "isIOS=$ios")
+            assertTrue(html.contains("block: 'start'"), "isIOS=$ios")
         }
     }
 }

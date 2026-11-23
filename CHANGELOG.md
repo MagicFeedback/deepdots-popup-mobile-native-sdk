@@ -13,6 +13,13 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ### Fixed
 
+- **The question stays in view with the keyboard open on small phones.** With the survey fitted
+  to the card (0.7.14 candidate), centring the focused text field pushed the question text out of
+  view on a 360x640 screen. The survey now scrolls the question block (question text and the
+  first line of the field) to the top, and only the field when even that does not fit.
+
+### Fixed
+
 - **The end of the survey is no longer hidden when the popup has a logo.** The survey area took
   72 % of the card without counting the logo, progress bar, message or error banner. With a logo
   the middle of the card overflowed and scrolled on its own, but a finger on the survey only
