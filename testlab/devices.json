@@ -1,5 +1,5 @@
 {
-  "$comment": "DD-273: the ONLY devices the key popup checks run on in Firebase Test Lab. Fixed on purpose: Test Lab bills every device minute (physical devices $5/device-hour), so testlab/testlab.py refuses to run more than maxDevices per platform, a timeout over maxTimeout or more than maxFlakyAttempts retries. Adding a device is a reviewed change to this file. Ids from `gcloud firebase test android|ios models list` (checked 19-nov-2026).",
+  "$comment": "DD-273: the ONLY devices the key popup checks run on in Firebase Test Lab. Fixed on purpose: Test Lab bills every device minute (physical devices $5/device-hour), so testlab/testlab.py refuses to run more than maxDevices per platform, a timeout over maxTimeout or more than maxFlakyAttempts retries. Adding a device is a reviewed change to this file. Ids from `gcloud firebase test android|ios models list` (checked 23-nov-2026: Test Lab removed ipad10 and iphone14pro, iOS now only offers iphone16pro 18.3 and iphonese3 18.4/26.3; iPad stays covered by the iPad (A16) simulator job, test-apps-ipad-source.yml).",
   "limits": {
     "timeout": "10m",
     "maxTimeoutMinutes": 10,
@@ -16,7 +16,7 @@
   ],
   "ios": [
     { "model": "iphone16pro", "version": "18.3", "name": "iPhone 16 Pro (iOS 18.3), recent iPhone" },
-    { "model": "ipad10", "version": "16.6", "name": "iPad 10th gen (iOS 16.6)" },
-    { "model": "iphone14pro", "version": "16.6", "name": "iPhone 14 Pro (iOS 16.6)" }
+    { "model": "iphonese3", "version": "18.4", "name": "iPhone SE 3 (iOS 18.4), small screen" },
+    { "model": "iphonese3", "version": "26.3", "name": "iPhone SE 3 (iOS 26.3), latest iOS" }
   ]
 }
