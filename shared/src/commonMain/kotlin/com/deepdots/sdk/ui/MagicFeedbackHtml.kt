@@ -220,6 +220,12 @@ internal fun buildMagicFeedbackHtml(
             /* Cada pregunta va en un bloque con 12px más de padding y fondo blanco sobre la
                tarjeta (también blanca), así que ese sangrado no se ve: solo desalinea. */
             .magicfeedback-div{padding-left:0;padding-right:0;}
+            /* Una palabra o URL larga sin espacios (enunciado, subtítulo, texto de una página
+               informativa) se corta y baja de línea en vez de salirse por la derecha (Lemu,
+               23-nov: "Hehehe…" en el paso 5). break-word y no anywhere: solo parte la palabra
+               que no cabe y no cambia el ancho mínimo, así que los números de la escala y los
+               botones no se estrechan. */
+            #dd-content{overflow-wrap:break-word;}
           </style>
         </head>
         <body class="deepdots-popup">

@@ -4,6 +4,12 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **Long words wrap inside the survey.** A word or URL with no spaces in a question title,
+  subtitle or info page now breaks onto the next line instead of running off the right side of
+  the card (Lemvigh-Müller, step 5 of their QA survey). Only a word that does not fit is broken.
+
 ## 0.7.14 - 2026-11-23
 
 Survey SDK supported: 2.2.38–2.2.44 (survey frontend 3.4.1–3.6.0); bundled: 2.2.44.
