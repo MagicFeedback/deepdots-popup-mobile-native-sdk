@@ -37,6 +37,15 @@ class MagicFeedbackHtmlTest {
         )
     }
 
+    /** Lemu 23-nov: "Hehehe…" sin espacios se salía por la derecha en una página informativa. */
+    @Test
+    fun long_words_wrap_after_the_survey_css() {
+        val html = Deepdots.getSurveyHtml("survey-abc", "product-xyz")
+        val rule = html.indexOf("#dd-content{overflow-wrap:break-word;}")
+        assertTrue(rule > 0, "debe cortar las palabras largas")
+        assertTrue(rule > html.indexOf("id=\"dd-survey-css\""), "va después del CSS del survey para ganarle")
+    }
+
     /** Surveys multi-idioma: el idioma se pide a native en `generate({ lang })`. */
     @Test
     fun html_asks_native_for_the_survey_language() {
