@@ -1,24 +1,17 @@
 {
   "version": "0.7.14",
-  "status": "FAILED",
+  "status": "PASSED",
   "platforms": {
     "iOS": "PASSED",
-    "Android": "FAILED"
+    "Android": "PASSED"
   },
-  "failures": [
-    {
-      "platform": "Android",
-      "row": "A26 phone release",
-      "flow": "00-version",
-      "message": "maestro.android.DeviceServerDiedException: Device server died during 'deviceInfo' on emulator-5554 (179ms since last byte, connection age 179ms): StatusRuntimeException: UNAVAILABLE"
-    }
-  ],
+  "failures": [],
   "knownIssues": {},
   "counts": {
     "executions": 416,
-    "passed": 392,
-    "retried": 4,
-    "failed": 1,
+    "passed": 393,
+    "retried": 3,
+    "failed": 0,
     "skipped": 23,
     "known": 0
   }

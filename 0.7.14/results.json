@@ -51,11 +51,11 @@
     "sdk": "0.7.14",
     "resolved": "0.7.14",
     "engine": "WebView 69.0.3497.100",
-    "outcome": "failure",
+    "outcome": "success",
     "run": "https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/45250872853",
     "status": {
-      "00-version": "fail",
-      "audience-lang": "retry",
+      "00-version": "pass",
+      "audience-lang": "pass",
       "checkout-time": "pass",
       "close-with-keyboard": "pass",
       "exit-checkout": "pass",
@@ -82,7 +82,6 @@
       "survey-sdk-2.2.39": "pass"
     },
     "messages": {
-      "00-version": "maestro.android.DeviceServerDiedException: Device server died during 'deviceInfo' on emulator-5554 (179ms since last byte, connection age 179ms): StatusRuntimeException: UNAVAILABLE",
       "missing-navigation": "Assertion is false: \"Why did you leave the checkout?\" is visible"
     }
   },

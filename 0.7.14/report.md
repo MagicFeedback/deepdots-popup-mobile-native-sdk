@@ -1,9 +1,9 @@
 # Deepdots | Popup SDK Release Validation Report
 
 **SDK:** Deepdots native popup SDK **0.7.14** (Android `com.deepdots.sdk:shared-android:0.7.14` · iOS `DeepdotsSDK-SPM` 0.7.14)  
-**Validation date:** 2026-11-23  
+**Validation date:** 2026-11-24  
 **Platforms:** iOS / Android  
-**Overall status:** **FAILED**  
+**Overall status:** **PASSED**  
 **Report type:** Automated release validation, generated from the CI test results (no manual edits)
 
 ---
@@ -12,29 +12,23 @@
 
 SDK 0.7.14 was validated as published (Maven Central and Swift Package Manager) inside dedicated native test applications that integrate the SDK the same way a customer app does.
 
-Results ([CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/45250872853/attempts/1)):
+Results ([CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/45250872853/attempts/2)):
 
 - **416** automated test executions on **16** configurations (7 iOS, 9 Android)
-- **392** passed (4 on the automatic retry)
-- **1** failed
+- **393** passed (3 on the automatic retry)
+- **0** failed
 - **23** not applicable on that platform
 - Manual pass on real devices: **pending** (section 7)
 
-**iOS:** PASSED · **Android:** FAILED
+**iOS:** PASSED · **Android:** PASSED
 
-**Validation status:** **FAILED**
-
-### Failures
-
-| Platform | Configuration | Test | Detail |
-|---|---|---|---|
-| Android | A26 phone release | 00-version | maestro.android.DeviceServerDiedException: Device server died during 'deviceInfo' on emulator-5554 (179ms since last byte, connection age 179ms): StatusRuntimeException: UNAVAILABLE |
+**Validation status:** **PASSED**
 
 ## 2. Test Results
 
 | Test category | iOS | Android |
 |---|---|---|
-| SDK initialization and version check | PASS | **FAIL** |
+| SDK initialization and version check | PASS | PASS |
 | Path-based triggers and excluded screens | PASS | PASS |
 | Time-based triggers | PASS | PASS |
 | Event and click triggers | PASS | PASS |
@@ -55,8 +49,8 @@ Results ([CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-
 
 | Test | A26 phone debug | A26 phone release | A30 phone debug | A30 phone release | A34 phone debug | A34 phone release | A34 tablet debug | A36 phone debug | A36 phone release | iOS 16.4 iPhone SE (3rd generation) Debug | iOS 17.5 iPhone 15 Debug | iOS 18 iPad (A16) Debug | iOS 18 iPhone 16 Pro Debug no-frame-key | iOS 18 iPhone 16 Pro Max Debug | iOS 18 iPhone 16 Release | iOS 26 iPhone 17 Debug |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 00-version | pass | fail | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
-| audience-lang | pass | retry | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
+| 00-version | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
+| audience-lang | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
 | checkout-time | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
 | close-with-keyboard | pass | pass | pass | pass | pass | pass | pass | pass | retry | pass | pass | pass | pass | pass | pass | pass |
 | exit-checkout | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass | pass |
@@ -89,7 +83,7 @@ Results ([CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-
 | Platform | OS version | Device | Build | SDK resolved | Engine | Result |
 |---|---|---|---|---|---|---|
 | Android | API 26 | pixel_6 (emulator) | debug | 0.7.14 | WebView 69.0.3497.100 | PASS |
-| Android | API 26 | pixel_6 (emulator) | release (R8) | 0.7.14 | WebView 69.0.3497.100 | **FAIL** |
+| Android | API 26 | pixel_6 (emulator) | release (R8) | 0.7.14 | WebView 69.0.3497.100 | PASS |
 | Android | API 30 | pixel_6 (emulator) | debug | 0.7.14 | WebView 83.0.4103.106 | PASS |
 | Android | API 30 | pixel_6 (emulator) | release (R8) | 0.7.14 | WebView 83.0.4103.106 | PASS |
 | Android | API 34 | pixel_6 (emulator) | debug | 0.7.14 | WebView 113.0.5672.136 | PASS |
@@ -130,7 +124,7 @@ The test system has to prove it catches real problems. These controls run in eve
 
 ## 6. Known Issues & Limitations
 
-**Known blocking issues:** see Failures in section 1.
+**Known blocking issues:** none identified.
 
 **Known non-blocking issues:**
 
@@ -162,9 +156,9 @@ The test system has to prove it catches real problems. These controls run in eve
 - **SDK version:** 0.7.14
 - **Release:** [GitHub release v0.7.14](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/releases/tag/v0.7.14)
 - **Changelog:** [CHANGELOG](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/blob/main/CHANGELOG.md)
-- **Test execution:** [CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/45250872853/attempts/1) (logs, screenshots and per-configuration artifacts)
-- **Validation date:** 2026-11-23
-- **Results file SHA-256:** `49deb426ba16304f936500ced6d2191f8b5add9f94edd73b3349bd367f458f9d`
+- **Test execution:** [CI run](https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/45250872853/attempts/2) (logs, screenshots and per-configuration artifacts)
+- **Validation date:** 2026-11-24
+- **Results file SHA-256:** `993a9acccfe73db53bbae6f909b6062c2b0d516ff220eac8bed8b534ec2cf7cc`
 
 ### Release notes 0.7.14
 
