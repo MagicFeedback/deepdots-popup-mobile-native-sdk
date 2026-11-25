@@ -220,6 +220,12 @@ internal fun buildMagicFeedbackHtml(
             /* Cada pregunta va en un bloque con 12px más de padding y fondo blanco sobre la
                tarjeta (también blanca), así que ese sangrado no se ve: solo desalinea. */
             .magicfeedback-div{padding-left:0;padding-right:0;}
+            /* Una palabra o URL larga sin espacios (enunciado, subtítulo, texto de una página
+               informativa) se corta y baja de línea en vez de salirse por la derecha (Lemu,
+               23-nov: "Hehehe…" en el paso 5). break-word y no anywhere: solo parte la palabra
+               que no cabe y no cambia el ancho mínimo, así que los números de la escala y los
+               botones no se estrechan. */
+            #dd-content{overflow-wrap:break-word;}
           </style>
         </head>
         <body class="deepdots-popup">
@@ -333,12 +339,33 @@ ${PopupReveal.REVEAL_JS}
                   if (tag !== 'input' && tag !== 'textarea' && !el.isContentEditable) { return; }
                   var r = el.getBoundingClientRect();
                   var vh = window.innerHeight || document.documentElement.clientHeight;
-                  if (r.top >= 0 && r.bottom <= vh) { return; }
-                  try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e1) { el.scrollIntoView(false); }
+                  // El enunciado de la pregunta también tiene que verse, no solo el campo: con la
+                  // encuesta ajustada a la tarjeta, centrar el campo dejaba el enunciado fuera en
+                  // un móvil pequeño (pruebas visuales 360x640, 23-nov-2026). Se sube el bloque de
+                  // la pregunta (.magicfeedback-div) si caben el enunciado y la primera línea
+                  // del campo; si no, el campo arriba del todo.
+                  var box = el.parentNode;
+                  while (box && box.classList && !box.classList.contains('magicfeedback-div')) { box = box.parentNode; }
+                  if (!box || !box.getBoundingClientRect) { box = null; }
+                  var top = r.top;
+                  var target = el;
+                  if (box) {
+                    var b = box.getBoundingClientRect();
+                    if ((r.top - b.top) + Math.min(r.height, 32) <= vh) { target = box; top = b.top; }
+                  }
+                  if (top >= 0 && r.top + Math.min(r.height, 32) <= vh) { return; }
+                  try { target.scrollIntoView({ block: 'start' }); } catch(e1) { target.scrollIntoView(true); }
                 } catch(e){ console.error('[MagicFeedback] focus scroll error', e); }
               }
-              window.addEventListener('resize', function(){ setTimeout(ddKeepFocusedFieldVisible, 120); });
-              document.addEventListener('focusin', function(){ setTimeout(ddKeepFocusedFieldVisible, 350); });
+              // El WebView también sube el campo enfocado por su cuenta cuando encoge, y lo hace
+              // después del primer aviso: se repite para quedar por detrás de ese scroll.
+              function ddKeepFocusedFieldVisibleSoon(first){
+                setTimeout(ddKeepFocusedFieldVisible, first);
+                setTimeout(ddKeepFocusedFieldVisible, first + 400);
+                setTimeout(ddKeepFocusedFieldVisible, first + 900);
+              }
+              window.addEventListener('resize', function(){ ddKeepFocusedFieldVisibleSoon(120); });
+              document.addEventListener('focusin', function(){ ddKeepFocusedFieldVisibleSoon(350); });
               function initMF(){
                 try {
                   if (window.magicfeedback && !initialized) {

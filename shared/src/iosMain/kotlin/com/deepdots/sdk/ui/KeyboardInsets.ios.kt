@@ -1,6 +1,10 @@
 package com.deepdots.sdk.ui
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 
 // iOS: antes no se hacía nada, contando con que el ComposeUIViewController sube el contenido
@@ -9,3 +13,6 @@ import androidx.compose.ui.Modifier
 // tapaba Atrás/Enviar (iPhone SE e iPhone 17, pruebas E2E). Ahora se resta el inset del teclado
 // como en Android, y PopupRenderer pone `onFocusBehavior = DoNothing` para no subirlo dos veces.
 internal actual fun Modifier.avoidKeyboard(): Modifier = imePadding()
+
+@Composable
+internal actual fun isKeyboardOpen(): Boolean = WindowInsets.ime.getBottom(LocalDensity.current) > 0

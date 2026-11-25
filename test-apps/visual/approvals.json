@@ -197,8 +197,8 @@
       "approvalId": "20261119T114607Z-44510718160"
     },
     "ios-iphone-se-3rd-generation-ios18/dark-style-1-open.png": {
-      "sha256": "e7accd4b4acce74199a18aff0698f021aad9baa1e3decfe299238ce7304ef96e",
-      "approvalId": "20261119T114607Z-44510718160"
+      "sha256": "61ea00d5802186c5e9c0f27971bfcd96be0ff3cda801d2b05c7fc114ffd69930",
+      "approvalId": "20261123T212021Z-45234302647"
     },
     "ios-iphone-se-3rd-generation-ios18/dark-style-2-text.png": {
       "sha256": "660a35000bfbb93d827869aa99cf2c2773ef40904e9353bcad3940055d1d4ab5",
@@ -657,6 +657,30 @@
           "key": "android-small-720x1280-api34/dark-style-3-thanks.png",
           "sha256": "41ea2344b5d6bc44e870cbde029b5907eccae8111d35bcd1477e5974a036bbbe",
           "previousSha256": null
+        }
+      ]
+    },
+    {
+      "id": "20261123T212021Z-45234302647",
+      "approvedAt": "2026-11-23T21:20:21.775Z",
+      "approvedBy": "sarias980",
+      "reason": "0.7.14 (#124): the survey ceiling now subtracts the chrome and its gaps, so on iPhone SE the dark-style card is 1-2 px shorter; popup content identical",
+      "source": {
+        "runId": "45234302647",
+        "runUrl": "https://github.com/MagicFeedback/deepdots-popup-mobile-native-sdk/actions/runs/45234302647",
+        "sdk": "local",
+        "sdkVersion": "local (SPM)",
+        "platform": "ios",
+        "devices": {
+          "ios-iphone-16-ios18": "iOS 18.5 simulator · iPhone 16",
+          "ios-iphone-se-3rd-generation-ios18": "iOS 18.5 simulator · iPhone SE 3rd generation"
+        }
+      },
+      "files": [
+        {
+          "key": "ios-iphone-se-3rd-generation-ios18/dark-style-1-open.png",
+          "sha256": "61ea00d5802186c5e9c0f27971bfcd96be0ff3cda801d2b05c7fc114ffd69930",
+          "previousSha256": "e7accd4b4acce74199a18aff0698f021aad9baa1e3decfe299238ce7304ef96e"
         }
       ]
     }

@@ -26,6 +26,19 @@ data class ProgressBarState(
 enum class ProgressUnit { Fraction, Percentage }
 
 /**
+ * Qué cuenta la barra (DD-210, `style.progressMode`). `Current` = la pregunta en la que está
+ * (por defecto, también si falta); `Completed` = las ya respondidas, al 100 % en la pantalla final.
+ */
+enum class ProgressMode {
+    Current, Completed;
+
+    companion object {
+        /** Cualquier valor que no sea "completed" es la barra de siempre. */
+        fun fromStyle(value: String?): ProgressMode = if (value == "completed") Completed else Current
+    }
+}
+
+/**
  * @param enabled preferencia resuelta: `InitOptions.showProgressBar` si el host se pronunció,
  *   si no el `showProgressBar` del estilo del survey.
  * @param onStartPage la pantalla de inicio no lleva barra.
@@ -41,11 +54,35 @@ fun progressBarState(
     showUnit: Boolean = true,
     unit: ProgressUnit = ProgressUnit.Fraction,
     labels: DefaultLabels.Labels = DefaultLabels.labels(null),
+    mode: ProgressMode = ProgressMode.Current,
 ): ProgressBarState {
+    val hidden = ProgressBarState(visible = false, label = "", fraction = 0f)
     // Con una sola página no hay nada que medir: el mismo corte que hace MagicSurvey.
-    if (!enabled || completed || onStartPage || total <= 1) {
-        return ProgressBarState(visible = false, label = "", fraction = 0f)
+    if (!enabled || onStartPage || total <= 1) return hidden
+
+    if (mode == ProgressMode.Completed) {
+        // Espejo de `progressView` (Web) y `src/utils/progress.ts` (MagicSurvey). En la pantalla
+        // final la página en pantalla también se envió, y el total pasa a ser lo respondido (una
+        // rama puede haber saltado páginas): siempre acaba en "N of N". La follow-up abierta
+        // (+0.5) no mueve la barra.
+        val answered = if (completed) {
+            (floor(progress) + 1).coerceIn(1.0, total.toDouble()).toInt()
+        } else {
+            floor(progress).coerceIn(0.0, total.toDouble()).toInt()
+        }
+        val shownTotal = if (completed) answered else total
+        val fraction = if (completed) 1.0 else (answered.toDouble() / total).coerceIn(0.0, 1.0)
+        val label = when {
+            !showUnit -> ""
+            unit == ProgressUnit.Percentage -> "${(fraction * 100).roundToInt()}%"
+            else -> labels.answeredOf
+                .replace("{answered}", answered.toString())
+                .replace("{total}", shownTotal.toString())
+        }
+        return ProgressBarState(visible = true, label = label, fraction = fraction.toFloat())
     }
+
+    if (completed) return hidden
 
     val current = (progress + 1).coerceIn(1.0, total.toDouble())
     val fraction = (current / total).coerceIn(0.0, 1.0)

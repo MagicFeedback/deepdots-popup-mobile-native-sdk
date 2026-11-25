@@ -162,6 +162,17 @@ kotlin {
                 implementation(libs.roborazzi.rule)
             }
         }
+        // DD-273: las comprobaciones clave del popup en dispositivos reales (Firebase Test Lab) y
+        // en el emulador. Las mismas que DD-269/DD-270, pero con el WebView de verdad y el survey
+        // «SDK Test App · Simple» de DEV. Dispositivos: testlab/devices.yml.
+        val androidInstrumentedTest by getting {
+            dependencies {
+                implementation(libs.androidx.test.runner)
+                implementation(libs.androidx.testExt.junit)
+                implementation(libs.compose.ui.test.junit4)
+                implementation(libs.kotlin.test)
+            }
+        }
     }
 
     // Configure iOS frameworks
@@ -173,10 +184,16 @@ android {
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Viajan dentro del AAR y R8 las aplica en la app del cliente.
         consumerProguardFiles("consumer-rules.pro")
     }
-    testOptions { unitTests { isIncludeAndroidResources = true } }
+    testOptions {
+        unitTests { isIncludeAndroidResources = true }
+        // APK de las pruebas en dispositivo (DD-273): sin esto sale con targetSdk = minSdk y
+        // Android 14+ abre el aviso "app para una versión antigua", que se queda el foco.
+        targetSdk = libs.versions.android.targetSdk.get().toInt()
+    }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
     buildTypes { getByName("release") { isMinifyEnabled = false }; getByName("debug") { } }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }

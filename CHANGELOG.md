@@ -4,6 +4,52 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **Long words wrap inside the survey.** A word or URL with no spaces in a question title,
+  subtitle or info page now breaks onto the next line instead of running off the right side of
+  the card (Lemvigh-Müller, step 5 of their QA survey). Only a word that does not fit is broken.
+
+## 0.7.14 - 2026-11-23
+
+Survey SDK supported: 2.2.38–2.2.44 (survey frontend 3.4.1–3.6.0); bundled: 2.2.44.
+
+### Added
+
+- **The progress bar can count answered questions (DD-210).** With `style.progressMode:
+  "completed"` the bar starts at 0 %, shows "2 of 5 answered" on question 3, does not move while
+  an AI follow-up is open, and shows 100 % ("5 of 5 answered") on the thank-you screen. Missing or
+  `"current"` keeps today's bar. Same rules as the web popup and the survey link.
+
+### Fixed
+
+- **The question stays in view with the keyboard open on small phones.** With the survey fitted
+  to the card (see below), centring the focused text field pushed the question text out of
+  view on a 360x640 screen. The survey now scrolls the question block (question text and the
+  first line of the field) to the top, and only the field when even that does not fit.
+- **The end of the survey is no longer hidden when the popup has a logo.** The survey area took
+  72 % of the card without counting the logo, progress bar, message or error banner. With a logo
+  the middle of the card overflowed and scrolled on its own, but a finger on the survey only
+  scrolls the WebView, so the bottom of the survey stayed under the footer: the last number of a
+  0-10 list, the last option of a question, and on iPhone the text field with the keyboard open
+  (Lemvigh-Müller, Galaxy S21/S25 and iPhone 17). The survey now gets the height that is left in
+  the card and scrolls inside. Android and iOS.
+- **The logo folds away while the keyboard is open.** On text questions the card shrinks with the
+  keyboard and the logo kept its space, so the question text went out of view. The logo comes back
+  when the keyboard closes. Android and iOS.
+- **iPads are reported as iOS.** On iPad `UIDevice.systemName` is "iPadOS", so `deepdots_sdk`
+  said `android@<version>` and analytics batches had `platform: android`. Both now say `ios`.
+
+### Tests
+
+- **Key popup checks on real devices (DD-273).** Open popup, X / Send / Back with a finger-like
+  tap, keyboard over the text question and the survey filling its slot on a tablet, as Android
+  instrumented tests with the real WebView (`shared/src/androidInstrumentedTest`) and as XCUITest
+  on NORDLY (`test-apps/ios/NordlyDeviceChecks`). New workflow `testlab.yml` runs them in Firebase
+  Test Lab on a fixed device list (`testlab/devices.json`) only on release PRs and by hand, with a
+  10 min timeout, no retries and the billed minutes in the job summary. No change to the SDK
+  itself: the build only gains the instrumented test set-up.
+
 ## 0.7.13 - 2026-11-19
 
 Survey SDK supported: 2.2.38–2.2.44 (survey frontend 3.4.1–3.6.0); bundled: 2.2.44.

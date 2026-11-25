@@ -43,4 +43,11 @@ class SdkIdentityTest {
         assertEquals("flutter@0.1.0", ctx.sdk)
         assertEquals(SdkIdentity.core, ctx.sdkCore)
     }
+
+    @Test
+    fun ipad_counts_as_ios() {
+        assertEquals("ios", SdkIdentity.platformNameFor("iOS 26.5"))
+        assertEquals("ios", SdkIdentity.platformNameFor("iPadOS 26.1"))
+        assertEquals("android", SdkIdentity.platformNameFor("Android 36"))
+    }
 }
