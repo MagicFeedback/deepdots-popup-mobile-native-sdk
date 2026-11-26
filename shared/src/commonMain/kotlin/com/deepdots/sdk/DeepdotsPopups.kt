@@ -3,6 +3,7 @@
 package com.deepdots.sdk
 
 import com.deepdots.sdk.util.SdkLock
+import com.deepdots.sdk.ui.parsePopupSize
 import com.deepdots.sdk.models.Action
 import com.deepdots.sdk.models.Actions
 import com.deepdots.sdk.models.CooldownCondition
@@ -185,6 +186,7 @@ class DeepdotsPopups {
         val position: String? = null,
         @SerialName("imageUrl") val imageUrl: String? = null,
         val font: ServerFontDto? = null,
+        val size: String? = null,
     )
 
     /** Disparo del host recibido antes de que lleguen las definiciones de popups. */
@@ -2077,7 +2079,13 @@ class DeepdotsPopups {
         val font = style?.font?.family?.takeIf { it.isNotBlank() }?.let { family ->
             PopupFont(family = family, url = style.font.url)
         }
-        return Style(theme = theme, position = position, imageUrl = style?.imageUrl, font = font)
+        return Style(
+            theme = theme,
+            position = position,
+            imageUrl = style?.imageUrl,
+            font = font,
+            size = parsePopupSize(style?.size),
+        )
     }
 
     private fun parseEventPayload(payload: String?): Map<String, Any?> {

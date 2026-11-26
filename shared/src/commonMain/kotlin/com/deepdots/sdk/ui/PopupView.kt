@@ -175,7 +175,7 @@ fun PopupView(
     var imageMaxHeight by remember { mutableStateOf(80.dp) }
     var imageAlignment by remember { mutableStateOf(Alignment.Center) }
     var imageHorizontalPadding by remember { mutableStateOf(PaddingValues(0.dp)) }
-    var popupMaxWidth by remember { mutableStateOf(420.dp) }
+    var popupMaxWidth by remember { mutableStateOf(cardMaxWidthFor(popup.style.size)) }
     var popupMaxHeightFraction by remember { mutableStateOf(0.9f) }
 
     // renderChrome=false (InitOptions): sin scrim ni tarjeta; el host controla el marco visual.
@@ -535,7 +535,7 @@ fun PopupView(
                                                     else -> { /* center by default */ }
                                                 }
                                                 // Optional popup sizing overrides
-                                                payloadValue("popupMaxWidth")?.toFloatOrNull()?.let { w -> popupMaxWidth = w.dp }
+                                                payloadValue("popupMaxWidth")?.toFloatOrNull()?.let { w -> popupMaxWidth = resolveCardMaxWidth(popup.style.size, w.dp) }
                                                 payloadValue("popupMaxHeightFraction")?.toFloatOrNull()?.let { f -> popupMaxHeightFraction = f.coerceIn(0.5f, 0.98f) }
                                                 // Barra de progreso: el total solo se conoce con el form montado.
                                                 payloadBool("showProgressBar")?.let { platformShowProgressBar = it }
