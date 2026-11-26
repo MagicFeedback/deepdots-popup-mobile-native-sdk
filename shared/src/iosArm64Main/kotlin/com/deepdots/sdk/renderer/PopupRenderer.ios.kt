@@ -1,6 +1,6 @@
 // `opaque` (fondo transparente del controlador de Compose) sigue siendo API experimental de
 // Compose Multiplatform, y el opt-in tiene que cubrir la lambda `configure`, no solo la función.
-@file:OptIn(ExperimentalComposeApi::class, ExperimentalComposeUiApi::class)
+@file:OptIn(ExperimentalComposeApi::class, ExperimentalComposeUiApi::class, ExperimentalForeignApi::class)
 
 package com.deepdots.sdk.renderer
 
@@ -13,6 +13,10 @@ import com.deepdots.sdk.models.PopupDefinition
 import com.deepdots.sdk.platform.DEEPDOTS_POPUP_VC_ID
 import com.deepdots.sdk.platform.PlatformContext
 import com.deepdots.sdk.ui.PopupView
+import com.deepdots.sdk.ui.popupBlocksHost
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.readValue
+import platform.CoreGraphics.CGRectZero
 import platform.UIKit.UIColor
 import platform.UIKit.UIModalPresentationOverFullScreen
 import platform.UIKit.UIViewController
@@ -27,6 +31,9 @@ actual object PopupRenderer {
         onDismiss: () -> Unit
     ) {
         var controllerRef: UIViewController? = null
+        // DD-334: `blockPage = false` fuera del centro. Sin modal: la app de debajo sigue usable y
+        // solo la tarjeta se queda con los toques (ver PopupOverlay).
+        val overlay = if (popupBlocksHost(popup.style)) null else PassThroughView(CGRectZero.readValue())
         // `opaque = false`: el canvas de Compose no pinta fondo propio, así que el scrim del
         // popup (semitransparente) deja ver la app de debajo, como en Android y en web.
         // `enforceStrictPlistSanityCheck = false`: Compose exige por defecto
@@ -60,10 +67,16 @@ actual object PopupRenderer {
                 },
                 onAction = { action ->
                     onAction(action)
-                    controllerRef?.dismissViewControllerAnimated(true, null)
+                    val controller = controllerRef
+                    if (overlay != null) {
+                        if (controller != null) PopupOverlay.detach(controller)
+                    } else {
+                        controller?.dismissViewControllerAnimated(true, null)
+                    }
                     onDismiss()
                 },
                 onSurveyEvent = onSurveyEvent,
+                onCardBounds = { bounds -> overlay?.card = bounds },
             )
         }
         controllerRef = vc
@@ -81,6 +94,6 @@ actual object PopupRenderer {
         // Desde lo más alto de la cadena, no desde el del contexto: si este ya presenta algo (un
         // sheet o una pantalla completa del host), UIKit rechazaba la presentación en silencio y
         // el popup se perdía aunque contase como mostrado. Ver PopupPresenter.
-        PopupPresenter.present(context.viewController, vc)
+        PopupPresenter.present(context.viewController, vc, overlay)
     }
 }

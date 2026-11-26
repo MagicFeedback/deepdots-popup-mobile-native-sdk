@@ -56,6 +56,12 @@ data class Style(
     val font: PopupFont? = null,
     /** Card size (DD-334): `Regular` up to 420dp (default), `Small` up to 300dp. Web `style.size`. */
     val size: PopupSize = PopupSize.Regular,
+    /**
+     * Web `style.blockPage` (DD-334): `false` with a position other than [Position.Center] = no
+     * scrim, and touches outside the card reach the app. `null` (not set) keeps the native
+     * behaviour from before, blocking. [Position.Center] always blocks. See `popupBlocksHost`.
+     */
+    val blockPage: Boolean? = null,
 )
 
 /** Popup `style.size` (DD-334). Mirrors Web `'small' | 'regular'`. */
@@ -83,7 +89,9 @@ enum class Theme {
 }
 
 enum class Position {
-    TopLeft, TopRight, BottomLeft, BottomRight, Center
+    TopLeft, TopRight, BottomLeft, BottomRight, Center,
+    /** Top / bottom edge, centred horizontally (DD-334, Web `top` / `bottom`). */
+    Top, Bottom
 }
 
 enum class ImageSize {

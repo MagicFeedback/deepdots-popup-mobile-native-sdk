@@ -7,8 +7,12 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 ### Added
 
 - **Popup size (DD-334).** `style.size: "small"` caps the card at 300dp; `regular` (the default)
-  keeps 420dp as before. The survey Style width can't widen a small card. `style.blockPage` is not
-  read yet: the app still blocks the screen for every position.
+  keeps 420dp as before. The survey Style width can't widen a small card.
+- **Popup that doesn't block the app (DD-334).** `style.blockPage: false` with a position other
+  than `center`: no scrim, and touches outside the card reach the app (the card and its buttons
+  keep theirs). `true`, `center`, or no `blockPage` keep blocking as before. On iOS such a popup is
+  mounted over the top view controller instead of presented as a full-screen modal, which takes
+  every touch. New positions `top` and `bottom` (centred horizontally), as in the Admin and web.
 
 ### Changed
 

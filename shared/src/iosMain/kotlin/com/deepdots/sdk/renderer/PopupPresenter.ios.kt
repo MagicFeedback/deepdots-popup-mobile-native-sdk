@@ -22,10 +22,14 @@ internal object PopupPresenter {
     /** Presentación en espera: `close()` / `Deepdots.dismiss` la anulan poniéndola a null. */
     private var pending: Any? = null
 
-    fun present(base: UIViewController, popup: UIViewController) {
+    /**
+     * [overlay] != null: popup que no bloquea (DD-334). En vez de presentarlo como modal se monta
+     * dentro de esa vista encima del controlador de arriba del todo (ver [PopupOverlay]).
+     */
+    fun present(base: UIViewController, popup: UIViewController, overlay: PassThroughView? = null) {
         val token = Any()
         pending = token
-        attempt(base, popup, token, logged = false)
+        attempt(base, popup, overlay, token, logged = false)
     }
 
     /** ¿Hay un popup esperando a que el host cierre su alerta? */
@@ -35,7 +39,7 @@ internal object PopupPresenter {
         pending = null
     }
 
-    private fun attempt(base: UIViewController, popup: UIViewController, token: Any, logged: Boolean) {
+    private fun attempt(base: UIViewController, popup: UIViewController, overlay: PassThroughView?, token: Any, logged: Boolean) {
         if (pending !== token) return
         val chain = presentedChain(base)
         val inWindow = base.viewIfLoaded?.window != null
@@ -43,7 +47,8 @@ internal object PopupPresenter {
             is PresentationPlan.PresentFrom -> {
                 pending = null
                 val presenter = if (plan.index < 0) base else chain[plan.index]
-                presenter.presentViewController(popup, true, null)
+                if (overlay != null) PopupOverlay.attach(presenter, popup, overlay)
+                else presenter.presentViewController(popup, true, null)
             }
             PresentationPlan.Wait -> {
                 if (!logged) {
@@ -53,7 +58,7 @@ internal object PopupPresenter {
                     )
                 }
                 val delay = dispatch_time(DISPATCH_TIME_NOW, RETRY_MS * 1_000_000)
-                dispatch_after(delay, dispatch_get_main_queue()) { attempt(base, popup, token, logged = true) }
+                dispatch_after(delay, dispatch_get_main_queue()) { attempt(base, popup, overlay, token, logged = true) }
             }
         }
     }
