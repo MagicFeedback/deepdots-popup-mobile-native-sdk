@@ -31,7 +31,6 @@ name: Release
 #   MAVEN_CENTRAL_PASSWORD  password de ese user token.
 #   SIGNING_KEY             clave GPG privada en ASCII armor (`gpg --armor --export-secret-keys <id>`).
 #   SIGNING_PASSWORD        passphrase de esa clave.
-#   SIGNING_KEY_ID          (opcional) id corto de la clave.
 # Variables (opcionales):
 #   MAVEN_CENTRAL_PUBLISHING_TYPE  automatic (default: publica sin pasar por el portal) o user_managed
 #                                  (deja el deployment en el portal para darle a Publish a mano).
@@ -195,7 +194,6 @@ jobs:
           VERSION: ${{ steps.meta.outputs.version }}
           SIGNING_KEY: ${{ steps.state.outputs.maven == 'publish' && secrets.SIGNING_KEY || '' }}
           SIGNING_PASSWORD: ${{ steps.state.outputs.maven == 'publish' && secrets.SIGNING_PASSWORD || '' }}
-          SIGNING_KEY_ID: ${{ steps.state.outputs.maven == 'publish' && secrets.SIGNING_KEY_ID || '' }}
         run: |
           set -euo pipefail
           rm -rf build/release-staging-repo
