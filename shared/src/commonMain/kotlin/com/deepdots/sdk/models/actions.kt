@@ -53,8 +53,15 @@ data class Style(
     val imageUrl: String? = null,
     val imageSize: ImageSize = ImageSize.Medium,
     val imageAlignment: ImageAlignment = ImageAlignment.Center,
-    val font: PopupFont? = null
+    val font: PopupFont? = null,
+    /** Card size (DD-334): `Regular` up to 420dp (default), `Small` up to 300dp. Web `style.size`. */
+    val size: PopupSize = PopupSize.Regular,
 )
+
+/** Popup `style.size` (DD-334). Mirrors Web `'small' | 'regular'`. */
+enum class PopupSize {
+    Small, Regular
+}
 
 /**
  * Custom popup/survey font, mirrors Web's `PopupStyle.font = { family, url? }`.

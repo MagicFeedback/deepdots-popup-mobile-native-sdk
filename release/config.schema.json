@@ -362,6 +362,12 @@
               "type": "null"
             }
           ]
+        },
+        "size": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "required": []
@@ -938,6 +944,13 @@
       },
       "required": []
     },
+    "models.PopupSize": {
+      "x-kotlin": "models.PopupSize",
+      "enum": [
+        "Small",
+        "Regular"
+      ]
+    },
     "models.Position": {
       "x-kotlin": "models.Position",
       "enum": [
@@ -1016,6 +1029,10 @@
               "type": "null"
             }
           ]
+        },
+        "size": {
+          "$ref": "#/definitions/models.PopupSize",
+          "x-kotlin": "PopupSize"
         }
       },
       "required": []
