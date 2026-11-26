@@ -31,6 +31,13 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
   subtitle or info page now breaks onto the next line instead of running off the right side of
   the card (Lemvigh-Müller, step 5 of their QA survey). Only a word that does not fit is broken.
 
+- **Popup exclusions by email, domain or attribute on the first screen (DD-561).** `init()` with
+  `contactAttributes` sent the contact (`POST /sdk/popups/contact`) at the same time as the popups
+  request, so on a user's first screen the server could not apply the DD-333 exclusions by email,
+  domain or attribute yet. When the attributes are new or changed, the popups request now waits for
+  the contact POST, at most 1.5 s (`CONTACT_SYNC_TIMEOUT_MS`); a slow or failed POST never blocks
+  the popups. Unchanged attributes or no `contactAttributes`: no wait. Same as web.
+
 ## 0.7.14 - 2026-11-23
 
 Survey SDK supported: 2.2.38–2.2.44 (survey frontend 3.4.1–3.6.0); bundled: 2.2.44.

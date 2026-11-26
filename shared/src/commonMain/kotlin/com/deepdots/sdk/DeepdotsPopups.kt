@@ -66,6 +66,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.SerialName
@@ -96,6 +97,13 @@ internal const val MAX_PENDING_TRIGGERS = 20
  * hasta el último intento.
  */
 internal val POPUPS_FETCH_RETRY_DELAYS_MS = listOf(2_000L, 5_000L)
+/**
+ * DD-561: cuánto espera el GET de popups al POST de contact de `init(contactAttributes)`. El
+ * servidor aplica las exclusiones por email, dominio y atributo (DD-333) desde el Contact, así que
+ * en la primera pantalla el GET tiene que ir después del POST. Paridad con Web
+ * `CONTACT_SYNC_TIMEOUT_MS`.
+ */
+internal const val CONTACT_SYNC_TIMEOUT_MS = 1_500L
 /**
  * Latido: con la app en foreground, el flush periódico manda el engagement acumulado al menos
  * cada ANALYTICS_HEARTBEAT_MS. Sin él, una app abierta en una sola pantalla no enviaba nada
@@ -337,8 +345,10 @@ class DeepdotsPopups {
         // Contact: info interna del usuario que solo conoce el host (segmentación/targeting).
         // Solo trackeamos usuarios IDENTIFICADOS → se crea únicamente si hay userId del init.
         contact = buildContactManager(clientUserId, options.popupOptions.publicKey, storage)
-        options.contactAttributes?.let { attrs ->
-            // Envío fire-and-forget (solo si cambiaron).
+        // Solo se envían si cambiaron. El GET de popups espera a este envío (DD-561, como mucho
+        // CONTACT_SYNC_TIMEOUT_MS) para que las exclusiones por email, dominio o atributo apliquen
+        // ya en la primera pantalla.
+        val contactSync: Job? = options.contactAttributes?.let { attrs ->
             scope.launch { runCatching { contact?.setAttributes(attrs) } }
         }
 
@@ -441,6 +451,7 @@ class DeepdotsPopups {
         }
         pendingTriggersLock.withLock { awaitingPopups = true }
         scope.launch {
+            if (contactSync != null) awaitContactSync(contactSync)
             val responseText = fetchPopupsWithRetry(publicKey) ?: run {
                 dropPendingTriggers()
                 return@launch
@@ -457,6 +468,18 @@ class DeepdotsPopups {
                 log("Error loading popups", t.message ?: "unknown")
                 dropPendingTriggers()
             }
+        }
+    }
+
+    /**
+     * DD-561: el POST de contact de `init()` va antes del GET de popups, como mucho
+     * [CONTACT_SYNC_TIMEOUT_MS]. Sin atributos nuevos el job termina enseguida (no hay POST).
+     * Un POST lento o fallido nunca bloquea los popups.
+     */
+    private suspend fun awaitContactSync(job: Job) {
+        val timeoutMs = debugContactSyncTimeoutMs ?: CONTACT_SYNC_TIMEOUT_MS
+        if (withTimeoutOrNull(timeoutMs) { job.join() } == null) {
+            log("contact · POST still pending, fetching popups anyway")
         }
     }
 
@@ -1112,6 +1135,9 @@ class DeepdotsPopups {
     /** Test seam: lookups de geo arrancados por esta instancia (se cuenta de forma síncrona). */
     internal var debugGeoLookupCount = 0
         private set
+
+    /** Solo test: techo de la espera del GET de popups al POST de contact (por defecto [CONTACT_SYNC_TIMEOUT_MS]). */
+    internal var debugContactSyncTimeoutMs: Long? = null
 
     /** Solo test: esperas entre reintentos del GET de popups (por defecto [POPUPS_FETCH_RETRY_DELAYS_MS]). */
     internal var debugPopupsFetchRetryDelaysMs: List<Long>? = null
