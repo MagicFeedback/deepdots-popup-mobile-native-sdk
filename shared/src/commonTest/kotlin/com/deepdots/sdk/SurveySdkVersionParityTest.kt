@@ -24,7 +24,7 @@ class SurveySdkVersionParityTest {
 
     @Test
     fun supported_list_is_the_same_as_web_and_contains_the_vendored_version() {
-        assertEquals(listOf("2.2.38", "2.2.39", "2.2.44"), SUPPORTED_SURVEY_SDK_VERSIONS)
+        assertEquals(listOf("2.2.38", "2.2.39", "2.2.44", "2.2.47"), SUPPORTED_SURVEY_SDK_VERSIONS)
         assertTrue(isSupportedSurveySdk(MAGICFEEDBACK_VERSION))
     }
 

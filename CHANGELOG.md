@@ -4,6 +4,17 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- **Surveys SDK 2.2.47** (`@magicfeedback/native`, from 2.2.44), vendored on Android and from the
+  CDN on iOS (`MAGICFEEDBACK_VERSION`), also accepted when the Admin assigns it. A page's jump
+  rules are now checked in the order set in the Admin, with "Otherwise" last (DD-483); before, the
+  oldest rule won when two matched. Also 2.2.45 (dynamic surveys: email check, base question
+  settings, exclusive answers) and 2.2.46 (open-question follow-up asked while typing). The survey
+  stylesheet stays on popup-sdk 1.22.0 (`POPUP_SDK_CSS_VERSION`, the 2.2.44 sheet): 2.2.45–2.2.47
+  only add the long-word wrap (already in this SDK, see below) and the field-level error spacing
+  of dynamic surveys.
+
 ### Fixed
 
 - **Long words wrap inside the survey.** A word or URL with no spaces in a question title,
