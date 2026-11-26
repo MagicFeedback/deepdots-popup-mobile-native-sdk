@@ -4,6 +4,12 @@ All notable changes to the Deepdots Popup SDK are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- **Popup size (DD-334).** `style.size: "small"` caps the card at 300dp; `regular` (the default)
+  keeps 420dp as before. The survey Style width can't widen a small card. `style.blockPage` is not
+  read yet: the app still blocks the screen for every position.
+
 ### Changed
 
 - **Surveys SDK 2.2.47** (`@magicfeedback/native`, from 2.2.44), vendored on Android and from the
