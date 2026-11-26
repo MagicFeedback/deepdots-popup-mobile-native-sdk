@@ -368,7 +368,8 @@
             "string",
             "null"
           ]
-        }
+        },
+        "blockPage": {}
       },
       "required": []
     },
@@ -958,7 +959,9 @@
         "TopRight",
         "BottomLeft",
         "BottomRight",
-        "Center"
+        "Center",
+        "Top",
+        "Bottom"
       ]
     },
     "models.Segments": {
@@ -1033,6 +1036,13 @@
         "size": {
           "$ref": "#/definitions/models.PopupSize",
           "x-kotlin": "PopupSize"
+        },
+        "blockPage": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "x-kotlin": "Boolean?"
         }
       },
       "required": []

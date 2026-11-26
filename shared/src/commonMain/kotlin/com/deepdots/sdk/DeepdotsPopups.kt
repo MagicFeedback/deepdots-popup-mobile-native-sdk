@@ -3,6 +3,7 @@
 package com.deepdots.sdk
 
 import com.deepdots.sdk.util.SdkLock
+import com.deepdots.sdk.ui.parseBlockPage
 import com.deepdots.sdk.ui.parsePopupSize
 import com.deepdots.sdk.models.Action
 import com.deepdots.sdk.models.Actions
@@ -187,6 +188,8 @@ class DeepdotsPopups {
         @SerialName("imageUrl") val imageUrl: String? = null,
         val font: ServerFontDto? = null,
         val size: String? = null,
+        /** DD-334. `JsonElement`: un valor raro no debe tirar el resto del estilo. */
+        val blockPage: JsonElement? = null,
     )
 
     /** Disparo del host recibido antes de que lleguen las definiciones de popups. */
@@ -2074,6 +2077,8 @@ class DeepdotsPopups {
             "top-right" -> Position.TopRight
             "bottom-left" -> Position.BottomLeft
             "bottom-right" -> Position.BottomRight
+            "top" -> Position.Top
+            "bottom" -> Position.Bottom
             else -> Position.Center
         }
         val font = style?.font?.family?.takeIf { it.isNotBlank() }?.let { family ->
@@ -2085,6 +2090,7 @@ class DeepdotsPopups {
             imageUrl = style?.imageUrl,
             font = font,
             size = parsePopupSize(style?.size),
+            blockPage = parseBlockPage(style?.blockPage),
         )
     }
 

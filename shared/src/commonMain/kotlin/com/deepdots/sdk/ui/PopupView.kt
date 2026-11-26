@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
@@ -64,7 +66,12 @@ fun PopupView(
      * espera vencido). La capa de plataforma lo usa para sacar de la pantalla su contenedor
      * mientras tanto, que es lo que evita además comerse los toques del usuario.
      */
-    onReady: () -> Unit = {}
+    onReady: () -> Unit = {},
+    /**
+     * Rectángulo de la tarjeta (dp = puntos en iOS) cada vez que se coloca. Lo usa iOS para que un
+     * popup que no bloquea (DD-334) deje pasar a la app los toques fuera de la tarjeta.
+     */
+    onCardBounds: (CardBounds) -> Unit = {},
 ) {
     // Colores del Style del survey (llegan con el `loaded`). `dark*` = bloque opcional `dark` (DD-239).
     var stylePrimaryColor by remember { mutableStateOf<Color?>(null) }
@@ -181,6 +188,8 @@ fun PopupView(
     // renderChrome=false (InitOptions): sin scrim ni tarjeta; el host controla el marco visual.
     // El survey (header cerrar + footer) sigue funcional. Paridad con Web/RN.
     val chrome = SdkRuntime.renderChrome
+    val blocksHost = popupBlocksHost(popup.style)
+    val cardDensity = LocalDensity.current
 
     Box(
         modifier = Modifier
@@ -189,7 +198,7 @@ fun PopupView(
             // survey. El velo del scrim también desaparece, si no se vería el fondo oscuro
             // varios cientos de ms antes que la tarjeta.
             .alpha(if (revealed) 1f else 0f)
-            .background(if (chrome) Color(0x66000000) else Color.Transparent)
+            .background(if (chrome && blocksHost) Color(0x66000000) else Color.Transparent)
             // El velo es modal: un toque fuera de la tarjeta no debe llegar a la app de debajo.
             // Sin esto pasaba de largo (el contenedor no consumía nada) y, con el popup abierto,
             // el usuario podía pulsar botones del host que ni siquiera veía bien.
@@ -200,7 +209,11 @@ fun PopupView(
             // de un dedo real (siempre hay alguno), `clickable` cancela el clic. X, Enviar y Atrás
             // no respondían en móviles reales (Lemvigh-Müller, Galaxy S25); un `adb input tap`
             // (sin MOVE) sí funcionaba, por eso las pruebas automáticas no lo veían.
-            .popupBackdropTouches()
+            // DD-334: con `blockPage = false` fuera del centro no hay velo ni se retienen los toques:
+            // sin ningún pointerInput fuera de la tarjeta, en Android el ComposeView no despacha
+            // el toque y sigue hacia las vistas del host (la tarjeta, una Surface, sí los retiene).
+            // En iOS lo resuelve el renderer con `onCardBounds`.
+            .then(if (blocksHost) Modifier.popupBackdropTouches() else Modifier)
             // El velo cubre toda la pantalla; la tarjeta se centra en lo que deja el teclado.
             .avoidKeyboard()
             // ...y en la zona segura: sin esto, en iOS un popup arriba con un survey alto se metía
@@ -219,6 +232,18 @@ fun PopupView(
                 Modifier
                     .fillMaxWidth()
                     .wrapContentHeight()
+            }.onGloballyPositioned { coords ->
+                val r = coords.boundsInRoot()
+                with(cardDensity) {
+                    onCardBounds(
+                        CardBounds(
+                            left = r.left.toDp().value.toDouble(),
+                            top = r.top.toDp().value.toDouble(),
+                            right = r.right.toDp().value.toDouble(),
+                            bottom = r.bottom.toDp().value.toDouble(),
+                        )
+                    )
+                }
             },
             shape = if (chrome) androidx.compose.foundation.shape.RoundedCornerShape(16.dp) else androidx.compose.ui.graphics.RectangleShape,
             color = if (chrome) bgColor else Color.Transparent,
@@ -785,6 +810,8 @@ private fun mapPosition(position: Position): Alignment = when (position) {
     Position.BottomLeft -> Alignment.BottomStart
     Position.BottomRight -> Alignment.BottomEnd
     Position.Center -> Alignment.Center
+    Position.Top -> Alignment.TopCenter
+    Position.Bottom -> Alignment.BottomCenter
 }
 
 @Composable
