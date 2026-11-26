@@ -7,7 +7,7 @@ import com.deepdots.sdk.models.Theme
 import com.deepdots.sdk.tracking.buildSurveyIdentity
 
 // Centralized MagicFeedback package version used for all CDN URLs
-internal const val MAGICFEEDBACK_VERSION: String = "2.2.44"
+internal const val MAGICFEEDBACK_VERSION: String = "2.2.47"
 
 /**
  * Version de `@magicfeedback/popup-sdk` de la que se sirve la hoja de estilos del survey.

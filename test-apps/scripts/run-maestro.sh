@@ -380,6 +380,11 @@ if knows_survey_sdk; then
     printf '%s\n' ${failed[@]+"${failed[@]}"} | grep -qx "$name" && continue
     if grep -aqF "[MagicFeedback] survey-sdk $v assigned" "$OUT/device.log"; then
       echo "[lab] survey SDK $v assigned (JS + CSS) in $name"
+    elif grep -aqF "[MagicFeedback] survey-sdk $v bundled" "$OUT/device.log"; then
+      # A published SDK whose vendored version is <v> (0.7.13+ vendors 2.2.44) draws it from
+      # its own copy (same_as_bundled): still <v>, JS and CSS. A real fallback logs the vendored
+      # version, which is a different number, so it still fails above.
+      echo "[lab] survey SDK $v bundled by this SDK (same as assigned) in $name"
     else
       echo "::error::[lab] FAIL $name: the survey was not drawn with $v ($(grep -aoE '\[MagicFeedback\] survey-sdk [0-9.]+ [a-z]+' "$OUT/device.log" | tail -1))"
       failed+=("$name")
